@@ -175,8 +175,6 @@ procedure TStateConsole.KeyEvent(Button: Integer; Event: TKeyEvent);
           Console.AddToConsole('Commands, starts with "'+S+'":');
           for i:=0 to CmdList.Count-1 do
             Console.AddToConsole('    '+CmdList[i]);
-            FCurCmd:=ConsoleCommandPrefix+CmdList[0]+' ';
-            FCursor:=Length(FCurCmd)+1;
       end;
     finally
       FAN(CmdList);

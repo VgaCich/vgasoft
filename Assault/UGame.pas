@@ -4,8 +4,7 @@ interface
 
 uses
   Windows, Messages, MMSystem, AvL, avlUtils, dglOpenGL, OpenGLExt, Textures, PakMan,
-  GameStates, StateIntro, StateMenu, StateLoad, StateGame, StateConsole, UConsole,
-  UConsoleVariables, ULog, SysInfo, USound, ifps3, ifpscomp;
+  GameStates, UConsole, UConsoleVariables, ULog, SysInfo, USound, ifps3, ifpscomp;
 
 type
   TGame=class
