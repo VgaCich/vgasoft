@@ -1,0 +1,8 @@
+Format:
+
+[ID:4='VSTR'][Width:2][Height:2][TexIndexes:2*(Width/32)*(Height/32)][Heightmap:Width*Height]
+
+TexIndexes: indexes in textures array, size: 2 byte;
+Heightmap: terrain data, 8-bit depth.
+
+ID: Integer=1381258070

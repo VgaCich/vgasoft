@@ -1,0 +1,37 @@
+Format:
+
+[Hdr:20][FileTable]$Adler32End$[Files]
+
+Hdr format:
+
+[ID:4=VSPK=$4B505356][Adler32:4]$Adler32Start:12+FTPackedSize$[EntriesCount:4][FTPackedSize:4][FTSize:4]
+
+Adler32: from EntriesCount to SizeOf(Hdr)+FTPackedSize 
+
+FileTable format:
+
+<NRV2E{EntriesCount[FileTableEntries]}>
+
+FileTableEntries:
+
++-Entry: FileTableEntry
+| +-SubEntry: FileTableEntry
+| +-SubEntry: FileTableEntry
+|   +-SubSubEntry: FileTableEntry
++-Entry: FileTableEntry
+...
+
+FileTableEntry format:
+
+[NameSize:1][Type:1=0:Directory;1:File_NRV2E;2:File_LZMA;3:File_Store][Data:4(Type=0:SubEntriesCount;Type=1,2:Offset)][Name:NameSize]{if Type=0:SubEntriesCount[FileTableEntries]}
+
+File format:
+
+NRV:
+[Adler32:4][Adler32CheckSize:4]$Adler32Start:Adler32CheckSize$[Size:4]{Ceil(Size/1048576)[BlockSize:4]}{BlocksCount<NRV2E[Block]>}$Adler32End$
+
+LZMA:
+[Adler32:4][Adler32CheckSize:4]$Adler32Start:Adler32CheckSize$[Size:4]<LZMA[Data]>$Adler32End$
+
+Store:
+[Adler32:4][Size:4]$Adler32Start:Size$[Data:Size]$Adler32End$

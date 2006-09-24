@@ -1,0 +1,21 @@
+REGEDIT4
+
+[HKEY_CLASSES_ROOT\.vpp]
+@="vppfile"
+
+[HKEY_CLASSES_ROOT\vppfile]
+@="VSPak Project"
+
+[HKEY_CLASSES_ROOT\vppfile\DefaultIcon]
+@="C:\\Program Files\\VSEUtils\\VSPak.exe"
+
+[HKEY_CLASSES_ROOT\vppfile\shell\open\command]
+@="Notepad.exe \"%L\""
+;@="\"C:\\Program Files\\Bred\\Bred2r.exe\" \"%L\""
+
+[HKEY_CLASSES_ROOT\vppfile\shell\Build\command]
+@="\"C:\\Program Files\\VSEUtils\\VSPak.exe\" /w \"%L\""
+
+[HKEY_CLASSES_ROOT\Folder\shell\Make VSPak project\command]
+@="\"C:\\Program Files\\VSEUtils\\VSPak.exe\" /w /c /a \"%L\""
+;@="\"C:\\Program Files\\VSEUtils\\VSPak.exe\" /w /c /pLZMA/Max \"%L\""

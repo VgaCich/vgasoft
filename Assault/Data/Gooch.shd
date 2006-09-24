@@ -1,0 +1,42 @@
+!vertex_shader
+uniform vec3 LightPosition;
+
+varying float NdorL;
+varying vec3 ReflectVec;
+varying vec3 ViewVec;
+
+void  main(void)
+{
+  vec3 ecPos=vec3(gl_MedelViewMatrix*gl_Vertex);
+  vec3 tnorm=normalize(gl_NormalMatrix*gl_Normal);
+  vec3 lightVec=normalize(LightPosition-ecPos);
+  ReflectVec=normalize(reflect(-lightVec, tnorm));
+  ViewVec=normalize(-ecPos);
+  NdotL=(dot(lightVec, tnorm)+1.0)*0.5;
+  gl_Position=ftransform();
+}
+!fragment_shader
+uniform vec3 SurfaceColor;
+uniform vec3 WarmColor;
+uniform vec3 CoolColor;
+uniform float DiffuseWarm;
+uniform float DiffuseCool;
+
+varying float NdorL;
+varying vec3 ReflectVec;
+varying vec3 ViewVec;
+
+void main(void)
+{
+  vec3 kcool=min(CoolColor+DiffuseCool*SurfaceColor, 1.0);
+  vec3 kwarm=min(WarmColor+DiffuseWarm*SurfaceColor, 1.0);
+  vec3 kfinal=mix(kcool, kwarm, NdotL);
+  
+  vec3 nreflect=normalize(ReflectVec);
+  vec3 nview=normalize(ViewVec);
+  
+  float spec=max(dot(nreflect, nview), 0.0);
+  spec=pow(spec, 32.0);
+  
+  gl_FragColor=vec4(min(kfinal+spec, 1.0), 1.0);
+}

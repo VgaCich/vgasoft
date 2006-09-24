@@ -1,0 +1,30 @@
+//Extension: vpp
+//Comment, from // to line end
+Base directory//First non-comment line
+// List of entries, one per line
+// Entries:
+//   <DirName>
+//     Starts directory entry
+//
+//   <|>
+//     Ends directory entry
+//
+//   FileName|Compression/Level(except Store)
+//     File entry
+//     Compression: NRV, LZMA, Store
+//     Level:
+//       LZMA: Fast, Normal, Max, Ultra
+//       NRV: 1..10 (default: 10)
+// Example: test.vpk
+<SubDir>
+Test.dof|NRV/10
+Test.cfg|LZMA/Normal
+<|>
+ComprFT.dpr|NRV
+ComprFT.dof|LZMA
+<SD1>
+PakProjectFormat.txt|NRV/10
+PakFormat.txt|Store
+<SD2>
+<|>
+<|>

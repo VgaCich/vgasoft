@@ -1,0 +1,6 @@
+[ID:4=VSFN][Width:2][Height:2][BitDepth:1][MipLevels:1]{256[CharWidth:1]}[Texture]
+
+Texture format:
+{MipLevels[FontTextureL$i:(Width/2^$i)*(Height/2^$i)*BitDepth/8]}
+$i: MipLevel, 0, 1,...
+Valid depths: 1, 2, 4, 8

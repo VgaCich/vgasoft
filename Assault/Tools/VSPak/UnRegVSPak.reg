@@ -1,0 +1,5 @@
+REGEDIT4
+
+[-HKEY_CLASSES_ROOT\.vpp]
+[-HKEY_CLASSES_ROOT\vppfile]
+[-HKEY_CLASSES_ROOT\Folder\shell\Make VSPak project]

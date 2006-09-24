@@ -1,0 +1,86 @@
+unit SysInfo;
+
+interface
+
+uses
+  Windows, AvL, avlUtils, dglOpenGL, ULog;
+
+procedure LogSysInfo;
+function GetCPU: string;
+function GetMemory: Cardinal;
+function GetMemoryFree: Cardinal;
+
+implementation
+
+procedure LogSysInfo;
+begin
+  GetWinVer;
+  LogRaw('');
+  Log('System:');
+  LogF('%s (%d.%d.%d %s)', [Win32Type, Win32MajorVersion, Win32MinorVersion, Win32BuildNumber, Win32CSDVersion]);
+  Log('CPU: '+GetCPU);
+  LogF('Memory: total %s, free %s', [SizeToStr(GetMemory), SizeToStr(GetMemoryFree)]);
+  Log('GL_VENDOR='+string(glGetString(GL_VENDOR)));
+  Log('GL_RENDERER='+string(glGetString(GL_RENDERER)));
+  Log('GL_VERSION='+string(glGetString(GL_VERSION)));
+  Log('GL_EXTENSIONS='+string(glGetString(GL_EXTENSIONS)));
+  LogRaw('');
+end;
+
+function GetCPU: string;
+var
+  CPUName: array [0..95] of Char;
+
+  procedure GetCPUName;
+  asm
+    mov eax, $80000002
+    db $0F, $A2
+    mov dword ptr[CPUName], eax
+    mov dword ptr[CPUName+4], ebx
+    mov dword ptr[CPUName+8], ecx
+    mov dword ptr[CPUName+12], edx
+
+    mov eax, $80000003
+    db $0F, $A2
+    mov dword ptr[CPUName+16], eax
+    mov dword ptr[CPUName+20], ebx
+    mov dword ptr[CPUName+24], ecx
+    mov dword ptr[CPUName+28], edx
+
+    mov eax, $80000004
+    db $0F, $A2
+    mov dword ptr[CPUName+32], eax
+    mov dword ptr[CPUName+36], ebx
+    mov dword ptr[CPUName+40], ecx
+    mov dword ptr[CPUName+44], edx
+  end;
+
+begin
+  try
+    GetCPUName;
+    Result:=CPUName;
+  except
+    Result:='Error while detecting CPU!'
+  end;
+  Result:=PChar(Trim(Result));
+end;
+
+function GetMemory: Cardinal;
+var
+  MemStatus: TMemoryStatus;
+begin
+  MemStatus.dwLength:=SizeOf(MemStatus);
+  GlobalMemoryStatus(MemStatus);
+  Result:=MemStatus.dwTotalPhys+655360; //With dos base memory
+end;
+
+function GetMemoryFree: Cardinal;
+var
+  MemStatus: TMemoryStatus;
+begin
+  MemStatus.dwLength:=SizeOf(MemStatus);
+  GlobalMemoryStatus(MemStatus);
+  Result:=MemStatus.dwAvailPhys;
+end;
+
+end.

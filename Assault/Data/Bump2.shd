@@ -1,0 +1,68 @@
+!vertex_shader
+attribute vec3 tangent;
+attribute vec3 binormal;
+
+// inverse light radius ie.. 1.0/light radius;
+uniform float u_invRad;
+
+varying	vec3 g_lightVec;
+varying	vec3 g_viewVec;
+
+/* ===========[ for test only!! ]============ */
+//uniform float RSINW, RCOSW;
+/* ===========[ end ]======================== */
+
+void main()
+{
+	gl_Position = ftransform();
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+	
+	mat3 TBN_Matrix = gl_NormalMatrix * mat3(tangent, binormal, gl_Normal);
+	vec4 mv_Vertex = gl_ModelViewMatrix * gl_Vertex;
+	g_viewVec = vec3(-mv_Vertex) * TBN_Matrix;	
+	vec4 light = gl_ModelViewMatrix * gl_LightSource[0].position;
+	vec3 lightVec = u_invRad * (light.xyz - mv_Vertex.xyz);
+	g_lightVec = lightVec * TBN_Matrix; 
+
+}
+!fragment_shader
+/*
+	Normal 			- normal texture
+	Base_Height		- Base texture with height map in alpha channel
+*/
+
+uniform sampler2D Normal;
+uniform sampler2D base_tex;
+uniform sampler2D Base_Height; // height in alpha ch.
+
+varying	vec3 g_lightVec;
+varying	vec3 g_viewVec;
+
+uniform vec2 cBumpSize;// = 0.02 * vec2 (2.0, -1.0);
+
+void main()
+{   
+	float LightAttenuation = clamp(1.0 - dot(g_lightVec, g_lightVec), 0.0, 1.0);
+	vec3 lightVec = normalize(g_lightVec);
+	vec3 viewVec = normalize(g_viewVec);
+	
+	float height = texture2D(Base_Height, gl_TexCoord[0].xy).r;
+	height = height * cBumpSize.x + cBumpSize.y;
+
+	vec2 newUV = gl_TexCoord[0].xy + viewVec.xy * height;
+	vec4 color_base = texture2D(base_tex,newUV);
+	vec3 bump = texture2D(Normal, newUV.xy).rgb * 2.0 - 1.0;
+	bump = normalize(bump);
+
+	//vec4 base = texture2D(Base_Height, newUV.xy);
+	float base = texture2D(Base_Height, newUV.xy).r;
+	
+	float diffuse = clamp(dot(lightVec, bump), 0.0, 1.0);
+	float specular = pow(clamp(dot(reflect(-viewVec, bump), lightVec), 0.0, 1.0), 16.0);
+	gl_FragColor = color_base * gl_LightSource[0].diffuse 
+					* (diffuse * base + 0.7 * specular)
+					* LightAttenuation;
+    gl_FragColor.a = 1.0;					
+	
+	
+}

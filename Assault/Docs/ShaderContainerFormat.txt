@@ -1,0 +1,12 @@
+Extension: shd
+
+Format:
+!header
+...data...
+!header
+...data...
+....
+
+headers:
+vertex_shader
+fragment_shader

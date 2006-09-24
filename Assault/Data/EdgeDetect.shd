@@ -1,0 +1,23 @@
+!vertex_shader
+void main(void)
+{
+  gl_Position=gl_ModelViewProjectionMatrix*gl_Vertex;
+  gl_TexCoord[0]=gl_MultiTexCoord0;
+}
+!fragment_shader
+uniform sampler2D mainTex;
+void main(void)
+{
+  const vec3 luminance=vec3(0.3, 0.59, 0.11);
+  const vec3 sepiaColor=vec3(1.0, 0.89, 0.54);
+  const vec2 d01=vec2(0, 1.0/512.0);
+  const vec2 d10=vec2(1.0/512.0, 0);
+  const float scale=1.0;
+  
+  float c1=dot(luminance, texture2D(mainTex, gl_TexCoord[0].xy+d01).rgb);
+  float c2=dot(luminance, texture2D(mainTex, gl_TexCoord[0].xy-d01).rgb);
+  float c3=dot(luminance, texture2D(mainTex, gl_TexCoord[0].xy+d10).rgb);
+  float c4=dot(luminance, texture2D(mainTex, gl_TexCoord[0].xy-d10).rgb);
+  
+  gl_FragColor=vec4(vec3(scale*(abs(c1-c2)+abs(c2-c3))), 1);
+}
