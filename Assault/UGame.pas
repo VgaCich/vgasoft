@@ -510,7 +510,7 @@ begin
   Refresh:=StrToCar(Tok(' ', S));
   if (ResX<640) or (ResY<480) then
   begin
-    Console.AddToConsole('Too small resolution');
+    Console.AddToConsole('^1Error: Too small resolution');
     Exit;
   end;
   if Refresh=0 then Refresh:=FRefresh;

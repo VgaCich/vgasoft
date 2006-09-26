@@ -195,13 +195,13 @@ begin
   Result:=false;
   if Args=''then
   begin
-    Console.AddToConsole('You must specify variable');
+    Console.AddToConsole('^1Error: You must specify variable');
     Exit;
   end;
   P:=Pos(' ', Args);
   if P=0 then
   begin
-    Console.AddToConsole('You must specify value');
+    Console.AddToConsole('^1Error: You must specify value');
     Exit;
   end;
   Name:=Copy(Args, 1, P-1);
@@ -209,7 +209,7 @@ begin
   V:=FindVariable(Name);
   if V>-1
     then Result:=FVariables[V].Variable.DoCommand(Value)
-    else Console.AddToConsole(Format('Variable %s not exist', [Name]));
+    else Console.AddToConsole(Format('^1Error: Variable %s not exist', [Name]));
 end;
 
 function TConsoleVariables.DoVarList(const Args: string): Boolean;
@@ -259,7 +259,7 @@ begin
     else VarName:=Args;
   Index:=FindVariable(VarName);
   if Index<0
-    then Console.AddToConsole(Format('Variable "%s" is not defined', [VarName]))
+    then Console.AddToConsole(Format('^1Error: Variable "%s" is not defined', [VarName]))
     else begin
       Console.AddToConsole('');
       List:=TStringList.Create;
@@ -301,7 +301,7 @@ begin
   end;
   if FReadOnly then
   begin
-    Console.AddToConsole('Variable '+FName+' is read-only');
+    Console.AddToConsole('^1Error: Variable '+FName+' is read-only');
     Exit;
   end;
   i:=Pos(' ', Args);
@@ -311,12 +311,12 @@ begin
   i:=StrToInt(S);
   if i>FMax then
   begin
-    Console.AddToConsole(Format('Value %d is larger than maximum value (%d)', [i, FMax]));
+    Console.AddToConsole(Format('^1Error: Value %d is larger than maximum value (%d)', [i, FMax]));
     Exit;
   end;
   if i<FMin then
   begin
-    Console.AddToConsole(Format('Value %d is smaller than minimum value (%d)', [i, FMin]));
+    Console.AddToConsole(Format('^1Error: Value %d is smaller than minimum value (%d)', [i, FMin]));
     Exit;
   end;
   FVariable^:=i;

@@ -207,21 +207,21 @@ begin
       GetMem(Buffer, Sz);
       for i:=0 to Sz-1 do
       case Hdr.Bits of
-        1: Buffer[i]:=((GetTexel(8*i mod TexSizes[Lev], TexSizes[Lev]-(8*i div TexSizes[Lev]), Lev) div 128) shl 7) or
-                      ((GetTexel((8*i+1) mod TexSizes[Lev], TexSizes[Lev]-((8*i+1) div TexSizes[Lev]), Lev) div 128) shl 6) or
-                      ((GetTexel((8*i+2) mod TexSizes[Lev], TexSizes[Lev]-((8*i+2) div TexSizes[Lev]), Lev) div 128) shl 5) or
-                      ((GetTexel((8*i+3) mod TexSizes[Lev], TexSizes[Lev]-((8*i+3) div TexSizes[Lev]), Lev) div 128) shl 4) or
-                      ((GetTexel((8*i+4) mod TexSizes[Lev], TexSizes[Lev]-((8*i+4) div TexSizes[Lev]), Lev) div 128) shl 3) or
-                      ((GetTexel((8*i+5) mod TexSizes[Lev], TexSizes[Lev]-((8*i+5) div TexSizes[Lev]), Lev) div 128) shl 2) or
-                      ((GetTexel((8*i+6) mod TexSizes[Lev], TexSizes[Lev]-((8*i+6) div TexSizes[Lev]), Lev) div 128) shl 1) or
-                       (GetTexel((8*i+7) mod TexSizes[Lev], TexSizes[Lev]-((8*i+7) div TexSizes[Lev]), Lev) div 128);
+        1: Buffer[i]:=((GetTexel(8*i mod TexSizes[Lev], TexSizes[Lev]-(8*i div TexSizes[Lev])-1, Lev) div 128) shl 7) or
+                      ((GetTexel((8*i+1) mod TexSizes[Lev], TexSizes[Lev]-((8*i+1) div TexSizes[Lev])-1, Lev) div 128) shl 6) or
+                      ((GetTexel((8*i+2) mod TexSizes[Lev], TexSizes[Lev]-((8*i+2) div TexSizes[Lev])-1, Lev) div 128) shl 5) or
+                      ((GetTexel((8*i+3) mod TexSizes[Lev], TexSizes[Lev]-((8*i+3) div TexSizes[Lev])-1, Lev) div 128) shl 4) or
+                      ((GetTexel((8*i+4) mod TexSizes[Lev], TexSizes[Lev]-((8*i+4) div TexSizes[Lev])-1, Lev) div 128) shl 3) or
+                      ((GetTexel((8*i+5) mod TexSizes[Lev], TexSizes[Lev]-((8*i+5) div TexSizes[Lev])-1, Lev) div 128) shl 2) or
+                      ((GetTexel((8*i+6) mod TexSizes[Lev], TexSizes[Lev]-((8*i+6) div TexSizes[Lev])-1, Lev) div 128) shl 1) or
+                       (GetTexel((8*i+7) mod TexSizes[Lev], TexSizes[Lev]-((8*i+7) div TexSizes[Lev])-1, Lev) div 128);
         2: Buffer[i]:=((GetTexel(4*i mod TexSizes[Lev], TexSizes[Lev]-(4*i div TexSizes[Lev]), Lev) div 64) shl 6) or
-                      ((GetTexel((4*i+1) mod TexSizes[Lev], TexSizes[Lev]-((4*i+1) div TexSizes[Lev]), Lev) div 64) shl 4) or
-                      ((GetTexel((4*i+2) mod TexSizes[Lev], TexSizes[Lev]-((4*i+2) div TexSizes[Lev]), Lev) div 64) shl 2) or
-                       (GetTexel((4*i+3) mod TexSizes[Lev], TexSizes[Lev]-((4*i+3) div TexSizes[Lev]), Lev) div 64);
+                      ((GetTexel((4*i+1) mod TexSizes[Lev], TexSizes[Lev]-((4*i+1) div TexSizes[Lev])-1, Lev) div 64) shl 4) or
+                      ((GetTexel((4*i+2) mod TexSizes[Lev], TexSizes[Lev]-((4*i+2) div TexSizes[Lev])-1, Lev) div 64) shl 2) or
+                       (GetTexel((4*i+3) mod TexSizes[Lev], TexSizes[Lev]-((4*i+3) div TexSizes[Lev])-1, Lev) div 64);
         4: Buffer[i]:=((GetTexel(2*i mod TexSizes[Lev], TexSizes[Lev]-(2*i div TexSizes[Lev]), Lev) div 16) shl 4) or
-                       (GetTexel((2*i+1) mod TexSizes[Lev], TexSizes[Lev]-((2*i+1) div TexSizes[Lev]), Lev) div 16);
-        8: Buffer[i]:=GetTexel(i mod TexSizes[Lev], TexSizes[Lev]-(i div TexSizes[Lev]), Lev);
+                       (GetTexel((2*i+1) mod TexSizes[Lev], TexSizes[Lev]-((2*i+1) div TexSizes[Lev])-1, Lev) div 16);
+        8: Buffer[i]:=GetTexel(i mod TexSizes[Lev], TexSizes[Lev]-(i div TexSizes[Lev])-1, Lev);
       end;
       OFile.Write(Buffer[0], Sz);
     end;

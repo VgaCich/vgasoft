@@ -333,7 +333,7 @@ begin
     else CmdName:=Args;
   Index:=FindCmd(CmdName);
   if Index<0
-    then AddToConsole(Format('Command "%s" is not defined', [CmdName]))
+    then AddToConsole(Format('^1Error: Command "%s" is not defined', [CmdName]))
     else begin
       AddToConsole('');
       List:=TStringList.Create;
