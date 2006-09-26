@@ -69,7 +69,7 @@ begin
   FHelp:=AHelp;
   FIndex:=-1;
   if not Console.RegisterCommand('var_'+FName, FHelp, DoCommand)
-    then LogF('Cannot register console variable %s', [AName]);
+    then LogF(llError, 'Cannot register console variable %s', [AName]);
 end;
 
 destructor TConsoleVariable.Destroy;

@@ -13,11 +13,15 @@ type
     FCurCmd: string;
     FNotEnd, FCursorShow: Boolean;
     FGame: TStateGame;
-    function GetName: string; override;
+    FList: TStringList;
+    function  GetName: string; override;
+    function  LineLength(const Line: string): Integer;
     procedure GetEnd(var CurLine, SubLine: Cardinal);
+    procedure SplitLine(const Line: string);
     procedure Adding(Sender: TObject);
   public
     constructor Create;
+    destructor Destroy; override;
     procedure Draw; override;
     procedure Update; override;
     function  Activate: Cardinal; override;
@@ -34,17 +38,90 @@ uses UGame;
 
 const
   Prompt='>';
+  Tag: Char='^';
 
 constructor TStateConsole.Create;
 begin
   inherited Create;
   Console.OnAdding:=Adding;
+  FList:=TStringList.Create;
+end;
+
+destructor TStateConsole.Destroy;
+begin
+  FAN(FList);
+  inherited Destroy;
 end;
 
 procedure TStateConsole.Draw;
+const
+  DefaultColor: TVector4f=(Red: 0; Green: 1; Blue: 0; Alpha: 1);
 var
-  i, CurLine, SubLine, CurCmdFrom: Integer;
-  S: string;
+  i, CurConLine, CurLine, SubLine, CurCmdFrom, Len: Integer;
+  CurColor: TVector4f;
+
+  procedure SetColor(R, G, B: TGLfloat);
+  begin
+    CurColor.Red:=R;
+    CurColor.Green:=G;
+    CurColor.Blue:=B;
+  end;
+
+  procedure SetTag(Tag: Char);
+  begin
+    case Tag of
+      '0': SetColor(0, 0, 0); //BLACK
+      '1': SetColor(1, 0, 0); //RED
+      '2': SetColor(0, 1, 0); //GREEN
+      '3': SetColor(1, 1, 0); //YELLOW
+      '4': SetColor(0, 0, 1); //BLUE
+      '5': SetColor(1, 0, 1); //FUCHSIA
+      '6': SetColor(0, 1, 1); //AQUA
+      '7': SetColor(1, 1, 1); //WHITE
+      'b': CurColor.Alpha:=Abs(Sin(Game.Time mod 300/300*pi))/2+0.5; //BLINK
+      'n': CurColor.Alpha:=1; //NORMAL
+    end;
+    glColor4fv(@CurColor);
+  end;
+
+  function NextLine: Boolean;
+  begin
+    Inc(CurLine);
+    Result:=CurLine<Console.HistoryCount;
+    if not Result then Exit;
+    SplitLine(Console[CurLine]);
+    SubLine:=0;
+    CurColor:=DefaultColor;
+    glColor4fv(@CurColor);
+  end;
+
+  procedure WriteLine(const Line: string);
+  var
+    i, Pos: Integer;
+    S: string;
+    IsTag: Boolean;
+  begin
+    S:='';
+    Pos:=0;
+    IsTag:=false;
+    for i:=1 to Length(Line) do
+    begin
+      if Line[i]=Tag
+        then IsTag:=true
+        else
+          if IsTag then
+          begin
+            gleWrite(Pos*10, CurConLine*16+5, S);
+            Inc(Pos, Length(S));
+            S:='';
+            SetTag(Line[i]);
+            IsTag:=false;
+          end
+            else S:=S+Line[i];
+    end;
+    gleWrite(Pos*10, CurConLine*16+5, S);
+  end;
+
 begin
   FGame.Draw;
   glDisable(GL_LIGHTING);
@@ -65,41 +142,36 @@ begin
   glLineWidth(1);
   glEnable(GL_LINE_SMOOTH);
   glBegin(GL_LINES);
-    glColor4d(0, 1, 0, 1);
+    glColor4f(0, 1, 0, 1);
     glVertex2d(0, 300);
     glVertex2d(800, 300);
-    glColor4d(0.2, 0.2, 0.2, 0.5);
+    glColor4f(0.2, 0.2, 0.2, 0.5);
     for i:=0 to 99 do
     begin
       glVertex2d(0, 3*i);
       glVertex2d(800, 3*i);
     end;
   glEnd;
-  glColor4d(0, 0.3, 0, 1);
+  glColor4f(0, 1, 0, 0.3);
   gleSelectFont('Console');
   gleWrite(650, 280, 'VS '+CaptionVer);
-  glColor4d(0, 1, 0, 1);
-  CurLine:=FCurLine;
+  CurColor:=DefaultColor;
+  glColor4fv(@CurColor);
+  CurConLine:=0;
+  CurLine:=FCurLine-1;
+  NextLine;
   SubLine:=FSubLine;
-  for i:=0 to 15 do
+  while CurConLine<16 do
   begin
-    if FCurLine>Console.HistoryCount-1 then Break;
-    if Length(Console[CurLine])>80 then
+    if SubLine<FList.Count then
     begin
-      S:=Copy(Console[CurLine], SubLine*80+1, 80);
+      WriteLine(FList[SubLine]);
       Inc(SubLine);
-      if SubLine*80-Length(Console[CurLine])>0 then
-      begin
-        Inc(CurLine);
-        SubLine:=0;
-      end;
+      Inc(CurConLine);
     end
-    else begin
-      S:=Console[CurLine];
-      Inc(CurLine);
-    end;
-    gleWrite(0, 5+i*16, S);
+      else if not NextLine then Break;
   end;
+  glColor4fv(@DefaultColor);
   if FNotEnd then gleWrite(0, 265, '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^');
   CurCmdFrom:=FCursor-79;
   if CurCmdFrom<0 then CurCmdFrom:=0;
@@ -189,9 +261,9 @@ begin
                   else if FCurLine>0
                     then begin
                       Dec(FCurLine);
-                      FSubLine:=Floor(Length(Console[FCurLine])/80);
+                      FSubLine:=Floor(LineLength(Console[FCurLine])/80);
                     end;
-      VK_NEXT: if FSubLine<Floor(Length(Console[FCurLine])/80)
+      VK_NEXT: if FSubLine<Floor(LineLength(Console[FCurLine])/80)
                  then Inc(FSubLine)
                  else if FCurLine<Console.HistoryCount-1
                    then begin
@@ -249,6 +321,22 @@ begin
   Result:='Console';
 end;
 
+function TStateConsole.LineLength(const Line: string): Integer;
+var
+  i: Integer;
+  IsTag: Boolean;
+begin
+  Result:=0;
+  IsTag:=false;
+  for i:=1 to Length(Line) do
+    if Line[i]=Tag
+      then IsTag:=true
+      else
+        if IsTag
+          then IsTag:=false
+          else Inc(Result);
+end;
+
 procedure TStateConsole.GetEnd(var CurLine, SubLine: Cardinal);
 var
   i, StrLines, Accum: Integer;
@@ -257,7 +345,7 @@ begin
   Accum:=0;
   while Accum<16 do
   begin
-    StrLines:=Ceil(Length(Console[i])/80);
+    StrLines:=Ceil(LineLength(Console[i])/80);
     if StrLines=0 then StrLines:=1;
     Inc(Accum, StrLines);
     Dec(i);
@@ -266,9 +354,38 @@ begin
   SubLine:=Accum-16;
 end;
 
+procedure TStateConsole.SplitLine(const Line: string);
+var
+  i, Len: Integer;
+  S: string;
+  IsTag: Boolean;
+begin
+  FList.Clear;
+  Len:=0;
+  S:='';
+  IsTag:=false;
+  for i:=1 to Length(Line) do
+  begin
+    S:=S+Line[i];
+    if Line[i]=Tag
+      then IsTag:=true
+      else
+        if IsTag
+          then IsTag:=false
+          else Inc(Len);
+    if Len=80 then
+    begin
+      FList.Add(S);
+      S:='';
+      Len:=0;
+    end;
+  end;
+  FList.Add(S);
+end;
+
 procedure TStateConsole.Adding(Sender: TObject);
 begin
-  if Assigned(Game) and (Game.State=FConsoleState) then GetEnd(FCurLine, FSubLine);
+  if Assigned(Game) and (Game.State=FConsoleState) and not FNotEnd then GetEnd(FCurLine, FSubLine);
 end;
 
 end.

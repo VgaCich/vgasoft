@@ -140,7 +140,7 @@ begin
   FInfoLog:='';
   FHandle:=glCreateProgramObjectARB;
   if FHandle=0
-    then Log('Shader.Create: Error: cannot create shader');
+    then Log(llError, 'Shader.Create: cannot create shader');
   FInfoLog:=FInfoLog+GetInfoLog(FHandle);
 end;
 
@@ -169,7 +169,7 @@ var
       else if LastHeader='fragment_shader' then Result:=AddFP(Prog)
       else begin
         Result:=false;
-        Log('Shader.Load: Error: unknown object header "'+LastHeader+'"');
+        Log(llError, 'Shader.Load: unknown object header "'+LastHeader+'"');
       end;
     end
       else Result:=true;
@@ -217,7 +217,7 @@ begin
   FInfoLog:=FInfoLog+GetInfoLog(FHandle);
   Result:=not Error(FHandle, GL_OBJECT_LINK_STATUS_ARB);
   if not Result
-    then Log('Shader.Link: Error: cannot link shader');
+    then Log(llError, 'Shader.Link: cannot link shader');
 end;
 
 function TShader.GetAttrib(const Name: string): TShaderAttrib;

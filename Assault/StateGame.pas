@@ -15,7 +15,7 @@ type
     FModel: T3DModel;
     FConsoleSound: TConsoleSound;
 //    FShader: TShader;
-    FTerrain: TTerrain;
+//    FTerrain: TTerrain;
     function GetName: string; override;
     function  SetModel(const Args: string): Boolean;
   public
@@ -54,17 +54,17 @@ begin
   finally
     Game.PakMan.CloseFile(F);
   end;}
-  F:=Game.PakMan.OpenFile('TestTerrain.vtr', ofNoCreate);
+{  F:=Game.PakMan.OpenFile('TestTerrain.vtr', ofNoCreate);
   try
     FTerrain:=TTerrain.Create(F, 0.01, 0.001);
   finally
     Game.PakMan.CloseFile(F);
-  end;
+  end; }
 end;
 
 destructor TStateGame.Destroy;
 begin
-  FAN(FTerrain);
+//  FAN(FTerrain);
 //  FAN(FShader);
   FAN(FModel);
   FAN(FConsoleSound);
@@ -91,12 +91,12 @@ begin
   glLightfv(GL_LIGHT0, GL_POSITION, @LightPos);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, @LightDiffuse);
   glLightfv(GL_LIGHT0, GL_SPECULAR, @LightSpecular);
-  glTranslatef(-1, 0, -1);
-//  glRotatef(FAngle*10, 0, 1, 0);
+  glTranslatef(0, 0, -1);
+  glRotatef(FAngle*10, 0, 1, 0);
   glRotatef(FAngle, 1, 0, 0);
 //  FShader.Enabled:=true;
-//  FModel.Draw;
-  FTerrain.Draw;
+  FModel.Draw;
+//  FTerrain.Draw;
 //  FShader.Enabled:=false;
   gleSelectFont('Default');
   glDisable(GL_LIGHTING);

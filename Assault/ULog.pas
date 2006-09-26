@@ -4,12 +4,15 @@ interface
 
 uses AvL, avlUtils, UConsole;
 
-procedure Log(const S: string);
-procedure LogF(const Fmt: string; const Args: array of const);
+type
+  TLogLevel=(llInfo, llWarning, llError);
+
+procedure Log(Level: TLogLevel; const S: string);
+procedure LogF(Level: TLogLevel; const Fmt: string; const Args: array of const);
 procedure LogRaw(const S: string);
 procedure LogAssert(Condition: Boolean; const Msg: string);
-procedure LogNC(const S: string);
-procedure LogFNC(const Fmt: string; const Args: array of const);
+procedure LogNC(Level: TLogLevel; const S: string);
+procedure LogFNC(Level: TLogLevel; const Fmt: string; const Args: array of const);
 procedure LogRawNC(const S: string);
 
 implementation
@@ -17,16 +20,28 @@ implementation
 var
   LogFile: TextFile;
 
-procedure Log(const S: string);
+procedure Log(Level: TLogLevel; const S: string);
 begin
-  WriteLn(LogFile, '['+DateTimeToStr(Now)+'] '+S);
+  case Level of
+    llInfo: begin
+              WriteLn(LogFile, '['+DateTimeToStr(Now)+'] '+S);
+              if Console<>nil then Console.AddToConsole(S);
+            end;
+    llWarning: begin
+                 WriteLn(LogFile, '['+DateTimeToStr(Now)+'] Warning: '+S);
+                 if Console<>nil then Console.AddToConsole('^3Warning: '+S);
+               end;
+    llError: begin
+               WriteLn(LogFile, '['+DateTimeToStr(Now)+'] Error: '+S);
+               if Console<>nil then Console.AddToConsole('^1Error: '+S);
+             end;
+  end;
   Flush(LogFile);
-  if Console<>nil then Console.AddToConsole(S);
 end;
 
-procedure LogF(const Fmt: string; const Args: array of const);
+procedure LogF(Level: TLogLevel; const Fmt: string; const Args: array of const);
 begin
-  Log(Format(Fmt, Args));
+  Log(Level, Format(Fmt, Args));
 end;
 
 procedure LogRaw(const S: string);
@@ -38,18 +53,22 @@ end;
 
 procedure LogAssert(Condition: Boolean; const Msg: string);
 begin
-  if not Condition then Log(Msg);
+  if not Condition then Log(llError, 'Assertion failed: '+Msg);
 end;
 
-procedure LogNC(const S: string);
+procedure LogNC(Level: TLogLevel; const S: string);
 begin
-  WriteLn(LogFile, '['+DateTimeToStr(Now)+'] '+S);
+  case Level of
+    llInfo: WriteLn(LogFile, '['+DateTimeToStr(Now)+'] '+S);
+    llWarning: WriteLn(LogFile, '['+DateTimeToStr(Now)+'] Warning: '+S);
+    llError: WriteLn(LogFile, '['+DateTimeToStr(Now)+'] Error: '+S);
+  end;
   Flush(LogFile);
 end;
 
-procedure LogFNC(const Fmt: string; const Args: array of const);
+procedure LogFNC(Level: TLogLevel; const Fmt: string; const Args: array of const);
 begin
-  LogNC(Format(Fmt, Args));
+  LogNC(Level, Format(Fmt, Args));
 end;
 
 procedure LogRawNC(const S: string);

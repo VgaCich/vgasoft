@@ -38,7 +38,7 @@ function gleGoFullscreen(Width, Height, Refresh, Depth: Integer): Boolean;
 var
   DM: DevMode;
 begin
-  LogF('Entering fullscreen. Resolution %dx%d@%d', [Width, Height, Refresh]);
+  LogF(llInfo, 'Entering fullscreen. Resolution %dx%d@%d', [Width, Height, Refresh]);
   ZeroMemory(@DM, SizeOf(DM));
   DM.dmSize:=SizeOf(DM);
   DM.dmBitsPerPel:=Depth;
@@ -54,7 +54,7 @@ end;
 
 procedure gleGoBack;
 begin
-  Log('Leaving fullscreen');
+  Log(llInfo, 'Leaving fullscreen');
   ChangeDisplaySettings(DevMode(nil^), CDS_FULLSCREEN);
 end;
 
@@ -63,9 +63,9 @@ var
   PFD: TPIXELFORMATDESCRIPTOR;
   PixelFormat: Cardinal;
 begin
-  Log('Init OpenGL');
+  Log(llInfo, 'Init OpenGL');
   InitOpenGL;
-  Log('Setting pixel format');
+  Log(llInfo, 'Setting pixel format');
   ZeroMemory(@PFD, SizeOf(TPIXELFORMATDESCRIPTOR));
   with PFD do
   begin
@@ -80,30 +80,30 @@ begin
   PixelFormat:=ChoosePixelFormat(DC, @PFD);
   if PixelFormat=0 then
   begin
-    Log('Unable to find a suitable pixel format');
+    Log(llError, 'Unable to find a suitable pixel format');
     Halt(1);
   end;
   if not SetPixelFormat(DC, PixelFormat, @PFD) then
   begin
-    Log('Unable to set the pixel format');
+    Log(llError, 'Unable to set the pixel format');
     Halt(1);
   end;
-  Log('Creating rendering context');
+  Log(llInfo, 'Creating rendering context');
   Result:=wglCreateContext(DC);
   if Result=0 then
   begin
-    Log('Unable to create an OpenGL rendering context');
+    Log(llError, 'Unable to create an OpenGL rendering context');
     Halt(1);
   end;
-  Log('Activating rendering context');
+  Log(llInfo, 'Activating rendering context');
   if not wglMakeCurrent(DC, Result) then
   begin
-    Log('Unable to activate OpenGL rendering context');
+    Log(llError, 'Unable to activate OpenGL rendering context');
     Halt(1);
   end;
-  Log('Reading extensions');
+  Log(llInfo, 'Reading extensions');
   ReadExtensions;
-  Log('Read implementation properties');
+  Log(llInfo, 'Read implementation properties');
   ReadImplementationProperties;
 end;
 
@@ -196,7 +196,7 @@ var
   X, Y, XS: glFloat;
 begin
   Result:=false;
-  Log('Loading font ID='+FontID);
+  Log(llInfo, 'Loading font ID='+FontID);
   FI:=-1;
   for i:=0 to Length(Fonts)-1 do
     if not Fonts[i].Exist then
@@ -213,7 +213,7 @@ begin
   Fonts[FI].FontTex:=LoadTexture(FontData, tfFNT, true, GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR);
   if Fonts[FI].FontTex=0 then
   begin
-    Log('Unable to load font texture');
+    Log(llError, 'Unable to load font texture');
     Exit;
   end;
   Move(LastFNTHdr.FontWidth, Fonts[FI].FontWidth, 256);
@@ -246,11 +246,11 @@ var
   i: Integer;
 begin
   if Length(Fonts)=0 then Exit;
-  LogNC('Freeing fonts:');
+  LogNC(llInfo, 'Freeing fonts:');
   for i:=0 to Length(Fonts)-1 do
     if Fonts[i].Exist then
     begin
-      LogNC('  '+Fonts[i].ID);
+      LogNC(llInfo, '  '+Fonts[i].ID);
       glDeleteTextures(1, @(Fonts[i].FontTex));
       glDeleteLists(Fonts[i].FontBase, 256);
     end;
@@ -262,7 +262,7 @@ procedure gleFreeFont(const FontID: string);
 var
   OldFont: Integer;
 begin
-  Log('Freeing font ID='+FontID);
+  Log(llInfo, 'Freeing font ID='+FontID);
   OldFont:=CurFont;
   gleSelectFont(FontID);
   if (CurFont=OldFont) and (LowerCase(FontID)<>Fonts[CurFont].ID) or not Fonts[CurFont].Exist then Exit;
@@ -301,10 +301,10 @@ begin
   if not Fonts[CurFont].Exist then Exit;
   glPushAttrib(GL_ENABLE_BIT or GL_TEXTURE_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT);
   glEnable(GL_BLEND);
-  glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, Fonts[CurFont].FontTex);
-  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
+  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
   glPushMatrix;
     glListBase(Fonts[CurFont].FontBase);
     glCallLists(Length(Text), GL_UNSIGNED_BYTE, PChar(Text));
@@ -317,10 +317,10 @@ begin
   if not Fonts[CurFont].Exist then Exit;
   glPushAttrib(GL_ENABLE_BIT or GL_TEXTURE_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT);
   glEnable(GL_BLEND);
-  glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, Fonts[CurFont].FontTex);
-  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
+  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
   glPushMatrix;
     glTranslated(X, Y, 0);
     glListBase(Fonts[CurFont].FontBase);

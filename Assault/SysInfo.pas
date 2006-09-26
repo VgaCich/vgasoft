@@ -16,14 +16,14 @@ procedure LogSysInfo;
 begin
   GetWinVer;
   LogRaw('');
-  Log('System:');
-  LogF('%s (%d.%d.%d %s)', [Win32Type, Win32MajorVersion, Win32MinorVersion, Win32BuildNumber, Win32CSDVersion]);
-  Log('CPU: '+GetCPU);
-  LogF('Memory: total %s, free %s', [SizeToStr(GetMemory), SizeToStr(GetMemoryFree)]);
-  Log('GL_VENDOR='+string(glGetString(GL_VENDOR)));
-  Log('GL_RENDERER='+string(glGetString(GL_RENDERER)));
-  Log('GL_VERSION='+string(glGetString(GL_VERSION)));
-  Log('GL_EXTENSIONS='+string(glGetString(GL_EXTENSIONS)));
+  Log(llInfo, 'System:');
+  LogF(llInfo, '%s (%d.%d.%d %s)', [Win32Type, Win32MajorVersion, Win32MinorVersion, Win32BuildNumber, Win32CSDVersion]);
+  Log(llInfo, 'CPU: '+GetCPU);
+  LogF(llInfo, 'Memory: total %s, free %s', [SizeToStr(GetMemory), SizeToStr(GetMemoryFree)]);
+  Log(llInfo, 'GL_VENDOR='+string(glGetString(GL_VENDOR)));
+  Log(llInfo, 'GL_RENDERER='+string(glGetString(GL_RENDERER)));
+  Log(llInfo, 'GL_VERSION='+string(glGetString(GL_VERSION)));
+  Log(llInfo, 'GL_EXTENSIONS='+string(glGetString(GL_EXTENSIONS)));
   LogRaw('');
 end;
 

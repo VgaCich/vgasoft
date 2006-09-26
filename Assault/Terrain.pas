@@ -48,14 +48,14 @@ begin
   Data.Read(ID, 4);
   if (ID<>TerrainID) or (Data.Size<8) then
   begin
-    Log('Terrain.Create: Error: Data is not terrain data');
+    Log(llError, 'Terrain.Create: Data is not terrain data');
     Exit;
   end;
   Data.Read(FWidth, 2);
   Data.Read(FHeight, 2);
   if Data.Size<8+FWidth*FHeight then
   begin
-    Log('Terrain.Create: Error: Data is too small');
+    Log(llError, 'Terrain.Create: Data is too small');
     Exit;
   end;
   GetMem(FTerrainData, FWidth*FHeight);

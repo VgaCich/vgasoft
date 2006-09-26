@@ -13,7 +13,7 @@ procedure InitStates;
 var
   Intro: Cardinal;
 begin
-  Log('Init states');
+  Log(llInfo, 'Init states');
   Intro:=Game.AddState(TStateIntro.Create);
   Game.AddState(TStateMenu.Create);
   Game.AddState(TStateLoad.Create);

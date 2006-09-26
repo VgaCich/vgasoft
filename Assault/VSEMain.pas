@@ -31,11 +31,11 @@ begin
     WM_ACTIVATE:
       begin
         if Initializing or (Game<>nil) then Exit;
-        Log('Creating engine');
-        {$IFDEF VSEDEBUG}Log('Debug mode');{$ENDIF}
+        Log(llInfo, 'Creating engine');
+        {$IFDEF VSEDEBUG}Log(llInfo, 'Debug mode');{$ENDIF}
         Game:=TGame.Create(Handle, Initializing);
         Game.StartEngine;
-        Log('Engine created');
+        Log(llInfo, 'Engine created');
         Game.SetResolution(Game.ResX, Game.ResY, Game.Refresh, false);
         InitStates;
         Console.ExecCommand('/exec autoexec');
@@ -57,7 +57,7 @@ begin
       begin
         if Game.Fullscreen then gleGoBack;
         FAN(Game);
-        LogNC('Engine destroyed');
+        LogNC(llInfo, 'Engine destroyed');
         Result:=0;
         PostQuitMessage(0);
       end;
@@ -96,8 +96,8 @@ begin
   Version:=AVersion;
   CaptionVer:=Caption+' '+Version;
   if IsRunning(Caption) then Exit;
-  Log(CaptionVer+' started');
-  Log(VSECaptVer);
+  Log(llInfo, CaptionVer+' started');
+  Log(llInfo, VSECaptVer);
   Initializing:=false;
   Fin:=false;
   ZeroMemory(@WndClass, SizeOf(WndClass));
@@ -113,7 +113,7 @@ begin
   end;    
   if Windows.RegisterClass(WndClass)=0 then
   begin
-    LogNC('Failed to register the window class');
+    LogNC(llError, 'Failed to register the window class');
     MessageBox(0, 'Failed to register the window class!', 'Error', MB_ICONERROR);
     Halt(1);
   end;
@@ -122,7 +122,7 @@ begin
     0, 0, 800, 600, 0, 0, hInstance, nil);
   if Handle=0 then
   begin
-    LogNC('Unable to create window');
+    LogNC(llError, 'Unable to create window');
     MessageBox(0, 'Unable to create window!', 'Error', MB_ICONERROR);
     Halt(1);
   end;
@@ -147,7 +147,7 @@ begin
             then Game.Resume;
   end;
   if not UnregisterClass(WndClassName, hInstance)
-    then LogNC('Failed to unregister window class');
+    then LogNC(llError, 'Failed to unregister window class');
 end;
 
 end.

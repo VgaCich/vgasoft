@@ -49,19 +49,19 @@ begin
     end;
   if Index<0 then
   begin
-    Log('ConsoleSound: none free streams');
+    Log(llError, 'ConsoleSound: none free streams');
     Exit;
   end;
   Data:=Game.PakMan.OpenFile(Args, ofNoCreate);
   if Data=nil then
   begin
-    LogF('ConsoleSound: cannot load sound stream "%s". File not found', [Args]);
+    LogF(llError, 'ConsoleSound: cannot load sound stream "%s". File not found', [Args]);
     Exit;
   end;
   Channels[Index]:=TSoundStream.Create(Data, 0);
   if Channels[Index].Handle=0 then
   begin
-    Log('ConsoleSound: stream creating error');
+    Log(llError, 'ConsoleSound: stream creating error');
     Exit;
   end;
   Console.AddToConsole('Stream successfully loaded. Index='+IntToStr(Index));
@@ -75,7 +75,7 @@ begin
   Result:=false;
   Index:=StrToInt(Args);
   if (Index<0) or (Index>7) or (Channels[Index]=nil) then begin
-    Log('ConsoleSound: incorrect stream index '+IntToStr(Index));
+    Log(llError, 'ConsoleSound: incorrect stream index '+IntToStr(Index));
     Exit;
   end;
   Channels[Index].Play(true);

@@ -207,7 +207,7 @@ begin
   if FMinimized then Exit;
   if GetForegroundWindow<>FHandle then
   begin
-    Log('Minimized');
+    Log(llInfo, 'Minimized');
     FMinimized:=True;
     Sound.Pause;
     if FFullscreen then gleGoBack;
@@ -238,7 +238,7 @@ end;
 
 procedure TGame.Resume;
 begin
-  Log('Maximized');
+  Log(llInfo, 'Maximized');
   if FFullscreen then gleGoFullscreen(ResX, ResY, Refresh, FDepth);
   FMinimized:=false;
   if FCurState<>nil then FCurState.Resume;
@@ -360,13 +360,13 @@ begin
   FResX:=ResX;
   FResY:=ResY;
   FRefresh:=Refresh;
-  LogF('Set resolution %dx%d@%d', [ResX, ResY, Refresh]);
+  LogF(llInfo, 'Set resolution %dx%d@%d', [ResX, ResY, Refresh]);
   SendMessage(FHandle, WM_SIZE, 0, ResY shl 16 + ResX);
   if FFullscreen then
   begin
     if not gleGoFullscreen(ResX, ResY, Refresh, FDepth) then
     begin
-      Log('Unable to enter fullscreen! Choose lower resolution or refresh rate');
+      Log(llError, 'Unable to enter fullscreen! Choose lower resolution or refresh rate');
       if CanReset
         then SetResolution(OldResX, OldResY, OldRefresh, false)
         else begin
@@ -404,7 +404,7 @@ end;
 procedure TGame.SetState(Value: Cardinal);
 begin
   if StateExists(FState) and StateExists(Value)
-    then LogFNC('Switch state from %s to %s', [FStates[FState].Name, FStates[Value].Name]);
+    then LogFNC(llInfo, 'Switch state from %s to %s', [FStates[FState].Name, FStates[Value].Name]);
   FNeedSwitch:=false;
   if (FState=Value) or (Value>High(FStates)) then Exit;
   if FCurState<>nil then FCurState.Deactivate;
@@ -434,7 +434,7 @@ procedure TGame.LoadFonts;
   begin
     Data:=PakMan.OpenFile(Name, ofNoCreate);
     try
-      if not gleLoadFont(ID, Data) then LogF('Could''n load font %s(%s)!', [ID, Name]);
+      if not gleLoadFont(ID, Data) then LogF(llError, 'Could''n load font %s(%s)!', [ID, Name]);
     finally
       PakMan.CloseFile(Data);
     end;
@@ -445,7 +445,7 @@ var
   FntListFile: TStream;
   i, P: Integer;
 begin
-  Log('Loading fonts');
+  Log(llInfo, 'Loading fonts');
   FntList:=TStringList.Create;
   try
     FntListFile:=PakMan.OpenFile('Fonts.ini', 0);

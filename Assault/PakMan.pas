@@ -328,7 +328,7 @@ begin
     else if Flags and ofNoCreate=0
       then Result:=CreateFile(Name, Flags)
       else begin
-        Log('PakMan: OpenFile('+Name+') failed: file not exists');
+        Log(llError, 'PakMan: OpenFile('+Name+') failed: file not exists');
         Exit;
       end;
 end;
@@ -342,7 +342,7 @@ begin
     if Name[i]='/' then Name[i]:='\';
   if (Pos('..\', Name)>0) or not CheckPath(Name, false) then
   begin
-    Log('PakMan: CreateFile('+Name+') failed: invalid file name');
+    Log(llError, 'PakMan: CreateFile('+Name+') failed: invalid file name');
     Exit; 
   end;
   ForceDirectories(FBaseDir+AvL.ExtractFilePath(Name));
@@ -367,7 +367,7 @@ begin
     if Name[i]='/' then Name[i]:='\';
   if (Pos('..\', Name)>0) or not CheckPath(Name, false) then
   begin
-    Log('PakMan: DeleteFile('+Name+') failed: invalid file name');
+    Log(llError, 'PakMan: DeleteFile('+Name+') failed: invalid file name');
     Exit; 
   end;
   if AvL.FileExists(FBaseDir+Name) then AvL.DeleteFile(FBaseDir+Name);
@@ -528,7 +528,7 @@ begin
         Inc(CurEntry);
       end;
     except
-      on E: Exception do Log(E.Message);
+      on E: Exception do Log(llError, E.Message);
     end;
   finally
     Finalize(FileTable);

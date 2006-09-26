@@ -59,7 +59,7 @@ procedure TGameState.SysNotify(Notify: TSysNotify);
 begin
   case Notify of
     snUpdateOverload: begin
-                        Log('Error: Update overload');
+                        Log(llError, 'Update overload');
                         Game.StopEngine;
                       end;
   end;

@@ -74,13 +74,13 @@ begin
     J2kLib:=LoadLibrary(J2kDLL);
     if (J2kLib=0) or not J2kInit(J2kLib) then
     begin
-      Log('LoadJ2k: loading j2k library failed');
+      Log(llError, 'LoadJ2k: loading j2k library failed');
       Exit;
     end;
   end;
   if Data.Size<=0 then
   begin
-    Log('LoadJ2k: Data is void');
+    Log(llError, 'LoadJ2k: Data is void');
     Exit;
   end;
   Img:=nil;
@@ -92,7 +92,7 @@ begin
       Data.Read(P^, Data.Size);
       if j2k_decode(P, Data.Size, Img, CP)=0 then
       begin
-        Log('LoadJ2k: j2k_decode failed');
+        Log(llError, 'LoadJ2k: j2k_decode failed');
         Exit;
       end;
     finally;
@@ -104,14 +104,14 @@ begin
       1, 3: begin Depth:=3; Fmt:= GL_RGB; end;
       4: begin Depth:=4; Fmt:=GL_RGBA; end;
       else begin
-        Log('LoadJ2k: invalid NumComps');
+        Log(llError, 'LoadJ2k: invalid NumComps');
         Exit;
       end;
     end;
     for i:=0 to Img.NumComps-1 do
       if (Img.Comps[i].Prec<>8) or (Img.Comps[i].Sgnd<>0) or (Img.Comps[i].dx<>1) or (Img.Comps[i].dy<>1) then
       begin
-        Log('LoadJ2k: invalid Comps format');
+        Log(llError, 'LoadJ2k: invalid Comps format');
         Exit;
       end;
     GetMem(P, Width*Height*Depth);
@@ -183,18 +183,18 @@ begin
   Result:=false;
   if Data.Size<=0 then
   begin
-    Log('LoadTGA: Data is void');
+    Log(llError, 'LoadTGA: Data is void');
   end;
   Data.ReadBuffer(TGAHeader, SizeOf(TGAHeader));  // FileHeader
   // Only support 24, 32 bit images
   if (TGAHeader.ImageType<>2) and (TGAHeader.ImageType<>10) then
   begin
-    Log('LoadTGA: invalid ImageType');
+    Log(llError, 'LoadTGA: invalid ImageType');
     Exit;
   end;
   if TGAHeader.ColorMapType<>0 then
   begin
-    Log('LoadTGA: invalid ColorMapType');
+    Log(llError, 'LoadTGA: invalid ColorMapType');
     Exit;
   end;
   // Get the width, height, and color depth
@@ -204,7 +204,7 @@ begin
   ImageSize:=Width*Height*(ColorDepth div 8);
   if ColorDepth<24 then
   begin
-    Log('LoadTGA: invalid ColorDepth');
+    Log(llError, 'LoadTGA: invalid ColorDepth');
     Exit;
   end;
   GetMem(P, ImageSize);
@@ -291,13 +291,13 @@ begin
   Result:=false;
   if Data.Size<=0 then
   begin
-    Log('LoadBMP: Data is void');
+    Log(llError, 'LoadBMP: Data is void');
     Exit;
   end;
   Data.ReadBuffer(FileHeader, SizeOf(FileHeader));  // FileHeader
   if FileHeader.bfType<>$4D42 then
   begin
-    Log('LoadBMP: Data is not BMP');
+    Log(llError, 'LoadBMP: Data is not BMP');
     Exit;
   end;
   Data.ReadBuffer(InfoHeader, SizeOf(InfoHeader));  // InfoHeader
@@ -312,7 +312,7 @@ begin
   //Unsupported formats: multiplanes, compressed
   if (InfoHeader.biPlanes<>1) or (InfoHeader.biCompression<>0) then
   begin
-    Log('LoadBMP: Unsupported format');
+    Log(llError, 'LoadBMP: Unsupported format');
     Exit;
   end;
   GetMem(Src, BitmapLength);
@@ -359,13 +359,13 @@ begin
   Result:=false;
   if Data.Size<SizeOf(TFNTHdr) then
   begin
-    Log('LoadFNT: Data is too small');
+    Log(llError, 'LoadFNT: Data is too small');
     Exit;
   end;
   Data.Read(LastFNTHdr, SizeOf(TFNTHdr));
   if LastFNTHdr.ID<>FNTID then
   begin
-    Log('LoadFNT: Data is not FNT');
+    Log(llError, 'LoadFNT: Data is not FNT');
     Exit;
   end;
   Width:=LastFNTHdr.Width;
@@ -427,7 +427,7 @@ begin
   Result:=0;
   if not Assigned(Data) then
   begin
-    Log('LoadTexture: datastream is undefined');
+    Log(llError, 'LoadTexture: datastream is undefined');
     Exit;
   end;
   P:=nil;
@@ -437,13 +437,13 @@ begin
     tfBMP: Res:=LoadBMP(Data, P, Width, Height, Fmt);
     tfFNT: Res:=LoadFNT(Data, P, Width, Height, Fmt);
     else begin
-      Log('LoadTexture: Unsupported format');
+      Log(llError, 'LoadTexture: Unsupported format');
       Exit;
     end;
   end;
   if not Res then
   begin
-    Log('LoadTexture: Load<TYPE> failed');
+    Log(llError, 'LoadTexture: Load<TYPE> failed');
     Exit;
   end;
   glGenTextures(1, @Result);
@@ -472,7 +472,7 @@ begin
   if GLErr<>GL_NO_ERROR then
   begin
     Result:=0;
-    Log('LoadTexture: OpenGL: '+gleError(GLErr));
+    Log(llError, 'LoadTexture: OpenGL: '+gleError(GLErr));
   end;
 end;
 

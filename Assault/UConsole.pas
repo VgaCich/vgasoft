@@ -12,15 +12,17 @@ type
     Func: TConsoleCmdFunction;
     Exist: Boolean;
   end;
+  TOnConsoleExec=function(Sender: TObject; const Cmd: string): Boolean of object;
   TConsole=class
   private
     FConsoleHistory, FCommandsHistory: TStringList;
     FCommands: array of TConsoleCmd;
     FCommandsSize: Cardinal;
     FOnAdding: TOnEvent;
+    FOnExec: TOnConsoleExec;
     FGenericHelp: string;
     FPakMan: TPakMan;
-    FHistoryEnabled: Boolean;
+    FHistoryEnabled, FCapture: Boolean;
     procedure Grow;
     function  FindCmd(Name: string): Integer;
     function  GetHistory(Index: Cardinal): string;
@@ -45,8 +47,10 @@ type
     property  CommandsHistory[Index: Cardinal]: string read GetCommandsHistory;
     property  CommandsHistoryCount: Cardinal read GetCommandsHistoryCount;
     property  OnAdding: TOnEvent read FOnAdding write FOnAdding;
+    property  OnExec: TOnConsoleExec read FOnExec write FOnExec;
     property  GenericHelp: string read FGenericHelp write FGenericHelp;
     property  HistoryEnabled: Boolean read FHistoryEnabled write FHistoryEnabled;
+    property  Capture: Boolean read FCapture write FCapture;
     property  PakMan: TPakMan read FPakMan write FPakMan;
   end;
 
@@ -115,6 +119,8 @@ begin
   if FHistoryEnabled then AddToConsole(Cmd);
   if FHistoryEnabled then FCommandsHistory.Add(Cmd);
   if FCommandsHistory.Count>256 then FCommandsHistory.Delete(0);
+  if Assigned(FOnExec) then Result:=FOnExec(Self, Cmd);
+  if FCapture then Exit;
   if (Cmd='') or (Cmd[1]<>ConsoleCommandPrefix) then Exit;
   Index:=Pos(' ', Cmd);
   if Index>0 then
@@ -129,7 +135,7 @@ begin
   Index:=FindCmd(CmdName);
   if Index<0 then
   begin
-    LogF('Command "%s" is not defined', [CmdName]);
+    LogF(llError, 'Command "%s" is not defined', [CmdName]);
     Exit;
   end;
   Result:=FCommands[Index].Func(CmdArgs);
@@ -157,7 +163,7 @@ begin
   Result:=false;
   if Pos(' ', Name)>0 then
   begin
-    LogF('Registering console command: name contains spaces (%s)', [Name]);
+    LogF(llError, 'Registering console command: name contains spaces (%s)', [Name]);
     Exit;
   end;
   for i:=0 to FCommandsSize-1 do
@@ -289,7 +295,7 @@ begin
   F:=PakMan.OpenFile(Args+CScriptExt, ofNoCreate);
   if F=nil then
   begin
-    LogF('Cannot execute script "%s". File not found', [Args]);
+    LogF(llError, 'Cannot execute script "%s". File not found', [Args]);
     Exit;
   end;
   try

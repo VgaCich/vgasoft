@@ -138,7 +138,9 @@ begin
   begin
     FTextures[i].Width:=TexSizes[i];
     FTextures[i].Height:=TexSizes[i];
-    FTextures[i].Canvas.Brush.Color:=clWhite;
+    FTextures[i].Canvas.Brush.Color:=clBlack;
+    SetBkMode(FTextures[i].Canvas.Handle, TRANSPARENT);
+    SetTextColor(FTextures[i].Canvas.Handle, clWhite);
     FTextures[i].Canvas.FillRect(Rect(0, 0, TexSizes[i], TexSizes[i]));
     Sz:=TexSizes[i] div 16;
     FCurFont.lfHeight:=Sz;

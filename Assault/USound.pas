@@ -188,12 +188,12 @@ begin
   inherited Create;
   if HiWord(BASS_GetVersion)<>BASSVERSION then
   begin
-    Log('Sound.Create: incorrect BASS version');
+    Log(llError, 'Sound.Create: incorrect BASS version');
     Exit;
   end;
   if not BASS_Init(Device, Freq, Flags, Game.Handle, CLSID) then
   begin
-    LogF('Sound.Create: BASS initializing error (%s)', [LastErrorName]);
+    LogF(llError, 'Sound.Create: BASS initializing error (%s)', [LastErrorName]);
     Exit;
   end;
 end;
@@ -218,7 +218,7 @@ begin
         Create(i, Freq, Flags, CLSID);
         Exit;
       end;
-    LogF('Sound.Create: Device %s not found, using default', [Device]);
+    LogF(llError, 'Sound.Create: Device %s not found, using default', [Device]);
     Create(-1, Freq, Flags, CLSID);
   finally
     FAN(List);
@@ -234,32 +234,32 @@ begin
   SoundChannels.Clear;
   Stop;
   if not BASS_Free
-    then LogF('Sound.Destroy: BASS freeing error (%s)', [LastErrorName]);
+    then LogF(llError, 'Sound.Destroy: BASS freeing error (%s)', [LastErrorName]);
   inherited Destroy;
 end;
 
 procedure TSound.Start;
 begin
   if not BASS_Start
-    then Log('Sound.Start: '+LastErrorName);
+    then Log(llError, 'Sound.Start: '+LastErrorName);
 end;
 
 procedure TSound.Pause;
 begin
   if not BASS_Pause
-    then Log('Sound.Pause: '+LastErrorName);
+    then Log(llError, 'Sound.Pause: '+LastErrorName);
 end;
 
 procedure TSound.Stop;
 begin
   if not BASS_Stop
-    then Log('Sound.Stop: '+LastErrorName);
+    then Log(llError, 'Sound.Stop: '+LastErrorName);
 end;
 
 procedure TSound.Update;
 begin
   if not BASS_Update
-    then Log('Sound.Update: '+LastErrorName);
+    then Log(llError, 'Sound.Update: '+LastErrorName);
 end;
 
 {Private}
@@ -284,7 +284,7 @@ begin
         Device:=i;
         Exit;
       end;
-    LogF('Sound.SetDeviceName: Device %s not found', [Name]);
+    LogF(llError, 'Sound.SetDeviceName: Device %s not found', [Name]);
   finally
     FAN(List);
   end;
@@ -294,39 +294,39 @@ function TSound.GetDevice: DWORD;
 begin
   Result:=BASS_GetDevice;
   if Result=$FFFFFFFF
-    then Log('Sound.SetDevice: '+LastErrorName);
+    then Log(llError, 'Sound.SetDevice: '+LastErrorName);
 end;
 
 procedure TSound.SetDevice(Dev: DWORD);
 begin
   if not BASS_SetDevice(Dev)
-    then Log('Sound.GetDevice: '+LastErrorName);
+    then Log(llError, 'Sound.GetDevice: '+LastErrorName);
 end;
 
 function TSound.GetVolume: DWORD;
 begin
   Result:=BASS_GetVolume;
   if Result=$FFFFFFFF
-    then Log('Sound.GetVolume: '+LastErrorName);
+    then Log(llError, 'Sound.GetVolume: '+LastErrorName);
 end;
 
 procedure TSound.SetVolume(Vol: Cardinal);
 begin
   if not BASS_SetVolume(Vol)
-    then Log('Sound.SetVolume: '+LastErrorName);
+    then Log(llError, 'Sound.SetVolume: '+LastErrorName);
 end;
 
 function TSound.GetConfig(Option: DWORD): DWORD;
 begin
   Result:=BASS_GetConfig(Option);
   if Result=-1
-    then LogF('Sound.GetConfig[%d]: %s', [Option, LastErrorName]);
+    then LogF(llError, 'Sound.GetConfig[%d]: %s', [Option, LastErrorName]);
 end;
 
 procedure TSound.SetConfig(Option, Value: DWORD);
 begin
   if BASS_SetConfig(Option, Value)=-1
-    then LogF('Sound.SetConfig[%d]: %s', [Option, LastErrorName]);
+    then LogF(llError, 'Sound.SetConfig[%d]: %s', [Option, LastErrorName]);
 end;
 
 {TSoundChannel}
@@ -348,63 +348,63 @@ end;
 procedure TSoundChannel.Play(Restart: Boolean=false);
 begin
   if not BASS_ChannelPlay(FHandle, Restart)
-    then Log('SoundChannel.Play: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.Play: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.Pause;
 begin
   if not BASS_ChannelPause(FHandle)
-    then Log('SoundChannel.Pause: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.Pause: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.Stop;
 begin
   if not BASS_ChannelStop(FHandle)
-    then Log('SoundChannel.Stop: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.Stop: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.Attrib3D(Mode: DWORD; Min, Max: Single; IAngle, OAngle, OutVol: DWORD);
 begin
   if not BASS_ChannelSet3DAttributes(FHandle, Mode, Min, Max, IAngle, OAngle, OutVol)
-    then Log('SoundChannel.Attrib3D: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.Attrib3D: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.Pos3D(const Pos, Orient, Vel: BASS_3DVECTOR);
 begin
   if not BASS_ChannelSet3DPosition(FHandle, Pos, Orient, Vel)
-    then Log('SoundChannel.Pos3D: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.Pos3D: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.Attrib(Freq, Volume, Pan: Integer);
 begin
   if not BASS_ChannelSetAttributes(FHandle, Freq, Volume, Pan)
-    then Log('SoundChannel.Attrib: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.Attrib: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.PreBuf(Length: DWORD);
 begin
   if not BASS_ChannelPreBuf(FHandle, Length)
-    then Log('SoundChannel.PreBuf: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.PreBuf: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.SlideAttributes(Freq, Volume, Pan: Integer; Time: DWORD);
 begin
   if not BASS_ChannelSlideAttributes(FHandle, Freq, Volume, Pan, Time)
-    then Log('SoundChannel.SlideAttributes: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.SlideAttributes: '+TSound.LastErrorName);
 end;
 
 function TSoundChannel.BytesToSeconds(Pos: Int64): Single;
 begin
   Result:=BASS_ChannelBytes2Seconds(FHandle, Pos);
   if Result<0
-    then Log('SoundChannel.BytesToSeconds: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.BytesToSeconds: '+TSound.LastErrorName);
 end;
 
 function TSoundChannel.SecondsToBytes(Pos: Single): Int64;
 begin
   Result:=BASS_ChannelSeconds2Bytes(FHandle, Pos);
   if Result=-1
-    then Log('SoundChannel.SecondsToBytes: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.SecondsToBytes: '+TSound.LastErrorName);
 end;
 
 {Private}
@@ -412,75 +412,75 @@ end;
 function TSoundChannel.GetAttributes3D: TChannelAttributes3D;
 begin
   if not BASS_ChannelGet3DAttributes(FHandle, Result.Mode, Result.Min, Result.Max, Result.IAngle, Result.OAngle, Result.OutVol)
-    then Log('SoundChannel.GetAttributes3D: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.GetAttributes3D: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.SetAttributes3D(Attr: TChannelAttributes3D);
 begin
   if not BASS_ChannelSet3DAttributes(FHandle, Attr.Mode, Attr.Min, Attr.Max, Attr.IAngle, Attr.OAngle, Attr.OutVol)
-    then Log('SoundChannel.SetAttributes3D: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.SetAttributes3D: '+TSound.LastErrorName);
 end;
 
 function TSoundChannel.GetPosition3D: TChannelPosition3D;
 begin
   if not BASS_ChannelGet3DPosition(FHandle, Result.Pos, Result.Orient, Result.Vel)
-    then Log('SoundChannel.GetPosition3D: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.GetPosition3D: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.SetPosition3D(Pos: TChannelPosition3D);
 begin
   if not BASS_ChannelSet3DPosition(FHandle, Pos.Pos, Pos.Orient, Pos.Vel)
-    then Log('SoundChannel.SetPosition3D: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.SetPosition3D: '+TSound.LastErrorName);
 end;
 
 function TSoundChannel.GetAttributes: TChannelAttributes;
 begin
   if not BASS_ChannelGetAttributes(FHandle, DWORD(Result.Freq), DWORD(Result.Volume), Result.Pan)
-    then Log('SoundChannel.GetAttributes: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.GetAttributes: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.SetAttributes(Attr: TChannelAttributes);
 begin
   if not BASS_ChannelSetAttributes(FHandle, Attr.Freq, Attr.Volume, Attr.Pan)
-    then Log('SoundChannel.SetAttributes: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.SetAttributes: '+TSound.LastErrorName);
 end;
 
 function TSoundChannel.GetDevice: DWORD;
 begin
   Result:=BASS_ChannelGetDevice(FHandle);
   if Result=$FFFFFFFF
-    then Log('SoundChannel.GetDevice: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.GetDevice: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.SetDevice(Dev: DWORD);
 begin
   if not BASS_ChannelSetDevice(FHandle, Dev)
-    then Log('SoundChannel.SetDevice: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.SetDevice: '+TSound.LastErrorName);
 end;
 
 function TSoundChannel.GetEAXMix: Single;
 begin
   if not BASS_ChannelGetEAXMix(FHandle, Result)
-    then Log('SoundChannel.GetEAXMix: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.GetEAXMix: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.SetEAXMix(Mix: Single);
 begin
   if not BASS_ChannelSetEAXMix(FHandle, Mix)
-    then Log('SoundChannel.SetEAXMix: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.SetEAXMix: '+TSound.LastErrorName);
 end;
 
 function TSoundChannel.GetPosition: Int64;
 begin
   Result:=BASS_ChannelGetPosition(FHandle);
   if Result=-1
-    then Log('SoundChannel.GetPosition: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.GetPosition: '+TSound.LastErrorName);
 end;
 
 procedure TSoundChannel.SetPosition(Pos: Int64);
 begin
   if not BASS_ChannelSetPosition(FHandle, Pos)
-    then Log('SoundChannel.SetPosition: '+TSound.LastErrorName);
+    then Log(llError, 'SoundChannel.SetPosition: '+TSound.LastErrorName);
 end;
 
 function TSoundChannel.GetActive: DWORD;
@@ -501,7 +501,7 @@ var
 begin
   if Data=nil then
   begin
-    Log('SoundStreamCallback: no source provided');
+    Log(llError, 'SoundStreamCallback: no source provided');
     Exit;
   end;
   case Action of
@@ -517,14 +517,14 @@ begin
   inherited Create;
   FHandle:=BASS_StreamCreateFileUser(Data is TPakLZMAStream, Flags, SoundStreamCallback, DWORD(Pointer(Data)));
   if FHandle=0
-    then Log('SoundStream.Create: '+TSound.LastErrorName);
+    then Log(llError, 'SoundStream.Create: '+TSound.LastErrorName);
 end;
 
 destructor TSoundStream.Destroy;
 begin
   Stop;
   if not BASS_StreamFree(FHandle)
-    then Log('SoundStream.Destroy: '+TSound.LastErrorName);
+    then Log(llError, 'SoundStream.Destroy: '+TSound.LastErrorName);
   inherited Destroy;
 end;
 
@@ -532,7 +532,7 @@ function TSoundStream.FilePosition(Mode: DWORD): DWORD;
 begin
   Result:=BASS_StreamGetFilePosition(FHandle, Mode);
   if Result=-1
-    then Log('SoundStream.FilePosition: '+TSound.LastErrorName);
+    then Log(llError, 'SoundStream.FilePosition: '+TSound.LastErrorName);
 end;
 
 {for initialization/finalization}
