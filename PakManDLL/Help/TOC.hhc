@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<HTML>
+<HEAD>
+<meta name="GENERATOR" content="Microsoft&reg; HTML Help Workshop 4.1">
+<!-- Sitemap 1.0 -->
+</HEAD><BODY>
+<OBJECT type="text/site properties">
+	<param name="Window Styles" value="0x800027">
+	<param name="ImageType" value="Folder">
+</OBJECT>
+<UL>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Icirc;&aacute;&ugrave;&egrave;&aring; &ntilde;&acirc;&aring;&auml;&aring;&iacute;&egrave;&yuml;">
+		<param name="Local" value="Common.html">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="&Ocirc;&euml;&agrave;&atilde;&egrave;">
+		<param name="Local" value="Flags.html">
+		</OBJECT>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="Package Manager">
+		</OBJECT>
+	<UL>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakInit">
+			<param name="Local" value="PakInit.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakFree">
+			<param name="Local" value="PakFree.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakOpenFile">
+			<param name="Local" value="PakOpenFile.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakCreateFile">
+			<param name="Local" value="PakCreateFile.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakCloseFile">
+			<param name="Local" value="PakCloseFile.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakDeleteFile">
+			<param name="Local" value="PakDeleteFile.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakFileExists">
+			<param name="Local" value="PakFileExists.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakFindFiles">
+			<param name="Local" value="PakFindFiles.html">
+			</OBJECT>
+	</UL>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="Files">
+		</OBJECT>
+	<UL>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakFileType">
+			<param name="Local" value="PakFileType.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakFileRead">
+			<param name="Local" value="PakFileRead.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakFileWrite">
+			<param name="Local" value="PakFileWrite.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakFileSeek">
+			<param name="Local" value="PakFileSeek.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakFileSize">
+			<param name="Local" value="PakFileSize.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakFilePosition">
+			<param name="Local" value="PakFilePosition.html">
+			</OBJECT>
+	</UL>
+	<LI> <OBJECT type="text/sitemap">
+		<param name="Name" value="Names">
+		</OBJECT>
+	<UL>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakExtractFileExt">
+			<param name="Local" value="PakExtractFileExt.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakExtractFileName">
+			<param name="Local" value="PakExtractFileName.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakExtractFilePath">
+			<param name="Local" value="PakExtractFilePath.html">
+			</OBJECT>
+	</UL>
+</UL>
+</BODY></HTML>

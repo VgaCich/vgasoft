@@ -1,0 +1,88 @@
+<HTML>
+ <HEAD>
+  <META name="GENERATOR" content="htm2chm 3.0.9.1">
+  <!-- Sitemap 1.0 -->
+ </HEAD>
+<BODY>
+ <OBJECT type="text/site properties">
+ </OBJECT>
+<UL>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakCloseFile">
+  <PARAM name="Local" value="PakCloseFile.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakCreateFile">
+  <PARAM name="Local" value="PakCreateFile.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakDeleteFile">
+  <PARAM name="Local" value="PakDeleteFile.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakExtractFileExt">
+  <PARAM name="Local" value="PakExtractFileExt.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakExtractFileName">
+  <PARAM name="Local" value="PakExtractFileName.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakExtractFilePath">
+  <PARAM name="Local" value="PakExtractFilePath.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakFileExists">
+  <PARAM name="Local" value="PakFileExists.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakFilePosition">
+  <PARAM name="Local" value="PakFilePosition.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakFileRead">
+  <PARAM name="Local" value="PakFileRead.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakFileSeek">
+  <PARAM name="Local" value="PakFileSeek.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakFileSize">
+  <PARAM name="Local" value="PakFileSize.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakFileType">
+  <PARAM name="Local" value="PakFileType.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakFileWrite">
+  <PARAM name="Local" value="PakFileWrite.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakFindFiles">
+  <PARAM name="Local" value="PakFindFiles.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakFree">
+  <PARAM name="Local" value="PakFree.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakInit">
+  <PARAM name="Local" value="PakInit.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakOpenFile">
+  <PARAM name="Local" value="PakOpenFile.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="&Icirc;&aacute;&ugrave;&egrave;&aring; &ntilde;&acirc;&aring;&auml;&aring;&iacute;&egrave;&yuml;">
+  <PARAM name="Local" value="Common.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="&Ocirc;&euml;&agrave;&atilde;&egrave;">
+  <PARAM name="Local" value="Flags.html">
+ </OBJECT>
+</UL>
+</BODY>
+</HTML>
