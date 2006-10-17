@@ -1,25 +1,61 @@
-{(c)VgaSoft, 2004}
 unit avlLZMADec;
+
+// LZMA Decompressor, ported to AvL by Vga, 17.10.2006
+
+{
+  Inno Setup
+  Copyright (C) 1997-2006 Jordan Russell
+  Portions by Martijn Laan
+  For conditions of distribution and use, see LICENSE.TXT.
+
+  Interface to the LZMA compression DLL and the LZMA SDK decompression OBJ
+
+  Source code for the decompression OBJ can found in the LzmaDecode
+  subdirectory.
+  Source code for the compression DLL can found at:
+    http://cvs.jrsoftware.org/view/iscompress/lzma/
+
+  $jrsoftware: issrc/Projects/LZMA.pas,v 1.24 2006/10/06 20:58:28 jr Exp $
+}
 
 interface
 
+{$I VERSION.INC}
+
 uses
-  Windows, AVL, avlCustomDecompressor;
+  Windows, AvL, avlCustomDecompressor;
 
 type
-
-{TLZMADecompressor}
-
-  TLZMADecompressor = class;
-  TLZMADecompressorCallbackData = record
-    Callback: Pointer;
-    Instance: TLZMADecompressor;
+  { Internally-used record }
+  TLZMAInternalDecoderState = record
+    { NOTE: None of these fields are ever accessed directly by this unit.
+      They are exposed purely for debugging purposes. }
+    opaque_Properties: record
+      lc: Integer;
+      lp: Integer;
+      pb: Integer;
+      DictionarySize: LongWord;
+    end;
+    opaque_Probs: Pointer;
+    opaque_Buffer: Pointer;
+    opaque_BufferLim: Pointer;
+    opaque_Dictionary: Pointer;
+    opaque_Range: LongWord;
+    opaque_Code: LongWord;
+    opaque_DictionaryPos: LongWord;
+    opaque_GlobalPos: LongWord;
+    opaque_DistanceLimit: LongWord;
+    opaque_Reps: array[0..3] of LongWord;
+    opaque_State: Integer;
+    opaque_RemainLen: Integer;
+    opaque_TempDictionary: array[0..3] of Byte;
   end;
+
   TLZMADecompressor = class(TCustomDecompressor)
   private
     FReachedEnd: Boolean;
-    FCallbackData: TLZMADecompressorCallbackData;
-    FLzmaInternalData: Pointer;
+    FHeaderProcessed: Boolean;
+    FDecoderState: TLZMAInternalDecoderState;
     FHeapBase: Pointer;
     FHeapSize: Cardinal;
     FBuffer: array[0..65535] of Byte;
@@ -31,12 +67,20 @@ type
     procedure DecompressInto(var Buffer; Count: Longint); override;
     procedure Reset; override;
   end;
-  
+
 implementation
+
+{$IFNDEF Delphi3orHigher}
+{ Must include Ole2 in the 'uses' clause on D2, and after Windows, because
+  it redefines E_* constants in Windows that are incorrect. E_OUTOFMEMORY,
+  for example, is defined as $80000002 in Windows, instead of $8007000E. }
+uses
+  Ole2;
+{$ENDIF}
 
 const
   SLZMADataError = 'lzma: Compressed data is corrupted (%d)';
-  
+
 procedure OutOfMemoryError;
 begin
   raise EOutOfMemory.Create('Out of memory');
@@ -52,9 +96,9 @@ begin
   raise ECompressDataError.CreateFmt(SLZMADataError, [Id]);
 end;
 
-{TLZMADecompressor}
+{ TLZMADecompressor }
 
-{$L LzmaDecode.obj}
+{$L LzmaDecodeInno.obj}
 
 type
   TLzmaInCallback = record
@@ -64,14 +108,23 @@ type
 const
   LZMA_RESULT_OK = 0;
   LZMA_RESULT_DATA_ERROR = 1;
-  LZMA_RESULT_NOT_ENOUGH_MEM = 2;
 
-function LzmaGetInternalSize(lc, lp: Integer): Cardinal; external;
-function LzmaDecoderInit(buffer: Pointer; bufferSize: Cardinal;
-  lc, lp, pb: Integer; var dictionary; dictionarySize: Cardinal;
-  var inCallback: TLzmaInCallback): Integer; external;
-function LzmaDecode(buffer: Pointer; var outStream; outSize: Cardinal;
+  LZMA_PROPERTIES_SIZE = 5;
+
+function LzmaMyDecodeProperties(var vs: TLZMAInternalDecoderState;
+  vsSize: Integer; const propsData; propsDataSize: Integer;
+  var outPropsSize: LongWord; var outDictionarySize: LongWord): Integer; external;
+procedure LzmaMyDecoderInit(var vs: TLZMAInternalDecoderState;
+  probsPtr: Pointer; dictionaryPtr: Pointer); external;
+function LzmaDecode(var vs: TLZMAInternalDecoderState;
+  var inCallback: TLzmaInCallback; var outStream; outSize: Cardinal;
   var outSizeProcessed: Cardinal): Integer; external;
+
+type
+  TLZMADecompressorCallbackData = record
+    Callback: TLzmaInCallback;
+    Instance: TLZMADecompressor;
+  end;
 
 function ReadFunc(obj: Pointer; var buffer: Pointer; var bufferSize: Cardinal): Integer;
 begin
@@ -89,7 +142,6 @@ end;
 
 procedure TLZMADecompressor.DestroyHeap;
 begin
-  FLzmaInternalData := nil;
   FHeapSize := 0;
   if Assigned(FHeapBase) then begin
     VirtualFree(FHeapBase, 0, MEM_RELEASE);
@@ -110,42 +162,26 @@ end;
 
 procedure TLZMADecompressor.ProcessHeader;
 var
-  Props: Byte;
-  DictionarySize: Longint;
-  lc, lp, pb: Integer;
-  InternalSize, NewHeapSize: Cardinal;
-  InternalData, Dictionary: Pointer;
-  Code: Integer;
+  Props: array[0..LZMA_PROPERTIES_SIZE-1] of Byte;
+  ProbsSize, DictionarySize: LongWord;
+  NewHeapSize: Cardinal;
 begin
   { Read header fields }
   if ReadProc(Props, SizeOf(Props)) <> SizeOf(Props) then
     LZMADataError(1);
-  if ReadProc(DictionarySize, SizeOf(DictionarySize)) <> SizeOf(DictionarySize) then
-    LZMADataError(2);
-  if (DictionarySize < 0) or (DictionarySize > 32 shl 20) then
+
+  { Initialize the LZMA decoder state structure, and calculate the size of
+    the Probs and Dictionary }
+  FillChar(FDecoderState, SizeOf(FDecoderState), 0);
+  if LzmaMyDecodeProperties(FDecoderState, SizeOf(FDecoderState), Props,
+     SizeOf(Props), ProbsSize, DictionarySize) <> LZMA_RESULT_OK then
+    LZMADataError(3);
+  if DictionarySize > LongWord(32 shl 20) then
     { sanity check: we only use dictionary sizes <= 32 MB }
     LZMADataError(7);
 
-  { Crack Props }
-  if Props >= (9 * 5 * 5) then
-    LZMADataError(3);
-  pb := 0;
-  while Props >= (9 * 5) do begin
-    Inc(pb);
-    Dec(Props, (9 * 5));
-  end;
-  lp := 0;
-  while Props >= 9 do begin
-    Inc(lp);
-    Dec(Props, 9);
-  end;
-  lc := Props;
-
-  { Figure out how much memory we need and allocate it }
-  InternalSize := LzmaGetInternalSize(lc, lp);
-  if InternalSize and 3 <> 0 then
-    InternalSize := (InternalSize or 3) + 1;  { round up to DWORD boundary }
-  NewHeapSize := InternalSize + Cardinal(DictionarySize);
+  { Allocate memory for the Probs and Dictionary, and pass the pointers over }
+  NewHeapSize := ProbsSize + DictionarySize;
   if FHeapSize <> NewHeapSize then begin
     DestroyHeap;
     FHeapBase := VirtualAlloc(nil, NewHeapSize, MEM_COMMIT, PAGE_READWRITE);
@@ -153,31 +189,23 @@ begin
       OutOfMemoryError;
     FHeapSize := NewHeapSize;
   end;
-  InternalData := FHeapBase;
-  Dictionary := Pointer(Cardinal(InternalData) + InternalSize);
+  LzmaMyDecoderInit(FDecoderState, FHeapBase, Pointer(Cardinal(FHeapBase) + ProbsSize));
 
-  { Now initialize }
-  TLzmaInCallback(FCallbackData.Callback).Read := ReadFunc;
-  FCallbackData.Instance := Self;
-  Code := LzmaDecoderInit(InternalData, InternalSize, lc, lp, pb,
-    Dictionary^, DictionarySize, TLzmaInCallback(FCallbackData.Callback));
-  case Code of
-    LZMA_RESULT_OK: ;
-    LZMA_RESULT_DATA_ERROR: LZMADataError(4);
-  else
-    LZMAInternalError(Format('LzmaDecoderInit failed (%d)', [Code]));
-  end;
-  FLzmaInternalData := InternalData;
+  FHeaderProcessed := True;
 end;
 
 procedure TLZMADecompressor.DecompressInto(var Buffer; Count: Longint);
 var
+  CallbackData: TLZMADecompressorCallbackData;
   Code: Integer;
   OutProcessed: Cardinal;
 begin
-  if FLzmaInternalData = nil then
+  if not FHeaderProcessed then
     ProcessHeader;
-  Code := LzmaDecode(FLzmaInternalData, Buffer, Count, OutProcessed);
+  CallbackData.Callback.Read := ReadFunc;
+  CallbackData.Instance := Self;
+  Code := LzmaDecode(FDecoderState, CallbackData.Callback, Buffer, Count,
+    OutProcessed);
   case Code of
     LZMA_RESULT_OK: ;
     LZMA_RESULT_DATA_ERROR: LZMADataError(5);
@@ -190,7 +218,7 @@ end;
 
 procedure TLZMADecompressor.Reset;
 begin
-  FLzmaInternalData := nil;
+  FHeaderProcessed := False;
   FReachedEnd := False;
 end;
 

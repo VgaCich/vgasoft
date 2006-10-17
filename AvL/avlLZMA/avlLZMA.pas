@@ -2,18 +2,18 @@ unit avlLZMA;
 
 {
   Inno Setup
-  Copyright (C) 1997-2004 Jordan Russell
+  Copyright (C) 1997-2006 Jordan Russell
   Portions by Martijn Laan
   For conditions of distribution and use, see LICENSE.TXT.
 
   Interface to the LZMA compression DLL and the LZMA SDK decompression OBJ
 
-  Complete source code for the compression DLL can found at:
+  Source code for the decompression OBJ can found in the LzmaDecode
+  subdirectory.
+  Source code for the compression DLL can found at:
     http://cvs.jrsoftware.org/view/iscompress/lzma/
-  Complete source code for the decompression OBJ can found at:
-    http://cvs.jrsoftware.org/view/issrc/Projects/LzmaDecode/
 
-  $jrsoftware: issrc/Projects/LZMA.pas,v 1.18 2004/03/26 17:49:44 jr Exp $
+  $jrsoftware: issrc/Projects/LZMA.pas,v 1.24 2006/10/06 20:58:28 jr Exp $
 }
 
 interface
@@ -21,7 +21,7 @@ interface
 {$I VERSION.INC}
 
 uses
-  Windows, AVL, avlCompress, avlInt64Em;
+  Windows, AvL, avlCompress, avlInt64Em;
 
 function LZMAInitCompressFunctions(Module: HMODULE): Boolean;
 function LZMAGetLevel(const Value: String; var Level: Integer): Boolean;
@@ -66,16 +66,36 @@ type
     procedure Finish; override;
   end;
 
-  TLZMADecompressor = class;
-  TLZMADecompressorCallbackData = record
-    Callback: Pointer;
-    Instance: TLZMADecompressor;
+  { Internally-used record }
+  TLZMAInternalDecoderState = record
+    { NOTE: None of these fields are ever accessed directly by this unit.
+      They are exposed purely for debugging purposes. }
+    opaque_Properties: record
+      lc: Integer;
+      lp: Integer;
+      pb: Integer;
+      DictionarySize: LongWord;
+    end;
+    opaque_Probs: Pointer;
+    opaque_Buffer: Pointer;
+    opaque_BufferLim: Pointer;
+    opaque_Dictionary: Pointer;
+    opaque_Range: LongWord;
+    opaque_Code: LongWord;
+    opaque_DictionaryPos: LongWord;
+    opaque_GlobalPos: LongWord;
+    opaque_DistanceLimit: LongWord;
+    opaque_Reps: array[0..3] of LongWord;
+    opaque_State: Integer;
+    opaque_RemainLen: Integer;
+    opaque_TempDictionary: array[0..3] of Byte;
   end;
+
   TLZMADecompressor = class(TCustomDecompressor)
   private
     FReachedEnd: Boolean;
-    FCallbackData: TLZMADecompressorCallbackData;
-    FLzmaInternalData: Pointer;
+    FHeaderProcessed: Boolean;
+    FDecoderState: TLZMAInternalDecoderState;
     FHeapBase: Pointer;
     FHeapSize: Cardinal;
     FBuffer: array[0..65535] of Byte;
@@ -97,13 +117,11 @@ type
   end;
   I7zSequentialInStream = class(I7zUnknown)
   public
-    function Read(var data; size: Cardinal; var processedSize: Cardinal): HRESULT; virtual; stdcall; abstract;
-    function ReadPart(var data; size: Cardinal; var processedSize: Cardinal): HRESULT; virtual; stdcall; abstract;
+    function Read(var data; size: LongWord; var processedSize: LongWord): HRESULT; virtual; stdcall; abstract;
   end;
   I7zSequentialOutStream = class(I7zUnknown)
   public
-    function Write(const data; size: Cardinal; var processedSize: Cardinal): HRESULT; virtual; stdcall; abstract;
-    function WritePart(const data; size: Cardinal; var processedSize: Cardinal): HRESULT; virtual; stdcall; abstract;
+    function Write(const data; size: LongWord; var processedSize: LongWord): HRESULT; virtual; stdcall; abstract;
   end;
   I7zCompressProgressInfo = class(I7zUnknown)
   public
@@ -116,16 +134,14 @@ type
   private
     FReadProc: TLZMAReadProc;
   public
-    function Read(var data; size: Cardinal; var processedSize: Cardinal): HRESULT; override;
-    function ReadPart(var data; size: Cardinal; var processedSize: Cardinal): HRESULT; override;
+    function Read(var data; size: LongWord; var processedSize: LongWord): HRESULT; override;
   end;
   TLZMAWriteProc = function(const Data; Size: Cardinal; var ProcessedSize: Cardinal): HRESULT of object;
   TLZMAOutStream = class(I7zSequentialOutStream)
   private
     FWriteProc: TLZMAWriteProc;
   public
-    function Write(const data; size: Cardinal; var processedSize: Cardinal): HRESULT; override;
-    function WritePart(const data; size: Cardinal; var processedSize: Cardinal): HRESULT; override;
+    function Write(const data; size: LongWord; var processedSize: LongWord): HRESULT; override;
   end;
   TLZMAProgressProc = function(const TotalBytesProcessed: Integer64): HRESULT of object;
   TLZMAProgressInfo = class(I7zCompressProgressInfo)
@@ -186,7 +202,7 @@ function LZMAInitCompressFunctions(Module: HMODULE): Boolean;
 begin
   LZMA_Init := GetProcAddress(Module, 'LZMA_Init');
   LZMA_SetProps := GetProcAddress(Module, 'LZMA_SetProps');
-  LZMA_Encode := GetProcAddress(Module, 'LZMA_Encode');
+  LZMA_Encode := GetProcAddress(Module, 'LZMA_Encode2');
   LZMA_End := GetProcAddress(Module, 'LZMA_End');
   Result := Assigned(LZMA_Init) and Assigned(LZMA_SetProps) and
     Assigned(LZMA_Encode) and Assigned(LZMA_End);
@@ -325,10 +341,12 @@ end;
 constructor TLZMACompressor.Create(AWriteProc: TCompressorWriteProc;
   AProgressProc: TCompressorProgressProc; CompressionLevel: Integer);
 const
-  algorithm: array [clLZMAFast..clLZMAUltra] of Cardinal = (0, 1, 2, 2);
+  algorithm: array [clLZMAFast..clLZMAUltra] of Cardinal = (0, 1, 1, 1);
   dicSize: array [clLZMAFast..clLZMAUltra] of Cardinal = (32 shl 10, 2 shl 20, 8 shl 20, 32 shl 20);
   numFastBytes: array [clLZMAFast..clLZMAUltra] of Cardinal = (32, 32, 64, 64);
-  matchFinder: array [clLZMAFast..clLZMAUltra] of PWideChar = ('HC3', 'BT4', 'BT4', 'BT4b');
+  matchFinder: array [clLZMAFast..clLZMAUltra] of PWideChar = ('HC4', 'BT4', 'BT4', 'BT4');
+var
+  Res: HRESULT;
 begin
   inherited;
   FNextOut := @FBuffer;
@@ -340,8 +358,11 @@ begin
   FProgressInfo := TLZMAProgressInfo.Create;
   FProgressInfo.FProgressProc := ProgressMade;
   FWorkerThread := TLZMAWorkerThread.Create(WorkerThreadProc, AProgressProc);
-  if LZMA_Init(FLZMAHandle) <> S_OK then
-    LZMAInternalError('LZMA_Init failed');
+  Res := LZMA_Init(FLZMAHandle);
+  if Res = E_OUTOFMEMORY then
+    OutOfMemoryError;
+  if Res <> S_OK then
+    LZMAInternalError(Format('LZMA_Init failed with code 0x%.8x', [Res]));
   if (CompressionLevel < Low(algorithm)) or (CompressionLevel > High(algorithm)) then
     LZMAInternalError('TLZMACompressor.Create got invalid CompressionLevel ' + IntToStr(CompressionLevel));
   if LZMA_SetProps(FLZMAHandle, algorithm[CompressionLevel], dicSize[CompressionLevel],
@@ -486,7 +507,7 @@ begin
     Exit;
   end;
   T := GetTickCount;
-  if T - FLastProgressTick >= 250 then begin
+  if T - FLastProgressTick >= 100 then begin
     FLastProgressTick := T;
     FWorkerThread.FCallProgressProc := True;
     FWorkerThread.ReturnToMain;
@@ -500,7 +521,7 @@ end;
 
 { TLZMADecompressor }
 
-{$L LzmaDecode.obj}
+{$L LzmaDecode\LzmaDecodeInno.obj}
 
 type
   TLzmaInCallback = record
@@ -510,14 +531,23 @@ type
 const
   LZMA_RESULT_OK = 0;
   LZMA_RESULT_DATA_ERROR = 1;
-  LZMA_RESULT_NOT_ENOUGH_MEM = 2;
 
-function LzmaGetInternalSize(lc, lp: Integer): Cardinal; external;
-function LzmaDecoderInit(buffer: Pointer; bufferSize: Cardinal;
-  lc, lp, pb: Integer; var dictionary; dictionarySize: Cardinal;
-  var inCallback: TLzmaInCallback): Integer; external;
-function LzmaDecode(buffer: Pointer; var outStream; outSize: Cardinal;
+  LZMA_PROPERTIES_SIZE = 5;
+
+function LzmaMyDecodeProperties(var vs: TLZMAInternalDecoderState;
+  vsSize: Integer; const propsData; propsDataSize: Integer;
+  var outPropsSize: LongWord; var outDictionarySize: LongWord): Integer; external;
+procedure LzmaMyDecoderInit(var vs: TLZMAInternalDecoderState;
+  probsPtr: Pointer; dictionaryPtr: Pointer); external;
+function LzmaDecode(var vs: TLZMAInternalDecoderState;
+  var inCallback: TLzmaInCallback; var outStream; outSize: Cardinal;
   var outSizeProcessed: Cardinal): Integer; external;
+
+type
+  TLZMADecompressorCallbackData = record
+    Callback: TLzmaInCallback;
+    Instance: TLZMADecompressor;
+  end;
 
 function ReadFunc(obj: Pointer; var buffer: Pointer; var bufferSize: Cardinal): Integer;
 begin
@@ -535,7 +565,6 @@ end;
 
 procedure TLZMADecompressor.DestroyHeap;
 begin
-  FLzmaInternalData := nil;
   FHeapSize := 0;
   if Assigned(FHeapBase) then begin
     VirtualFree(FHeapBase, 0, MEM_RELEASE);
@@ -556,42 +585,26 @@ end;
 
 procedure TLZMADecompressor.ProcessHeader;
 var
-  Props: Byte;
-  DictionarySize: Longint;
-  lc, lp, pb: Integer;
-  InternalSize, NewHeapSize: Cardinal;
-  InternalData, Dictionary: Pointer;
-  Code: Integer;
+  Props: array[0..LZMA_PROPERTIES_SIZE-1] of Byte;
+  ProbsSize, DictionarySize: LongWord;
+  NewHeapSize: Cardinal;
 begin
   { Read header fields }
   if ReadProc(Props, SizeOf(Props)) <> SizeOf(Props) then
     LZMADataError(1);
-  if ReadProc(DictionarySize, SizeOf(DictionarySize)) <> SizeOf(DictionarySize) then
-    LZMADataError(2);
-  if (DictionarySize < 0) or (DictionarySize > 32 shl 20) then
+
+  { Initialize the LZMA decoder state structure, and calculate the size of
+    the Probs and Dictionary }
+  FillChar(FDecoderState, SizeOf(FDecoderState), 0);
+  if LzmaMyDecodeProperties(FDecoderState, SizeOf(FDecoderState), Props,
+     SizeOf(Props), ProbsSize, DictionarySize) <> LZMA_RESULT_OK then
+    LZMADataError(3);
+  if DictionarySize > LongWord(32 shl 20) then
     { sanity check: we only use dictionary sizes <= 32 MB }
     LZMADataError(7);
 
-  { Crack Props }
-  if Props >= (9 * 5 * 5) then
-    LZMADataError(3);
-  pb := 0;
-  while Props >= (9 * 5) do begin
-    Inc(pb);
-    Dec(Props, (9 * 5));
-  end;
-  lp := 0;
-  while Props >= 9 do begin
-    Inc(lp);
-    Dec(Props, 9);
-  end;
-  lc := Props;
-
-  { Figure out how much memory we need and allocate it }
-  InternalSize := LzmaGetInternalSize(lc, lp);
-  if InternalSize and 3 <> 0 then
-    InternalSize := (InternalSize or 3) + 1;  { round up to DWORD boundary }
-  NewHeapSize := InternalSize + Cardinal(DictionarySize);
+  { Allocate memory for the Probs and Dictionary, and pass the pointers over }
+  NewHeapSize := ProbsSize + DictionarySize;
   if FHeapSize <> NewHeapSize then begin
     DestroyHeap;
     FHeapBase := VirtualAlloc(nil, NewHeapSize, MEM_COMMIT, PAGE_READWRITE);
@@ -599,31 +612,23 @@ begin
       OutOfMemoryError;
     FHeapSize := NewHeapSize;
   end;
-  InternalData := FHeapBase;
-  Dictionary := Pointer(Cardinal(InternalData) + InternalSize);
+  LzmaMyDecoderInit(FDecoderState, FHeapBase, Pointer(Cardinal(FHeapBase) + ProbsSize));
 
-  { Now initialize }
-  TLzmaInCallback(FCallbackData.Callback).Read := ReadFunc;
-  FCallbackData.Instance := Self;
-  Code := LzmaDecoderInit(InternalData, InternalSize, lc, lp, pb,
-    Dictionary^, DictionarySize, TLzmaInCallback(FCallbackData.Callback));
-  case Code of
-    LZMA_RESULT_OK: ;
-    LZMA_RESULT_DATA_ERROR: LZMADataError(4);
-  else
-    LZMAInternalError(Format('LzmaDecoderInit failed (%d)', [Code]));
-  end;
-  FLzmaInternalData := InternalData;
+  FHeaderProcessed := True;
 end;
 
 procedure TLZMADecompressor.DecompressInto(var Buffer; Count: Longint);
 var
+  CallbackData: TLZMADecompressorCallbackData;
   Code: Integer;
   OutProcessed: Cardinal;
 begin
-  if FLzmaInternalData = nil then
+  if not FHeaderProcessed then
     ProcessHeader;
-  Code := LzmaDecode(FLzmaInternalData, Buffer, Count, OutProcessed);
+  CallbackData.Callback.Read := ReadFunc;
+  CallbackData.Instance := Self;
+  Code := LzmaDecode(FDecoderState, CallbackData.Callback, Buffer, Count,
+    OutProcessed);
   case Code of
     LZMA_RESULT_OK: ;
     LZMA_RESULT_DATA_ERROR: LZMADataError(5);
@@ -636,7 +641,7 @@ end;
 
 procedure TLZMADecompressor.Reset;
 begin
-  FLzmaInternalData := nil;
+  FHeaderProcessed := False;
   FReachedEnd := False;
 end;
 
@@ -660,28 +665,16 @@ end;
 
 { TLZMAInStream }
 
-function TLZMAInStream.Read(var data; size: Cardinal;
-  var processedSize: Cardinal): HRESULT;
-begin
-  Result := FReadProc(data, size, processedSize);
-end;
-
-function TLZMAInStream.ReadPart(var data; size: Cardinal;
-  var processedSize: Cardinal): HRESULT;
+function TLZMAInStream.Read(var data; size: LongWord;
+  var processedSize: LongWord): HRESULT;
 begin
   Result := FReadProc(data, size, processedSize);
 end;
 
 { TLZMAOutStream }
 
-function TLZMAOutStream.Write(const data; size: Cardinal;
-  var processedSize: Cardinal): HRESULT;
-begin
-  Result := FWriteProc(data, size, processedSize);
-end;
-
-function TLZMAOutStream.WritePart(const data; size: Cardinal;
-  var processedSize: Cardinal): HRESULT;
+function TLZMAOutStream.Write(const data; size: LongWord;
+  var processedSize: LongWord): HRESULT;
 begin
   Result := FWriteProc(data, size, processedSize);
 end;

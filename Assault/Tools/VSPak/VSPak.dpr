@@ -27,7 +27,7 @@ end;
 
 procedure About;
 begin
-  WriteLn('VSE VSPak package management program 1.2.6');
+  WriteLn('VSE VSPak package management program 1.2.7');
   WriteLn('(c)VgaSoft, 2004-2006');
   WriteLn('www.vgasoft.narod.ru');
   WriteLn;
