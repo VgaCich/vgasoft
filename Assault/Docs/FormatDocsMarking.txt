@@ -1,0 +1,6 @@
+[Name:Size] - block
+<CompressionType[block]> - <block> compressed by <CompressionType>
+{Count[block]} - <Count> blocks ( {3[block]} - [block][block][block])
+() - comments
+$Adler32Start:BlockSize$ - marks start of evaluating Adler32 checksum, for block with size BlockSize
+$Adler32End$ - marks end of evaluating Adler32, for more usability only (all really needed info is in start marker)

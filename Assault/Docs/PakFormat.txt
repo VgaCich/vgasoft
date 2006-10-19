@@ -6,8 +6,6 @@ Hdr format:
 
 [ID:4=VSPK=$4B505356][Adler32:4]$Adler32Start:12+FTPackedSize$[EntriesCount:4][FTPackedSize:4][FTSize:4]
 
-Adler32: from EntriesCount to SizeOf(Hdr)+FTPackedSize 
-
 FileTable format:
 
 <NRV2E{EntriesCount[FileTableEntries]}>
