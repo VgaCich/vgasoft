@@ -27,7 +27,7 @@ end;
 
 procedure About;
 begin
-  WriteLn('VSE VSPak package management program 1.2.7');
+  WriteLn('VSE VSPak package management program 1.2.8');
   WriteLn('(c)VgaSoft, 2004-2006');
   WriteLn('www.vgasoft.narod.ru');
   WriteLn;
@@ -800,6 +800,7 @@ begin
   W:=false;
   Compr:='NRV/10';
   Mask:='*';
+  Dir:=GetCurrentDir;
   About;
   if ParamCount<1 then
   begin
