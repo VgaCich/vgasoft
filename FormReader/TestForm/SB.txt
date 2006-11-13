@@ -1,0 +1,3 @@
+FirstPart|0
+CP|256
+Right part|2048

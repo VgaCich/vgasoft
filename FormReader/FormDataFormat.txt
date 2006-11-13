@@ -1,0 +1,30 @@
+[ControlsSize:Cardinal][Controls:ControlsSize][Data]
+
+Controls format (text data):
+
+  Control ControlName: ControlType
+  PropertiesList
+  PropEnd
+  ChildControls
+  End
+
+PropertiesList format:
+
+  PropertyName=PropertyData
+
+ChildControls format:
+
+  See Controls format
+
+Data format:
+
+  [DataTable:DataTableSize][DataStream]
+
+DataTable format:
+
+  [DataCount]{DataCount[Offset:Cardinal][Size:Cardinal]}
+
+Marking:
+
+[Name:Size] - block
+{Count[block]} - <Count> blocks ( {3[block]} = [block][block][block])
