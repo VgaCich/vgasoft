@@ -27,7 +27,7 @@ end;
 
 procedure About;
 begin
-  WriteLn('VSE VSPak package management program 1.2.8');
+  WriteLn('VSE VSPak package management program 1.3.0');
   WriteLn('(c)VgaSoft, 2004-2006');
   WriteLn('www.vgasoft.narod.ru');
   WriteLn;
@@ -53,6 +53,7 @@ begin
   WriteLn('      NRV/Level, Level: 1...10');
   WriteLn('      LZMA/Level, Level: Fast, Normal, Max, Ultra');
   WriteLn('      Store');
+  WriteLn('      Discard');
   WriteLn('    Default: NRV/10');
   WriteLn('    /a - ask compression from user');
   WriteLn('Common options:');
@@ -106,7 +107,7 @@ begin
     else Result:=LowerCase(Copy(PrjStr, P+1, MaxInt));
 end;
 
-procedure LoadPak(const PakName: string; List: TStringList);
+function LoadPak(const PakName: string; List: TStringList): Boolean;
 type
   TFTRec=record
     FTEntry: TPakFTEntry;
@@ -139,10 +140,17 @@ var
         FTE_NRV: List.Add(Name+'|NRV/'+IntToStr(OffsetInc+FTEntry.Offset));
         FTE_LZMA: List.Add(Name+'|LZMA/'+IntToStr(OffsetInc+FTEntry.Offset));
         FTE_STORE: List.Add(Name+'|Store/'+IntToStr(OffsetInc+FTEntry.Offset));
+        FTE_DISCARD: List.Add(Name+'|Discard/'+IntToStr(OffsetInc+FTEntry.Offset));
       end;
   end;
 
 begin
+  Result:=false;
+  if not FileExists(PakName) then
+  begin
+    WriteLn('LoadPak('+AvL.ExtractFileName(PakName)+') failed: file not found');
+    Exit;
+  end;
   Pak:=TFileStream.Create(PakName, fmOpenRead);
   try
     Pak.Read(Hdr, SizeOf(Hdr));
@@ -188,6 +196,7 @@ begin
       ProcessEntry;
       Inc(CurEntry);
     end;
+    Result:=true;
   finally
     Finalize(FileTable);
     FAN(Pak);
@@ -202,7 +211,7 @@ begin
   WriteLn('List: ', PakName);
   List:=TStringList.Create;
   try
-    LoadPak(PakName, List);
+    if not LoadPak(PakName, List) then Exit;
     RemoveVoidStrings(List);
     for i:=0 to List.Count-1 do
       if List[i][1]='<'
@@ -318,6 +327,11 @@ var
   var
     OFile: TFileStream;
   begin
+    if LowerCase(Compression)='discard' then
+    begin
+      WriteLn('Discard: ', CurDir, Name);
+      Exit;
+    end;
     ForceDirectories(CurDir);
     WriteLn('Extracting file ', CurDir, Name);
     Pak.Seek(Offset, soFromBeginning);
@@ -349,7 +363,7 @@ begin
   WriteLn('Mask: ', Mask);
   CurDir:=AddTrailingBackslash(Dir);
   List:=TStringList.Create;
-  LoadPak(PakName, List);
+  if not LoadPak(PakName, List) then Exit;
   FromDir:=CurDir;
   if Pos('/', Mask)>0 then
   begin
@@ -497,8 +511,10 @@ begin
       FileName:=PrjFileName(Prj[i], i+1);
       Compression:=PrjCompression(Prj[i], i+1);
       ComprLevel:=PrjComprLevel(Prj[i], i+1);
-      if not FileExists(CurDir+FileName) then raise Exception.CreateFmt('%d: file %s not found', [i+1, CurDir+FileName]);
-      if (Compression<>'nrv') and (Compression<>'lzma') and (Compression<>'store') then raise Exception.CreateFmt('%d: invalid compression (%s)', [i+1, Compression]);
+      if not FileExists(CurDir+FileName) and (Compression<>'discard')
+        then raise Exception.CreateFmt('%d: file %s not found', [i+1, CurDir+FileName]);
+      if (Compression<>'nrv') and (Compression<>'lzma') and (Compression<>'store') and (Compression<>'discard')
+        then raise Exception.CreateFmt('%d: invalid compression (%s)', [i+1, Compression]);
       if ((Compression='nrv') and ((StrToInt(ComprLevel)<1) or (StrToInt(ComprLevel)>10))) or
          ((Compression='lzma') and not LZMAGetLevel(ComprLevel, L))
          then raise Exception.CreateFmt('%d: invalid compression level (%s/%s)', [i+1, Compression, ComprLevel]);
@@ -672,12 +688,15 @@ begin
     then Entry.EntryType:=FTE_LZMA;
   if S='store'
     then Entry.EntryType:=FTE_STORE;
+  if S='discard'
+    then Entry.EntryType:=FTE_DISCARD;
   S:=PrjComprLevel(PrjStr, 0);
   WriteLn('Compressing file ', CurDir, Name);
   case Entry.EntryType of
     FTE_NRV: PackFileNRV(TempFile, CurDir+Name, S);
     FTE_LZMA: PackFileLZMA(TempFile, CurDir+Name, S);
     FTE_STORE: PackFileStore(TempFile, CurDir+Name, S);
+    FTE_DISCARD: Entry.Offset:=0;
   end;
 end;
 

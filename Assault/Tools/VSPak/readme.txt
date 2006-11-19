@@ -49,7 +49,7 @@ VSPak /c [options] <dir>
 filename|comp/level
 где:
   filename - имя файла
-  comp - алгоритм сжатия (LZMA, NRV, Store(без сжатия))
+  comp - алгоритм сжатия (LZMA, NRV, Store(без сжатия), Discard(удаляет файл из виртуальной файловой системы PakMan'а))
   level - уровень сжатия:
     для LZMA: Fast, Normal, Max, Ultra
     для NRV: 1...10

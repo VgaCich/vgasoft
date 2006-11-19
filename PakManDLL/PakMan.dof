@@ -113,8 +113,8 @@ RootDir=C:\Delphi\Bin\
 IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
-MinorVer=2
-Release=7
+MinorVer=3
+Release=0
 Build=0
 Debug=0
 PreRelease=0
@@ -126,7 +126,7 @@ CodePage=1251
 [Version Info Keys]
 CompanyName=VgaSoft
 FileDescription=VgaSoft Package Manager DLL
-FileVersion=1.2.7.0
+FileVersion=1.3.0.0
 InternalName=
 LegalCopyright=(c)VgaSoft, 2004-2006
 LegalTrademarks=
@@ -134,6 +134,8 @@ OriginalFilename=PakMan.dll
 ProductName=VgaSoft Package Manager
 ProductVersion=1.2.0.0
 Comments=
+[Excluded Packages]
+c:\delphi\Projects\Bpl\mckEnhCombos.bpl=MCK Enhanced ComboBoxes
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;

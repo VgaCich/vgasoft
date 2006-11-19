@@ -108,7 +108,8 @@ begin
   if FileName[1]='/' then Delete(FileName, 1, 1);
   if not Assigned(@FileData) then Exit;
   if FileSize=0 then Exit;
-  if (FileType<>FTE_NRV) and (FileType<>FTE_LZMA) and (FileType<>FTE_STORE) then Exit;
+  if (FileType<>FTE_NRV) and (FileType<>FTE_LZMA) and (FileType<>FTE_STORE) and (FileType<>FTE_DISCARD)
+    then Exit;
   CurName:=Tok(Sep, FileName);
   CurDir:=0;
   while FileName<>'' do

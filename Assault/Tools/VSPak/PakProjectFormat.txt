@@ -11,7 +11,7 @@ Base directory//First non-comment line
 //
 //   FileName|Compression/Level(except Store)
 //     File entry
-//     Compression: NRV, LZMA, Store
+//     Compression: NRV, LZMA, Store, Discard (delete file from VFS)
 //     Level:
 //       LZMA: Fast, Normal, Max, Ultra
 //       NRV: 1..10 (default: 10)

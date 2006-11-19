@@ -1,6 +1,6 @@
 Format:
 
-[Hdr:20][FileTable]$Adler32End$[Files]
+[Hdr:20][FileTable:FTPackedSize]$Adler32End$[Files]
 
 Hdr format:
 
@@ -21,7 +21,7 @@ FileTableEntries:
 
 FileTableEntry format:
 
-[NameSize:1][Type:1=0:Directory;1:File_NRV2E;2:File_LZMA;3:File_Store][Data:4(Type=0:SubEntriesCount;Type=1,2:Offset)][Name:NameSize]{if Type=0:SubEntriesCount[FileTableEntries]}
+[NameSize:1][Type:1=0:Directory;1:File_NRV2E;2:File_LZMA;3:File_Store;255:Discard][Data:4(Type=0:SubEntriesCount;Type=1,2:Offset)][Name:NameSize]{if Type=0:SubEntriesCount[FileTableEntries]}
 
 File format:
 

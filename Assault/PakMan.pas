@@ -258,6 +258,7 @@ function TDirInfo.FindDir(Name: string): Integer;
 var
   Hash: Cardinal;
 begin
+  Result:=-1;
   Name:=LowerCase(Name);
   Hash:=NextAdler32(1, @Name[1], Length(Name));
   for Result:=0 to DirsCount-1 do
@@ -269,6 +270,8 @@ function TDirInfo.FindFile(Name: string): Integer;
 var
   Hash: Cardinal;
 begin
+  Result:=-1;
+  if Name='' then Exit;
   Name:=LowerCase(Name);
   Hash:=NextAdler32(1, @Name[1], Length(Name));
   for Result:=0 to FilesCount-1 do
@@ -486,6 +489,14 @@ var
             PakFile:=PakName;
             Offset:=OffsetInc+FTEntry.Offset;
           end;
+        FTE_DISCARD: begin
+          Index:=CurDir.FindFile(Name);
+          if Index>-1 then
+          begin
+            CurDir.Files[Index].Name:='';
+            CurDir.Files[Index].PakFile:='';
+          end;
+        end;
       end;
   end;
 

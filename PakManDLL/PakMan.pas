@@ -1,8 +1,8 @@
 //----------------------------------------------------------------------------//
 //                                                                            //
-// PakMan.pas 1.2.6, 09.10.2006; 20:00                                        //
+// PakMan.pas 1.3.0, 20.11.2006; 2:00                                         //
 //                                                                            //
-// VSE Package Manager 1.2                                                    //
+// VSE Package Manager 1.3                                                    //
 //                                                                            //
 // Copyright (C) 2004-2006 VgaSoft (www.vgasoft.narod.ru)                     //
 //                                                                            //

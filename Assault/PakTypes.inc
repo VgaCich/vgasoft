@@ -3,6 +3,7 @@ const
   FTE_NRV=1;
   FTE_LZMA=2;
   FTE_STORE=3;
+  FTE_DISCARD=255;
   PakID=$4B505356;
 
 type
