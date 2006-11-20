@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, MMSystem, AvL, avlUtils, dglOpenGL, OpenGLExt, Textures, PakMan,
-  GameStates, UConsole, UConsoleVariables, ULog, SysInfo, USound, ifps3, ifpscomp;
+  GameStates, UConsole, UConsoleVariables, ULog, SysInfo, USound;
 
 type
   TGame=class
@@ -24,8 +24,6 @@ type
     FKeyState: TKeyboardState;
     FPakMan: TPakMan;
     FSound: TSound;
-    FIFPSExec: TIFPSExec;
-    FIFPSComp: TIFPSPascalCompiler;
     procedure SetFullscreen(Value: Boolean);
     procedure SetState(Value: Cardinal);
     function  GetKeyPressed(Index: Byte): Boolean;
@@ -132,10 +130,8 @@ var
   GSI: Cardinal;
 begin
   SaveSettings;
-  for GSI:=0 to High(FStates)-1 do
+  for GSI:=0 to High(FStates) do
     FAN(FStates[GSI]);
-  FAN(FIFPSExec);
-  FAN(FIFPSComp);
   FAN(FSound);
   FAN(FPakMan);
   gleFreeFonts;
@@ -176,8 +172,6 @@ begin
   FPakMan:=TPakMan.Create(ExePath+BaseDir);
   Console.PakMan:=FPakMan;
   FSound:=TSound.Create(FConfig.ReadString('Settings', 'SoundDevice', 'Default'));
-  FIFPSComp:=TIFPSPascalCompiler.Create;
-  FIFPSExec:=TIFPSExec.Create;
   LoadFonts;
   FFPSTimer:=timeSetEvent(1000, 0, @UpdateFPS, 0, TIME_PERIODIC);
   RegisterCommands;

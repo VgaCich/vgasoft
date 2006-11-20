@@ -162,7 +162,7 @@ begin
     BASS_ERROR_VERSION: Result:='ERROR_VERSION';
     BASS_ERROR_CODEC: Result:='ERROR_CODEC';
     BASS_ERROR_UNKNOWN: Result:='ERROR_UNKNOWN';
-    else Result:='Unknown error code '+IntToStr(errorCode);
+    else Result:='Unknown error code '+IntToStr(ErrorCode);
   end;
 end;
 
@@ -531,7 +531,7 @@ end;
 function TSoundStream.FilePosition(Mode: DWORD): DWORD;
 begin
   Result:=BASS_StreamGetFilePosition(FHandle, Mode);
-  if Result=-1
+  if Result=DWORD(-1)
     then Log(llError, 'SoundStream.FilePosition: '+TSound.LastErrorName);
 end;
 

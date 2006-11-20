@@ -130,7 +130,7 @@ begin
   glEnable(GL_COLOR_MATERIAL);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  gleOrthoUpdateMatrixProc(0, 0);
+  gleOrthoMatrix(800, 600);
   glBindTexture(GL_TEXTURE_2D, 0);
   glColor4f(0.3, 0.3, 0.3, 0.8);
   glBegin(GL_QUADS);

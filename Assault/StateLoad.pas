@@ -112,8 +112,7 @@ begin
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
   glBindTexture(GL_TEXTURE_2D, 0);
   gleSelectFont('Default');
-  gleSetUpdateMatrixProc(gleOrthoUpdateMatrixProc);
-  gleOrthoUpdateMatrixProc(0, 0);
+  gleOrthoMatrix(800, 600);
   Result:=50;
 end;
 

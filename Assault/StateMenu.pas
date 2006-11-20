@@ -3,7 +3,8 @@ unit StateMenu;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures, GameStates, StateLoad, ULog;
+  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
+  GameStates, StateLoad, ULog, UGUI;
 
 type
   TStateMenu=class(TGameState)
@@ -11,7 +12,6 @@ type
     FMenu: array of string;
     FActive, FLast, FTop: Integer;
     FCurTex: Cardinal;
-    FCurSize: Single;
     function GetName: string; override;
     function Load(ProgFunc: TProgFunc): Boolean;
   public
@@ -49,9 +49,9 @@ end;
 procedure TStateMenu.Draw;
 var
   i: Integer;
-  CurPos: TPoint;
 begin
   glClear(GL_COLOR_BUFFER_BIT);
+  gleOrthoMatrix(800, 600);
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
   glBindTexture(GL_TEXTURE_2D, 0);
   glEnable(GL_COLOR_MATERIAL);
@@ -86,19 +86,7 @@ begin
       else glColor3d(0, 0.7, 0);
     gleWrite(400-gleTextWidth(FMenu[i])/2, FTop+i*50+8, FMenu[i]);
   end;
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glBindTexture(GL_TEXTURE_2D, FCurTex);
-  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-  glDisable(GL_COLOR_MATERIAL);
-  GetCursorPos(CurPos);
-  CurPos.X:=Round(CurPos.X*800/Game.ResX);
-  CurPos.Y:=Round(CurPos.Y*600/Game.ResY);
-  glBegin(GL_QUADS);
-    glTexCoord2f(0, 1); glVertex2f(CurPos.X, CurPos.Y);
-    glTexCoord2f(0, 0); glVertex2f(CurPos.X, CurPos.Y+FCurSize);
-    glTexCoord2f(1, 0); glVertex2f(CurPos.X+FCurSize, CurPos.Y+FCurSize);
-    glTexCoord2f(1, 1); glVertex2f(CurPos.X+FCurSize, CurPos.Y);
-  glEnd;
+  DrawCursor;
 end;
 
 procedure TStateMenu.Update;
@@ -130,7 +118,7 @@ begin
   FMenu[4]:='Exit';
   FTop:=(600-Length(FMenu)*50) div 2;
   FLast:=-1;
-  FCurSize:=32*800/Game.ResX;
+  SetCursor(FCurTex, 32);
   gleSelectFont('Default');
   glClearColor(0, 0, 0, 0);
   glDisable(GL_LIGHTING);
@@ -140,8 +128,6 @@ begin
   glEnable(GL_TEXTURE_2D);
   glLineWidth(4);
   glPointSize(4);
-  gleSetUpdateMatrixProc(gleOrthoUpdateMatrixProc);
-  gleOrthoUpdateMatrixProc(0, 0);
   ShowCursor(false);
   Result:=50;
 end;

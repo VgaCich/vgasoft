@@ -34,9 +34,9 @@ begin
     llError: begin
                WriteLn(LogFile, '['+DateTimeToStr(Now)+'] Error: '+S);
                if Console<>nil then Console.AddToConsole('^1Error: '+S);
+               Flush(LogFile);
              end;
   end;
-  Flush(LogFile);
 end;
 
 procedure LogF(Level: TLogLevel; const Fmt: string; const Args: array of const);
@@ -47,7 +47,7 @@ end;
 procedure LogRaw(const S: string);
 begin
   WriteLn(LogFile, S);
-  Flush(LogFile);
+  {$IFDEF VSEDEBUG}Flush(LogFile);{$ENDIF};
   if Console<>nil then Console.AddToConsole(S);
 end;
 
@@ -61,9 +61,11 @@ begin
   case Level of
     llInfo: WriteLn(LogFile, '['+DateTimeToStr(Now)+'] '+S);
     llWarning: WriteLn(LogFile, '['+DateTimeToStr(Now)+'] Warning: '+S);
-    llError: WriteLn(LogFile, '['+DateTimeToStr(Now)+'] Error: '+S);
+    llError: begin
+               WriteLn(LogFile, '['+DateTimeToStr(Now)+'] Error: '+S);
+               Flush(LogFile);
+             end;
   end;
-  Flush(LogFile);
 end;
 
 procedure LogFNC(Level: TLogLevel; const Fmt: string; const Args: array of const);
@@ -74,7 +76,7 @@ end;
 procedure LogRawNC(const S: string);
 begin
   WriteLn(LogFile, S);
-  Flush(LogFile);
+  {$IFDEF VSEDEBUG}Flush(LogFile);{$ENDIF}
 end;
 
 initialization

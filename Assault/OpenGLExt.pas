@@ -12,11 +12,9 @@ function  gleGoFullscreen(Width, Height, Refresh, depth: Integer): Boolean;
 procedure gleGoBack;
 function  gleSetPix(DC: HDC; Depth: Cardinal): HGLRC;
 procedure gleSetGL;
-procedure gleDefaultUpdateMatrixProc(Width, Height: Integer);
-procedure gleOrthoUpdateMatrixProc(Width, Height: Integer);
-procedure gleSetUpdateMatrixProc(Proc: TUpdateMatrixProc);
-procedure gleSetUpdateMatrixMethod(Method: TUpdateMatrixMethod);
 procedure gleResizeWnd(Width, Height: Integer);
+procedure glePerspectiveMatrix(Width, Height: Integer);
+procedure gleOrthoMatrix(Width, Height: Integer);
 function  gleError(GLError: Cardinal): string;
 function  gleLoadFont(const FontID: string; FontData: TStream): Boolean;
 procedure gleFreeFonts;
@@ -119,12 +117,16 @@ begin
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
 end;
 
-var
-  UpdateMatrixProc: TUpdateMatrixProc;
-  UpdateMatrixMethod: TUpdateMatrixMethod;
-
-procedure gleDefaultUpdateMatrixProc(Width, Height: Integer);
+procedure gleResizeWnd(Width, Height: Integer);
 begin
+//  LogF('gleResizeWnd: width=%d, height=%d', [Width, Height]);
+  if Height=0 then Height:=1;
+  glViewport(0, 0, Width, Height);
+end;
+
+procedure glePerspectiveMatrix(Width, Height: Integer);
+begin
+  if Height<1 then Height:=1;
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity;
   gluPerspective(70.0, Width/Height, 0.1, 10000.0);
@@ -132,36 +134,13 @@ begin
   glLoadIdentity;
 end;
 
-procedure gleOrthoUpdateMatrixProc(Width, Height: Integer);
+procedure gleOrthoMatrix(Width, Height: Integer);
 begin
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity;
-  glOrtho(0, 800, 600, 0, -1, 1);
+  glOrtho(0, Width, Height, 0, -1, 1);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity;
-end;
-
-procedure gleInvokeUpdateMatrixMethod(Width, Height: Integer);
-begin
-  UpdateMatrixMethod(Width, Height);
-end;
-
-procedure gleSetUpdateMatrixProc(Proc: TUpdateMatrixProc);
-begin
-  UpdateMatrixProc:=Proc;
-end;
-
-procedure gleSetUpdateMatrixMethod(Method: TUpdateMatrixMethod);
-begin
-  gleSetUpdateMatrixProc(gleInvokeUpdateMatrixMethod);
-  UpdateMatrixMethod:=Method;
-end;
-
-procedure gleResizeWnd(Width, Height: Integer);
-begin
-//  LogF('gleResizeWnd: width=%d, height=%d', [Width, Height]);
-  if Height=0 then Height:=1;
-  glViewport(0, 0, Width, Height);
 end;
 
 function gleError(GLError: Cardinal): string;
@@ -362,8 +341,6 @@ if not TeXTurinG then glEnable(GL_TEXTURE_2D);
 end; }
 
 initialization
-
-  gleSetUpdateMatrixProc(gleDefaultUpdateMatrixProc);
 
 finalization
 

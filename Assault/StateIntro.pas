@@ -47,8 +47,7 @@ begin
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
   glEnable(GL_COLOR_MATERIAL);
-  gleSetUpdateMatrixProc(gleOrthoUpdateMatrixProc);
-  gleOrthoUpdateMatrixProc(0, 0);
+  gleOrthoMatrix(800, 600);
   Result:=50;
 end;
 

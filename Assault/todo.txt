@@ -1,1 +1,11 @@
 Консоль: оптимизировать SplitLine; сделать хелп по тэгам (?); сделать отображение текущей позиции при прокрутке.
+Ядро: вынести в отдельный файл настройки типа BaseDir, LoadFonts, AutoExec, etc
+Недоделанные модули:
+ * Shaders (больше перезагрузок для метода Value у TShaderAttrib & TShaderUniform)
+ * Terrain (на сейчас это пустышка)
+ * Textures (загрузка текстур через OLE кодеки)
+ * UConsoleCariables (больше типов переменных, хотя бы Float, Text, Bool)
+ * USound (недоделан TSound & TSoundChannel, сделать другие наследники TChannel, вероятно изменить интерфейс, чтобы было меньше завязок на BASS)
+ * UVBO (вообще пустой)
+ * UGUI (сделать TGUIWidget)
+ * CollisionCheck (больше функций)

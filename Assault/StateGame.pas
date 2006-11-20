@@ -87,7 +87,7 @@ begin
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
-  gleDefaultUpdateMatrixProc(Game.ResX, Game.ResY);
+  glePerspectiveMatrix(Game.ResX, Game.ResY);
   glLightfv(GL_LIGHT0, GL_POSITION, @LightPos);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, @LightDiffuse);
   glLightfv(GL_LIGHT0, GL_SPECULAR, @LightSpecular);
@@ -105,7 +105,7 @@ begin
   glEnable(GL_COLOR_MATERIAL);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
-  gleOrthoUpdateMatrixProc(0, 0);
+  gleOrthoMatrix(800, 600);
   glColor4d(0, 1, 0, 1);
   S:='FPS: '+IntToStr(Game.FPS);
   gleWrite(800-gleTextWidth(S), 5, S);
@@ -131,7 +131,6 @@ end;
 function TStateGame.Activate: Cardinal;
 begin
   glClearColor(0, 0, 0, 1);
-  gleSetUpdateMatrixProc(gleDefaultUpdateMatrixProc);
   Result:=20;
 end;
 
