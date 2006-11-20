@@ -3964,7 +3964,7 @@ type
     Handle: Integer;
     Mode: Integer;
     RecSize: Cardinal;
-    Private: array[1..28] of Byte;
+    _Private: array[1..28] of Byte;
     UserData: array[1..32] of Byte;
     Name: array[0..259] of Char;
   end;
