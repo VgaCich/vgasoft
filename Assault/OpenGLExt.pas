@@ -200,7 +200,7 @@ begin
   for i:=0 to 255 do
   begin
     X:=(i mod 16) / 16;
-    Y:=(i div 16) / 16;
+    Y:=(i div 16) / 16 + 0.005;
     glNewList(Fonts[FI].FontBase+i, GL_COMPILE);
     glBegin(GL_QUADS);
       XS:=(16-Fonts[FI].FontWidth[i])/512;
@@ -208,9 +208,9 @@ begin
       glVertex2i(0, 0);
       glTexCoord2f(X+XS+Fonts[FI].FontWidth[i]/256 + 1/512, 1-Y);
       glVertex2i(Fonts[FI].FontWidth[i], 0);
-      glTexCoord2f(X+XS+Fonts[FI].FontWidth[i]/256 + 1/512, 0.9375-Y);
+      glTexCoord2f(X+XS+Fonts[FI].FontWidth[i]/256 + 1/512, 0.9425-Y);
       glVertex2i(Fonts[FI].FontWidth[i], 16);
-      glTexCoord2f(X+XS, 0.9375-Y);
+      glTexCoord2f(X+XS, 0.9425-Y);
       glVertex2i(0, 16);
     glEnd;
     glTranslatef(Fonts[FI].FontWidth[i]+1, 0, 0);
