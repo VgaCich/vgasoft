@@ -1596,6 +1596,8 @@ type
     constructor CreateNew(Width, Height: Integer);
     constructor CreateNewDIB(Width, Height: Integer; PixelFormat: TPixelFormat);
 
+    destructor Destroy; override;
+
     function Assign(Bitmap: TBitmap): Boolean;
     function ReleaseHandle: HBitmap;
 
@@ -3885,7 +3887,8 @@ function DateTimeToStr(D: TDateTime): String;
 function FormatDateTime(const Format: string; DateTime: TDateTime): string; //27.07.03
 function DateTimeToStrShort(D: TDateTime): String;
 function TimeToStr(D: TDateTime): String;
-//function DateToStr( const Fmt: String; D: TDateTime ): String;
+function DateToStr(D: TDateTime): String; overload;
+function DateToStr( const Fmt: String; D: TDateTime ): String; overload;
 procedure Delay(mSec:Integer);  //vb
 function EncodeTime(Hour, Min, Sec, MSec: Word): TDateTime;
 procedure DecodeTime(Time: TDateTime; var Hour, Min, Sec, MSec: Word);
@@ -8852,6 +8855,14 @@ begin
     DateTime := DateTime - Abs(Frac(NewTime));
 end;
 
+function DateToStr(D: TDateTime): String;
+var
+  ST: TSystemTime;
+begin
+  DateTimeToSystemTime(D, ST);
+  Result := SystemDateToStr(ST, LOCALE_USER_DEFAULT, dfShortDate, nil);
+end;
+
 function DateToStr(const Fmt: String; D: TDateTime): String;
 var
   ST: TSystemTime;
@@ -11505,6 +11516,7 @@ end;
 
 destructor TStringList.Destroy;
 begin
+  Clear;
   FreeMem(FList, FCapacity);
 end;
 
@@ -18070,6 +18082,12 @@ begin
     fDIBBits := AllocMem( fDIBSize );
     ASSERT( fDIBBits <> nil, 'No memory' );
   end;
+end;
+
+destructor TBitmap.Destroy;
+begin
+  Clear;
+  inherited Destroy;
 end;
 
 procedure TBitmap.DrawStretch(DC: HDC; const Rect: TRect);

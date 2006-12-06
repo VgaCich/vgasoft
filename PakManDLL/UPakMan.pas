@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------//
 //                                                                            //
-// UPakMan.pas 1.3.0, 20.11.2006; 2:00                                        //
+// UPakMan.pas 1.3.1, 06.12.2006; 17:30                                       //
 //                                                                            //
 // VSE Package Manager 1.3.0                                                  //
 //                                                                            //
@@ -128,7 +128,7 @@ type
 
 var
   Index: TDirInfo;
-  BaseDir: string;
+  BaseDir, FindResultBuffer: string;
   OpenedFiles: array of TPakFile;
 
 procedure Log(const S: string);
@@ -589,12 +589,16 @@ begin
   Index:=TDirInfo.Create('');
   SetLength(OpenedFiles, 8);
   Paks:=TStringList.Create;
-  if FindFirst(UPakMan.BaseDir+PakMask, 0, SR)=0 then
-    repeat Paks.Add(SR.Name);
-    until FindNext(SR)<>0;
-  FindClose(SR);
-  Paks.Sort;
-  for i:=0 to Paks.Count-1 do LoadPak(UPakMan.BaseDir+Paks[i]);
+  try
+    if FindFirst(UPakMan.BaseDir+PakMask, 0, SR)=0 then
+      repeat Paks.Add(SR.Name);
+      until FindNext(SR)<>0;
+    FindClose(SR);
+    Paks.Sort;
+    for i:=0 to Paks.Count-1 do LoadPak(UPakMan.BaseDir+Paks[i]);
+  finally
+    FAN(Paks);
+  end;
   Index.ReadDir(UPakMan.BaseDir);
 end;
 
@@ -606,6 +610,8 @@ begin
   for i:=0 to Length(OpenedFiles)-1 do
     if OpenedFiles[i].Exists then PakCloseFile(i);
   Finalize(OpenedFiles);
+  BaseDir:='';
+  FindResultBuffer:='';
 end;
 
 function PakOpenFile(Name: PChar; Flags: Cardinal): Cardinal;
@@ -727,7 +733,8 @@ begin
       S:=Tok(Sep, Path);
     end;
     Find(Dir, PakExtractFilePath(Mask));
-    Result:=PChar(List.Text);
+    FindResultBuffer:=List.Text;
+    Result:=PChar(FindResultBuffer);
   finally
     FAN(M);
     FAN(List);
@@ -938,5 +945,11 @@ begin
     fsPakStore: Result:=StorePosition(OpenedFiles[F].Data);
   end;
 end;
+
+initialization
+
+finalization
+
+PakFree;
 
 end.
