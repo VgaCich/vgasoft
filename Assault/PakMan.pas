@@ -292,12 +292,16 @@ begin
   FIndex:=TDirInfo.Create('');
   FOpenedFiles:=TList.Create;
   Paks:=TStringList.Create;
-  if FindFirst(FBaseDir+PakMask, 0, SR)=0 then
-    repeat Paks.Add(SR.Name);
-    until FindNext(SR)<>0;
-  FindClose(SR);
-  Paks.Sort;
-  for i:=0 to Paks.Count-1 do LoadPak(FBaseDir+Paks[i]);
+  try
+    if FindFirst(FBaseDir+PakMask, 0, SR)=0 then
+      repeat Paks.Add(SR.Name);
+      until FindNext(SR)<>0;
+    FindClose(SR);
+    Paks.Sort;
+    for i:=0 to Paks.Count-1 do LoadPak(FBaseDir+Paks[i]);
+  finally
+    FAN(Paks);
+  end;
   FIndex.ReadDir(FBaseDir);
 end;
 

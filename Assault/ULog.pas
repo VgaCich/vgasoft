@@ -19,9 +19,11 @@ implementation
 
 var
   LogFile: TextFile;
+  CanLog: Boolean;
 
 procedure Log(Level: TLogLevel; const S: string);
 begin
+  if not CanLog then Exit;
   case Level of
     llInfo: begin
               WriteLn(LogFile, '['+DateTimeToStr(Now)+'] '+S);
@@ -46,6 +48,7 @@ end;
 
 procedure LogRaw(const S: string);
 begin
+  if not CanLog then Exit;
   WriteLn(LogFile, S);
   {$IFDEF VSEDEBUG}Flush(LogFile);{$ENDIF};
   if Console<>nil then Console.AddToConsole(S);
@@ -58,6 +61,7 @@ end;
 
 procedure LogNC(Level: TLogLevel; const S: string);
 begin
+  if not CanLog then Exit;
   case Level of
     llInfo: WriteLn(LogFile, '['+DateTimeToStr(Now)+'] '+S);
     llWarning: WriteLn(LogFile, '['+DateTimeToStr(Now)+'] Warning: '+S);
@@ -75,6 +79,7 @@ end;
 
 procedure LogRawNC(const S: string);
 begin
+  if not CanLog then Exit;
   WriteLn(LogFile, S);
   {$IFDEF VSEDEBUG}Flush(LogFile);{$ENDIF}
 end;
@@ -83,9 +88,11 @@ initialization
 
 AssignFile(LogFile, ChangeFileExt(FullExeName, '.log'));
 ReWrite(LogFile);
+CanLog:=true;
 
 finalization
 
+CanLog:=false;
 Flush(LogFile);
 CloseFile(LogFile);
 

@@ -8,10 +8,12 @@ uses
 
 procedure VSEStart(const ACaption, AVersion: string);
 
+const
+  VSECaptVer='VgaSoft Engine 0.1';
+
 implementation
 
 const
-  VSECaptVer='VgaSoft Engine 0.1';
   WndClassName: PChar = 'VSENGINE';
   WM_XBUTTONDOWN=$20B;
   WM_XBUTTONUP=$20C;
@@ -20,7 +22,7 @@ var
   WndClass: TWndClass;
   Handle: THandle;
   Msg: TMsg;
-  Fin, Initializing: Boolean;
+  Fin, Initializing, Quitting: Boolean;
 
 function WndProc(hWnd: HWND; Msg: UINT; wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;
 var
@@ -30,7 +32,7 @@ begin
   case (Msg) of
     WM_ACTIVATE:
       begin
-        if Initializing or (Game<>nil) then Exit;
+        if Initializing or Quitting or (Game<>nil) then Exit;
         Log(llInfo, 'Creating engine');
         {$IFDEF VSEDEBUG}Log(llInfo, 'Debug mode');{$ENDIF}
         Game:=TGame.Create(Handle, Initializing);
@@ -57,6 +59,7 @@ begin
       begin
         if Game.Fullscreen then gleGoBack;
         FAN(Game);
+        Quitting:=true;
         LogNC(llInfo, 'Engine destroyed');
         Result:=0;
         PostQuitMessage(0);
@@ -100,6 +103,7 @@ begin
   Log(llInfo, VSECaptVer);
   Initializing:=false;
   Fin:=false;
+  Quitting:=false;
   ZeroMemory(@WndClass, SizeOf(WndClass));
   with WndClass do
   begin

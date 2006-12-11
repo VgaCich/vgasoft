@@ -4,20 +4,22 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures, PakMan,
-  GameStates, UConsole, Unit3DS, ULog, ConsoleSound, Shaders, Terrain;
+  GameStates, UConsole, Unit3DS, ULog, ConsoleSound, Shaders, Terrain, StateMenu, UGUI;
 
 type
   TStateGame=class(TGameState)
   private
     FText: string;
     FAngle: Single;
-    FMenu: Boolean;
+    FButtonMenu: TMenuButton;
+    FGUI: TGUI;
     FModel: T3DModel;
     FConsoleSound: TConsoleSound;
 //    FShader: TShader;
 //    FTerrain: TTerrain;
-    function GetName: string; override;
+    function  GetName: string; override;
     function  SetModel(const Args: string): Boolean;
+    procedure MenuClick(Sender: TObject);
   public
     constructor Create;
     destructor Destroy; override;
@@ -28,6 +30,7 @@ type
     procedure Resume; override;
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
     procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
+    procedure CharEvent(C: Char); override;
   end;
 
 implementation
@@ -43,6 +46,11 @@ begin
   Console.RegisterCommand('setmodel', '', SetModel);
   FAngle:=0;
   FConsoleSound:=TConsoleSound.Create;
+  FGUI:=TGUI.Create(800, 600);
+  FButtonMenu:=TMenuButton.Create(Rect(745, 575, 795, 595), nil, 'Menu');
+  FButtonMenu.OnClick:=MenuClick;
+  FGUI.AddForm(FButtonMenu);
+  FGUI.GrabFocus(FButtonMenu);
 {  FShader:=TShader.Create;
   F:=Game.PakMan.OpenFile('Bump2.shd', ofNoCreate);
   try
@@ -66,6 +74,7 @@ destructor TStateGame.Destroy;
 begin
 //  FAN(FTerrain);
 //  FAN(FShader);
+  FAN(FGUI);
   FAN(FModel);
   FAN(FConsoleSound);
   inherited Destroy;
@@ -110,20 +119,12 @@ begin
   S:='FPS: '+IntToStr(Game.FPS);
   gleWrite(800-gleTextWidth(S), 5, S);
   gleWrite(5, 580, FText);
-  if FMenu
-    then glColor3d(0, 1, 1)
-    else glColor3d(0, 1, 0);
-  gleWrite(755, 580, 'Menu');
+  FGUI.Draw;
 end;
 
 procedure TStateGame.Update;
-var
-  Pos: TPoint;
 begin
-  GetCursorPos(Pos);
-  Pos.X:=Pos.X*800 div Game.ResX;
-  Pos.Y:=Pos.Y*600 div Game.ResY;
-  FMenu:=(Pos.X>750) and (Pos.Y>580);
+  FGUI.Update;
   FAngle:=FAngle+0.2;
   if FAngle>360 then FAngle:=FAngle-360;
 end;
@@ -149,12 +150,18 @@ const
   Events: array[TMouseEvent] of string=('Down', 'Up', 'Move', 'Wheel');
 begin
   FText:=Format('Button: %d, Event: %s, X=%d, Y=%d', [Button, Events[Event], X, Y]);
-  if FMenu and (Button=1) and (Event=meUp) then Game.SwitchState(Game.FindState('Menu'));
+  FGUI.MouseEvent(Button, Event, X, Y);
 end;
 
 procedure TStateGame.KeyEvent(Button: Integer; Event: TKeyEvent);
 begin
   if (Button=192) and (Event=keUp) then Game.SwitchState(Game.FindState('Console'));
+  FGUI.KeyEvent(Button, Event);
+end;
+
+procedure TStateGame.CharEvent(C: Char);
+begin
+  FGUI.CharEvent(C);
 end;
 
 function TStateGame.GetName: string;
@@ -174,6 +181,11 @@ begin
     Game.PakMan.CloseFile(ModelData);
   end;
   Result:=true;
+end;
+
+procedure TStateGame.MenuClick(Sender: TObject);
+begin
+  Game.SwitchState(Game.FindState('Menu'));
 end;
 
 end.

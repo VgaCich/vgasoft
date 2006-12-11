@@ -34,7 +34,7 @@ type
 
 implementation
 
-uses UGame;
+uses UGame, VSEMain;
 
 const
   Prompt='>';
@@ -154,7 +154,7 @@ begin
   glEnd;
   glColor4f(0, 1, 0, 0.3);
   gleSelectFont('Console');
-  gleWrite(650, 280, 'VS '+CaptionVer);
+  gleWrite(800-gleTextWidth(VSECaptVer), 280, VSECaptVer);
   CurColor:=DefaultColor;
   glColor4fv(@CurColor);
   CurConLine:=0;
