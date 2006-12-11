@@ -23,7 +23,6 @@ implementation
 procedure TGUIButtonBase.EventHandler(Event: TRegionEvent; Button, X, Y, Tag: Integer);
 begin
   inherited EventHandler(Event, Button, X, Y, Tag);
-  FParentGUI.GrabFocus(Self);
   if (Event=reKeyDown) and ((Button=VK_SPACE) or (Button=VK_RETURN)) then
   begin
     Event:=reMouseClick;
@@ -31,6 +30,7 @@ begin
   end;
   if Event=reMouseClick then
   begin
+    FParentGUI.GrabFocus(Self);
     if (Button=1) and Assigned(FOnClick) then FOnClick(Self);
     if Assigned(FOnButtonClick) then FOnButtonClick(Self, Button);
   end;
