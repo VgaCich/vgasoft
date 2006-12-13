@@ -3,8 +3,9 @@ unit UGame;
 interface
 
 uses
-  Windows, Messages, MMSystem, AvL, avlUtils, dglOpenGL, OpenGLExt, Textures, PakMan,
-  GameStates, UConsole, UConsoleVariables, ULog, SysInfo, USound;
+  Windows, Messages, MMSystem, AvL, avlUtils, dglOpenGL, OpenGLExt, Textures,
+  VSEConfig, PakMan, GameStates, UConsole, UConsoleVariables, ULog,
+  {$IFNDEF VSE_NOSOUND}USound, {$ENDIF} SysInfo;
 
 type
   TGame=class
@@ -23,7 +24,7 @@ type
     FConfig: TIniFile;
     FKeyState: TKeyboardState;
     FPakMan: TPakMan;
-    FSound: TSound;
+    {$IFNDEF VSE_NOSOUND}FSound: TSound;{$ENDIF}
     procedure SetFullscreen(Value: Boolean);
     procedure SetState(Value: Cardinal);
     function  GetKeyPressed(Index: Byte): Boolean;
@@ -70,7 +71,7 @@ type
     property CurState: TGameState read FCurState;
     property FPS: Cardinal read FFPS;
     property PakMan: TPakMan read FPakMan;
-    property Sound: TSound read FSound;
+    {$IFNDEF VSE_NOSOUND}property Sound: TSound read FSound;{$ENDIF}
     property UpdateInterval: Cardinal read FUpdInt write FUpdInt;
     property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold;
   end;
@@ -79,10 +80,6 @@ function GetCursorPos(var lpPoint: TPoint): Boolean;
 
 var
   Game: TGame;
-  Caption, Version, CaptionVer: string;
-
-const
-  BaseDir='Data';
 
 implementation
 
@@ -127,12 +124,12 @@ end;
 
 destructor TGame.Destroy;
 var
-  GSI: Cardinal;
+  GSI: Integer;
 begin
   SaveSettings;
   for GSI:=0 to High(FStates) do
     FAN(FStates[GSI]);
-  FAN(FSound);
+  {$IFNDEF VSE_NOSOUND}FAN(FSound);{$ENDIF}
   FAN(FPakMan);
   gleFreeFonts;
   wglMakeCurrent(FDC, 0);
@@ -148,7 +145,7 @@ end;
 
 procedure TGame.StartEngine;
 begin
-  FConfig:=TIniFile.Create(ExePath+'Assault.ini');
+  FConfig:=TIniFile.Create(ChangeFileExt(FullExeName, '.ini'));
   FResX:=FConfig.ReadInteger('Settings', 'ResX', 800);
   FResY:=FConfig.ReadInteger('Settings', 'ResY', 600);
   FRefresh:=FConfig.ReadInteger('Settings', 'Refresh', 60);
@@ -171,7 +168,7 @@ begin
   glEnable(GL_NORMALIZE);
   FPakMan:=TPakMan.Create(ExePath+BaseDir);
   Console.PakMan:=FPakMan;
-  FSound:=TSound.Create(FConfig.ReadString('Settings', 'SoundDevice', 'Default'));
+  {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(FConfig.ReadString('Settings', 'SoundDevice', 'Default'));{$ENDIF}
   LoadFonts;
   FFPSTimer:=timeSetEvent(1000, 0, @UpdateFPS, 0, TIME_PERIODIC);
   RegisterCommands;
@@ -190,7 +187,7 @@ begin
   FConfig.WriteInteger('Settings', 'Depth', FDepth);
   FConfig.WriteBool('Settings', 'Fullscreen', FFullscreen);
   FConfig.WriteInteger('Settings', 'VSync', FVSync);
-  FConfig.WriteString('Settings', 'SoundDevice', Sound.DeviceName);
+  {$IFNDEF VSE_NOSOUND}FConfig.WriteString('Settings', 'SoundDevice', Sound.DeviceName);{$ENDIF}
 end;
 
 procedure TGame.Update;
@@ -203,7 +200,7 @@ begin
   begin
     Log(llInfo, 'Minimized');
     FMinimized:=True;
-    Sound.Pause;
+    {$IFNDEF VSE_NOSOUND}Sound.Pause;{$ENDIF}
     if FFullscreen then gleGoBack;
     SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
   end;
@@ -236,7 +233,7 @@ begin
   if FFullscreen then gleGoFullscreen(ResX, ResY, Refresh, FDepth);
   FMinimized:=false;
   if FCurState<>nil then FCurState.Resume;
-  Sound.Start;
+  {$IFNDEF VSE_NOSOUND}Sound.Start;{$ENDIF}
 end;
 
 procedure TGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);

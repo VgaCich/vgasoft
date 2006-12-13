@@ -4,12 +4,9 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, UGame, GameStates,
-  OneInstance, ULog, UConsole, States;
+  OneInstance, ULog, UConsole, VSEConfig;
 
-procedure VSEStart(const ACaption, AVersion: string);
-
-const
-  VSECaptVer='VgaSoft Engine 0.1';
+procedure VSEStart;
 
 implementation
 
@@ -39,8 +36,15 @@ begin
         Game.StartEngine;
         Log(llInfo, 'Engine created');
         Game.SetResolution(Game.ResX, Game.ResY, Game.Refresh, false);
-        InitStates;
-        Console.ExecCommand('/exec autoexec');
+        Log(llInfo, 'Init states');
+        if Assigned(InitStates)
+          then InitStates
+          else begin
+            Log(llError, 'InitStates() not initialized');
+            Game.StopEngine;
+            Exit;
+          end;
+        if DoAutoexec then Console.ExecCommand('/exec autoexec');
       end;
     WM_KEYUP: Game.KeyEvent(wParam, keUp);
     WM_KEYDOWN: Game.KeyEvent(wParam, keDown);
@@ -93,11 +97,9 @@ begin
   end;
 end;
 
-procedure VSEStart(const ACaption, AVersion: string);
+procedure VSEStart;
 begin
-  Caption:=ACaption;
-  Version:=AVersion;
-  CaptionVer:=Caption+' '+Version;
+  if CaptionVer='' then CaptionVer:=Caption+' '+Version;
   if IsRunning(Caption) then Exit;
   Log(llInfo, CaptionVer+' started');
   Log(llInfo, VSECaptVer);
@@ -150,8 +152,6 @@ begin
           else if GetForegroundWindow=Handle
             then Game.Resume;
   end;
-  if not UnregisterClass(WndClassName, hInstance)
-    then LogNC(llError, 'Failed to unregister window class');
 end;
 
 end.

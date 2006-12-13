@@ -115,7 +115,7 @@ AutoIncBuild=1
 MajorVer=0
 MinorVer=1
 Release=0
-Build=8
+Build=9
 Debug=0
 PreRelease=0
 Special=0
@@ -126,7 +126,7 @@ CodePage=1251
 [Version Info Keys]
 CompanyName=VgaSoft
 FileDescription=VS Assault game
-FileVersion=0.1.0.8
+FileVersion=0.1.0.9
 InternalName=
 LegalCopyright=(c) VgaSoft, 2004-2006
 LegalTrademarks=
@@ -137,9 +137,11 @@ Comments=www.vgasoft.narod.ru
 [Excluded Packages]
 c:\delphi\Projects\Bpl\mckEnhCombos.bpl=MCK Enhanced ComboBoxes
 [HistoryLists\hlConditionals]
-Count=2
-Item0=VSEDEBUG
-Item1=Debug
+Count=4
+Item0=VSE_NOSOUND
+Item1=VSE_DEBUG;VSE_NOSOUND
+Item2=VSEDEBUG
+Item3=Debug
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;

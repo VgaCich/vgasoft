@@ -34,7 +34,7 @@ type
 
 implementation
 
-uses UGame, VSEMain;
+uses UGame, VSEConfig;
 
 const
   Prompt='>';

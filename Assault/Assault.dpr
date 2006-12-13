@@ -3,12 +3,12 @@ program Assault;
 {$R *.res}
 
 uses
-  SysSfIni, VSEMain;
-
-const
-  Caption='Assault';
-  Version='0.1';
+  SysSfIni,{ FastMM4,} VSEConfig, VSEMain, States;
 
 begin
-  VSEStart(Caption, Version);
+  VSEConfig.InitStates:=States.InitStates;
+  Caption:='Assault';
+  Version:='0.1';
+  CaptionVer:=Caption+' '+Version;
+  VSEStart;
 end.

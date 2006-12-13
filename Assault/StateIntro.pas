@@ -22,7 +22,7 @@ type
 
 implementation
 
-uses UGame;
+uses UGame,VSEConfig;
 
 procedure TStateIntro.Draw;
 begin
