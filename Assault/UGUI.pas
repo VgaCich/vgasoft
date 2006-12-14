@@ -23,6 +23,7 @@ type
     FDestroying: Boolean;
     FParent: TGUIWidget;
     FParentGUI: TGUI;
+    FWidgetLast, FRegionLast: TMouseButtons;
     FWidgets: TList;
     FRegions: array of TRegion;
     procedure SetRect(ARect: TRect);
@@ -87,6 +88,12 @@ begin
   FRegionActive:=-1;
   FWidgetLastActive:=-1;
   FRegionLastActive:=-1;
+  FRegionLast[0]:=-1;
+  FRegionLast[1]:=-1;
+  FRegionLast[2]:=-1;
+  FWidgetLast[0]:=-1;
+  FWidgetLast[1]:=-1;
+  FWidgetLast[2]:=-1;
   if Assigned(FParent) then FParent.AddWidget(Self);
 end;
 
@@ -187,6 +194,16 @@ begin
   Region:=RegionAt(Cursor);
   case Event of
     reMouseEnter, reMouseDown, reMouseUp, reMouseClick, reMouseWheel: begin
+      if (Event=reMouseDown) and (Button>=0) and (Button<3) then
+      begin
+        FWidgetLast[Button]:=Widget;
+        FRegionLast[Button]:=Region;
+      end;
+      if Event=reMouseClick then
+      begin
+        if Widget<>FWidgetLast[Button] then Widget:=-1;
+        if Region<>FRegionLast[Button] then Region:=-1;
+      end;
       SendEvent(Region, Widget, Event, Button, X, Y);
       if Event=reMouseEnter then SetActive(Region, Widget);
     end;
