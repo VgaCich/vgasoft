@@ -13,7 +13,6 @@ type
     Rect: TRect;
     Handler: TRegionHandler;
     Tag: Integer;
-    MouseIn, Exist: Boolean;
   end;
   TMouseButtons=array[0..2] of Integer;
   TGUI=class;
@@ -215,9 +214,13 @@ end;
 
 procedure TGUIWidget.DrawWidget;
 var
-  i: Integer;
+  i, X, Y, W, H: Integer;
 begin
-  glScissor(Rect.Left, Rect.Top, Rect.Right-Rect.Left, Rect.Bottom-Rect.Top);
+{  X:=Round(Rect.Left/FParentGUI.FVSW*Game.ResX);
+  W:=Round((Rect.Right-Rect.Left)/FParentGUI.FVSW*Game.ResX);
+  Y:=Round((FParentGUI.FVSH-Rect.Bottom)/FParentGUI.FVSH*Game.ResY);
+  H:=Round((Rect.Bottom-Rect.Top)/FParentGUI.FVSH*Game.ResY);
+  glScissor(X, Y, W, H); }
   Draw;
   for i:=0 to FWidgets.Count-1 do
     TGUIWidget(FWidgets[i]).DrawWidget;
@@ -298,7 +301,7 @@ begin
   glPushMatrix;
   glPushAttrib(GL_ALL_ATTRIB_BITS);
   gleOrthoMatrix(FVSW, FVSH);
-  glEnable(GL_SCISSOR_TEST);
+//  glEnable(GL_SCISSOR_TEST);
   for i:=0 to FForms.Count-1 do TGUIWidget(FForms[i]).DrawWidget;
   glPopAttrib;
   glPopMatrix;

@@ -41,6 +41,19 @@ type
     constructor Create(Rect: TRect; Parent: TGUIWidget; Caption: string);
     property Caption: string read FCaption write FCaption;
   end;
+  TMenuForm=class(TGUIWidget)
+  private
+    FHilightClose, FDownClose: Boolean;
+    FCaption: string;
+  protected
+    procedure AdjustRect(ARect: TRect); override;
+    procedure EventHandler(Event: TRegionEvent; Button, X, Y, Tag: Integer); override;
+    procedure HandleClose(Event: TRegionEvent; Button, X, Y, Tag: Integer);
+    procedure Draw; override;
+  public
+    constructor Create(Rect: TRect; Parent: TGUIWidget; Caption: string);
+    property Caption: string read FCaption write FCaption;
+  end;
 
 implementation
 
@@ -50,27 +63,25 @@ constructor TStateMenu.Create;
 var
   Tex: TStream;
   Btn: TMenuButton;
+  Frm: TMenuForm;
 begin
   inherited Create;
   Tex:=Game.PakMan.OpenFile('Cursor.tga', ofNoCreate);
   FCurTex:=LoadTexture(Tex, tfTGA, false, GL_NEAREST, GL_NEAREST);
   Game.PakMan.CloseFile(Tex);
   FMenu:=TGUI.Create(800, 600);
-  Btn:=TMenuButton.Create(Rect(350, 170, 450, 200), nil, 'Intro');
+  Frm:=TMenuForm.Create(Rect(300, 130, 500, 430), nil, 'Assault 0.1');
+  Btn:=TMenuButton.Create(Rect(350, 170, 450, 200), Frm, 'Intro');
   Btn.OnClick:=IntroClick;
-  FMenu.AddForm(Btn);
-  Btn:=TMenuButton.Create(Rect(350, 220, 450, 250), nil, 'Load');
+  Btn:=TMenuButton.Create(Rect(350, 220, 450, 250), Frm, 'Load');
   Btn.OnClick:=LoadClick;
-  FMenu.AddForm(Btn);
-  Btn:=TMenuButton.Create(Rect(350, 270, 450, 300), nil, 'Game');
+  Btn:=TMenuButton.Create(Rect(350, 270, 450, 300), Frm, 'Game');
   Btn.OnClick:=GameClick;
-  FMenu.AddForm(Btn);
-  Btn:=TMenuButton.Create(Rect(350, 320, 450, 350), nil, 'Console');
+  Btn:=TMenuButton.Create(Rect(350, 320, 450, 350), Frm, 'Console');
   Btn.OnClick:=ConsoleClick;
-  FMenu.AddForm(Btn);
-  Btn:=TMenuButton.Create(Rect(350, 370, 450, 400), nil, 'Exit');
+  Btn:=TMenuButton.Create(Rect(350, 370, 450, 400), Frm, 'Exit');
   Btn.OnClick:=ExitClick;
-  FMenu.AddForm(Btn);
+  FMenu.AddForm(Frm);
 end;
 
 destructor TStateMenu.Destroy;
@@ -210,15 +221,14 @@ end;
 
 procedure TMenuButton.Draw;
 begin
-  glDisable(GL_SCISSOR_TEST);
   glDisable(GL_LIGHTING);
   glEnable(GL_LINE_SMOOTH);
   glEnable(GL_POINT_SMOOTH);
   glEnable(GL_BLEND);
   glDisable(GL_TEXTURE_2D);
-  glLineWidth(4);
-  glPointSize(4);
-  glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
+  glLineWidth(2);
+  glPointSize(2);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_COLOR_MATERIAL);
   if FHilight
     then glColor3d(1, 0.5, 0.5)
@@ -248,9 +258,96 @@ begin
     then glColor3d(0, 1, 0)
     else glColor3d(0, 0.7, 0);
   gleWrite(Mean([FRect.Left, FRect.Right])-gleTextWidth(FCaption)/2, Mean([FRect.Top, FRect.Bottom])-8, FCaption);
-  glEnable(GL_SCISSOR_TEST);
-  glClearColor(1, 0, 0, 1);
-  glClear(GL_COLOR_BUFFER_BIT);
+end;
+
+constructor TMenuForm.Create(Rect: TRect; Parent: TGUIWidget; Caption: string);
+begin
+  inherited Create(Rect, Parent);
+  FCaption:=Caption;
+  SetLength(FRegions, 1);
+  FRegions[0].Rect:=AvL.Rect(Rect.Right-20, Rect.Top+5, Rect.Right-5, Rect.Top+20);
+  FRegions[0].Handler:=HandleClose;
+end;
+
+procedure TMenuForm.AdjustRect(ARect: TRect);
+begin
+  inherited AdjustRect(ARect);
+  FRegions[0].Rect:=AvL.Rect(FRect.Right-20, FRect.Top+5, FRect.Right-5, FRect.Top+20);
+end;
+
+procedure TMenuForm.EventHandler(Event: TRegionEvent; Button, X, Y, Tag: Integer);
+begin
+  inherited;
+end;
+
+procedure TMenuForm.HandleClose(Event: TRegionEvent; Button, X, Y, Tag: Integer);
+begin
+  case Event of
+    reMouseEnter: FHilightClose:=true;
+    reMouseLeave: begin
+      FHilightClose:=false;
+      FDownClose:=false;
+    end;
+    reMouseDown: FDownClose:=true;
+    reMouseUp: FDownClose:=false;
+    reMouseClick: if Button=1 then Game.StopEngine;
+  end;
+end;
+
+procedure TMenuForm.Draw;
+begin
+  glDisable(GL_LIGHTING);
+  glEnable(GL_LINE_SMOOTH);
+  glEnable(GL_POINT_SMOOTH);
+  glEnable(GL_BLEND);
+  glDisable(GL_TEXTURE_2D);
+  glLineWidth(1);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_COLOR_MATERIAL);
+  glBegin(GL_QUADS);
+    glColor3d(0.5, 1, 0.5);
+    glVertex2d(FRect.Left, FRect.Top);
+    glVertex2d(FRect.Right, FRect.Top);
+    glVertex2d(FRect.Right, FRect.Bottom);
+    glVertex2d(FRect.Left, FRect.Bottom);
+    glColor3d(0, 1, 0.5);
+    glVertex2d(FRect.Left, FRect.Top);
+    glVertex2d(FRect.Right, FRect.Top);
+    glVertex2d(FRect.Right, FRect.Top+25);
+    glVertex2d(FRect.Left, FRect.Top+25);
+  glEnd;
+  glColor3d(1, 1, 0);
+  glBegin(GL_LINE_LOOP);
+    glVertex2d(FRect.Left, FRect.Top);
+    glVertex2d(FRect.Right, FRect.Top);
+    glVertex2d(FRect.Right, FRect.Bottom);
+    glVertex2d(FRect.Left, FRect.Bottom);
+  glEnd;
+  glColor3d(1, 1, 0);
+  gleWrite(FRect.Left+5, FRect.Top+5, FCaption);
+  if FHilightClose
+    then glColor3d(1, 0, 0)
+    else glColor3d(0.8, 0, 0);
+  if FDownClose then glColor3d(1, 0.2, 0.2);
+  glBegin(GL_QUADS);
+    glVertex2d(FRegions[0].Rect.Left, FRegions[0].Rect.Top);
+    glVertex2d(FRegions[0].Rect.Right, FRegions[0].Rect.Top);
+    glVertex2d(FRegions[0].Rect.Right, FRegions[0].Rect.Bottom);
+    glVertex2d(FRegions[0].Rect.Left, FRegions[0].Rect.Bottom);
+  glEnd;
+  glColor3d(0, 0, 0);
+  glBegin(GL_LINE_LOOP);
+    glVertex2d(FRegions[0].Rect.Left, FRegions[0].Rect.Top);
+    glVertex2d(FRegions[0].Rect.Right, FRegions[0].Rect.Top);
+    glVertex2d(FRegions[0].Rect.Right, FRegions[0].Rect.Bottom);
+    glVertex2d(FRegions[0].Rect.Left, FRegions[0].Rect.Bottom);
+  glEnd;
+  glBegin(GL_LINES);
+    glVertex2d(FRegions[0].Rect.Left+2, FRegions[0].Rect.Top+2);
+    glVertex2d(FRegions[0].Rect.Right-2, FRegions[0].Rect.Bottom-2);
+    glVertex2d(FRegions[0].Rect.Right-2, FRegions[0].Rect.Top+2);
+    glVertex2d(FRegions[0].Rect.Left+2, FRegions[0].Rect.Bottom-2);
+  glEnd;
 end;
 
 end.
