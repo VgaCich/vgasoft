@@ -9,7 +9,7 @@ type
   TMainForm=class(TForm)
     LSrc, LDest: TLabel;
     ESrc, EDest: TEdit;
-    CAll: TCheckBox;
+    CAll, CCompr: TCheckBox;
     BSrc, BDest, BSearch: TButton;
     procedure SrcClick(Sender: TObject);
     procedure DestClick(Sender: TObject);
@@ -19,7 +19,7 @@ type
 
 const
   ID: Cardinal=1279677270;
-  Capt='VgaSoft FileList 2.2';
+  Capt='VgaSoft FileList 2.3';
 
 var
   MainForm: TMainForm;
@@ -123,21 +123,29 @@ begin
     Files.Clear;
     Caption:=Capt+': Поиск...';
     GetAllFiles(ESrc.Text+'*.*');
+    Caption:=Capt+': Сохранение...';
     ProcessMessages;
-    Size:=Length(Files.Text);
     OFile:=TFileStream.Create(EDest.Text, fmCreate);
     OFile.WriteBuffer(ID, SizeOf(ID));
-    OFile.WriteBuffer(Size, SizeOf(Size));
-    Caption:=Capt+': Сохранение...';
-    BufSize:=UCLOutputBlockSize(Size);
-    GetMem(Buffer, BufSize);
-    Res:=ucl_nrv2e_99_compress(Pointer(Files.Text), Size, Buffer, BufSize, nil, 10, nil, nil);
-    if Res<>UCL_E_OK then
+    if CCompr.Checked then
     begin
-      MessageBox(Handle, PChar(Format('Compression error %d', [Res])), 'Error', MB_ICONERROR);
-      Exit;
+      Size:=Length(Files.Text);
+      OFile.WriteBuffer(Size, SizeOf(Size));
+      BufSize:=UCLOutputBlockSize(Size);
+      GetMem(Buffer, BufSize);
+      Res:=ucl_nrv2e_99_compress(Pointer(Files.Text), Size, Buffer, BufSize, nil, 10, nil, nil);
+      if Res<>UCL_E_OK then
+      begin
+        MessageBox(Handle, PChar(Format('Compression error %d', [Res])), 'Error', MB_ICONERROR);
+        Exit;
+      end;
+      OFile.Write(Buffer^, BufSize);
+    end
+    else begin
+      Size:=0;
+      OFile.WriteBuffer(Size, SizeOf(Size));
+      Files.SaveToStream(OFile);
     end;
-    OFile.Write(Buffer^, BufSize);
     ProcessMessages;
   finally
     FreeMemAndNil(Buffer, UCLOutputBlockSize(Size));
@@ -181,6 +189,9 @@ begin
     CAll:=TCheckBox.Create(MainForm, 'Все диски');
     CAll.OnClick:=AllClick;
     CAll.SetBounds(90, 70, 100, 15);
+    CCompr:=TCheckBox.Create(MainForm, 'Сжатие');
+    CCompr.SetBounds(200, 70, 100, 15);
+    CCompr.Checked:=true;
     BSrc:=TButton.Create(MainForm, 'Обзор...');
     BSrc.OnClick:=SrcClick;
     BSrc.SetBounds(ClientWidth-80, 5, 75, 25);

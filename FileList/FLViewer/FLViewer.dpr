@@ -78,7 +78,7 @@ type
 
 const
   ID: Cardinal=1279677270;
-  CCapt='VgaSoft FileList Viewer 2.3';
+  CCapt='VgaSoft FileList Viewer 2.4';
 
   TB_OPEN=0;
   TB_SAVE=1;
@@ -469,21 +469,29 @@ begin
       MessageBox(Handle, 'Error: invalid file', 'Error', MB_ICONERROR);
       Exit;
     end;
-    IBufSize:=IFile.Size-SizeOf(IBufSize)*2;
     IFile.Read(OBufSize, SizeOf(OBufSize));
-    OBFTemp:=OBufSize;
-    GetMem(IBuffer, IBufSize);
-    GetMem(OBuffer, OBufSize);
-    IFile.Read(IBuffer^, IBufSize);
-    Res:=ucl_nrv2e_decompress_asm_safe_8(IBuffer, IBufSize, OBuffer, OBFTemp, nil);
-    if Res<>UCL_E_OK then
+    IBufSize:=IFile.Size-SizeOf(IBufSize)*2;
+    if OBufSize<>0 then
     begin
-      MessageBox(Handle, PChar(Format('NRV2E decompressing error: %d', [Res])), 'Error', MB_ICONERROR);
-      Exit;
+      OBFTemp:=OBufSize;
+      GetMem(IBuffer, IBufSize);
+      GetMem(OBuffer, OBufSize);
+      IFile.Read(IBuffer^, IBufSize);
+      Res:=ucl_nrv2e_decompress_asm_safe_8(IBuffer, IBufSize, OBuffer, OBFTemp, nil);
+      if Res<>UCL_E_OK then
+      begin
+        MessageBox(Handle, PChar(Format('NRV2E decompressing error: %d', [Res])), 'Error', MB_ICONERROR);
+        Exit;
+      end;
+      if OBFTemp<>OBufSize then
+        if MessageBox(Handle, 'Data corrupted. Continue?', 'Error', MB_ICONERROR or MB_YESNO)=ID_NO then Exit;
+      Data.Text:=string(OBuffer);
+    end
+    else begin
+      GetMem(IBuffer, IBufSize);
+      IFile.Read(IBuffer^, IBufSize);
+      Data.Text:=string(IBuffer);
     end;
-    if OBFTemp<>OBufSize then
-      if MessageBox(Handle, 'Data corrupted. Continue?', 'Error', MB_ICONERROR or MB_YESNO)=ID_NO then Exit;
-    Data.Text:=string(OBuffer);
     RemoveVoidStrings(Data);
     PBStatus.Position:=10;
     Result:=true;

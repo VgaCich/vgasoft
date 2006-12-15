@@ -4,7 +4,7 @@
   <assemblyIdentity
   	type="win32"
     name="VgaSoft.FileListViewer"
-    version="2.3.0.0"
+    version="2.4.0.0"
   	processorArchitecture="*"/>
   <dependency>
     <dependentAssembly>
