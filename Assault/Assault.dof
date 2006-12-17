@@ -133,7 +133,7 @@ LegalTrademarks=
 OriginalFilename=Assault.exe
 ProductName=VgaSoft Assault game
 ProductVersion=1.0.0.0
-Comments=www.vgasoft.narod.ru
+Comments=
 [Excluded Packages]
 c:\delphi\Projects\Bpl\mckEnhCombos.bpl=MCK Enhanced ComboBoxes
 [HistoryLists\hlConditionals]

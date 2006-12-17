@@ -133,7 +133,7 @@ LegalTrademarks=
 OriginalFilename=FontGen.exe
 ProductName=VSE
 ProductVersion=1.0.0.0
-Comments=www.vgasoft.narod.ru
+Comments=
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;

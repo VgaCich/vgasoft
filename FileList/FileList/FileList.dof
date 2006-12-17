@@ -129,7 +129,7 @@ LegalTrademarks=
 OriginalFilename=FileList.exe
 ProductName=VgaSoft FileList
 ProductVersion=2.0.0.0
-Comments=www.vgasoft.narod.ru
+Comments=
 [Excluded Packages]
 c:\delphi\Bin\dclite70.bpl=Borland Integrated Translation Environment
 c:\delphi\Projects\Bpl\mckEnhCombos.bpl=MCK Enhanced ComboBoxes

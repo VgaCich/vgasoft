@@ -1,6 +1,5 @@
 VSE VSPak package management program 1.2.1
 (c)VgaSoft, 2004-2006
-www.vgasoft.narod.ru
 vgasoft@mail.ru
 
 Программа для создания пакетов VSE Package.

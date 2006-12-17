@@ -4,7 +4,7 @@
 //                                                                            //
 // VSE Package Manager 1.3                                                    //
 //                                                                            //
-// Copyright (C) 2004-2006 VgaSoft (www.vgasoft.narod.ru)                     //
+// Copyright (C) 2004-2006 VgaSoft                                            //
 //                                                                            //
 //This program is free software; you can redistribute it and/or               //
 //modify it under the terms of the GNU General Public License                 //

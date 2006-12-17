@@ -133,7 +133,7 @@ LegalTrademarks=
 OriginalFilename=VSPak.exe
 ProductName=VSE
 ProductVersion=1.3.0.0
-Comments=www.vgasoft.narod.ru
+Comments=
 [Excluded Packages]
 c:\delphi\Projects\Bpl\mckEnhCombos.bpl=MCK Enhanced ComboBoxes
 [HistoryLists\hlUnitAliases]
