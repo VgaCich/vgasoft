@@ -15,6 +15,13 @@ type
     IsLong: Boolean;
     Ext: string;
   end;
+  TFolderData=class
+  public
+    Files: TStringList;
+    FilesSize, FolderSize: Int64;
+    constructor Create;
+    destructor Destroy; override;
+  end;
   TMainForm=class(TForm)
   private
     TVFolders: TTreeView;
@@ -26,7 +33,7 @@ type
     LStatus: TLabel;
     TBImages, Icons, Folders: TImageList;
     Data, Files: TStringList;
-    Lists: TList;
+    Garbage: TList;
     FileName, Mask: string;
     SplitMoving, Initialized, OpenDelay, FindDelay, FindFiles, FindDirs: Boolean;
     RefreshTimer: TTimer;
@@ -54,7 +61,7 @@ type
     function  GetNextFolder: string;
     procedure GetFolderFiles(Files: TStringList);
     function  InsertTreeItem(Parent: Integer; Text: string; Data: TObject): Integer;
-    procedure FillNode(Node: Integer; S: string);
+    function  FillNode(Node: Integer; S: string): Int64;
     procedure FillTree;
     procedure FillList;
     procedure ClearTree;
@@ -78,7 +85,9 @@ type
 
 const
   ID: Cardinal=1279677270;
-  CCapt='VgaSoft FileList Viewer 2.4';
+  CCapt='VgaSoft FileList Viewer 2.5';
+  AboutText=CCapt+#13#10 +
+            'Copyright '#169'VgaSoft, 2004-2007';
 
   TB_OPEN=0;
   TB_SAVE=1;
@@ -98,15 +107,27 @@ const
   SizeNames: array[0..SIZES-1] of string=(
     'Ignore', 'Minimum', 'Maximum', 'Between');
 
-  SB_PARTS=2;
+  SB_PARTS=3;
 
-  SBParts: array[0..SB_PARTS-1] of Integer=(100, -1);
+  SBParts: array[0..SB_PARTS-1] of Integer=(125, 250, -1);
 
 function ImageList_GetIcon(ImageList: HIMAGELIST; Index: Integer; Flags: DWORD): HICON; stdcall; external 'comctl32.dll';
 
 var
   MainForm: TMainForm;
   FindForm: TFindForm;
+
+constructor TFolderData.Create;
+begin
+  inherited Create;
+  Files:=TStringList.Create;
+end;
+
+destructor TFolderData.Destroy;
+begin
+  FAN(Files);
+  inherited Destroy;
+end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
 var
@@ -121,7 +142,7 @@ begin
   ExtsCount:=0;
   SetLength(Exts, ExtsCapacity);
   Data:=TStringList.Create;
-  Lists:=TList.Create;
+  Garbage:=TList.Create;
   for i:=1 to ParamCount do
     if FileExists(ParamStr(i)) then
     begin
@@ -139,7 +160,7 @@ begin
   FAN(Icons);
   Finalize(Exts);
   FAN(Data);
-  FAN(Lists);
+  FAN(Garbage);
   Result:=true;
 end;
 
@@ -180,12 +201,16 @@ type
 var
   i: Integer;
   S, S1: string;
+  FD: TFolderData;
 begin
   if not Assigned(TVFolders) or not Assigned(LVFIles) then Exit;
   if PNMHdr(Msg.NMHdr).hwndFrom=TVFolders.Handle then
     if PNMHdr(Msg.NMHdr).code=TVN_SELCHANGED then
     begin
-      Files:=TStringList(PNMTreeView(Msg.NMHdr).itemNew.lParam);
+      FD:=TFolderData(PNMTreeView(Msg.NMHdr).itemNew.lParam);
+      Files:=FD.Files;
+      SB.SetPartText(0, 0, 'Files: '+IntToStr(FD.Files.Count)+' ('+SizeToStr(FD.FilesSize)+')');
+      SB.SetPartText(1, 0, 'Folder size: '+SizeToStr(FD.FolderSize));
       FillList;
     end;
   if PNMHdr(Msg.NMHdr).hwndFrom=LVFiles.Handle then
@@ -197,7 +222,7 @@ begin
         S1:=Copy(Files[i], 1, LastDelimiter('|', Files[i])-1);
         if S1=S then
         begin
-          SB.SetPartText(1, 0, S1+': '+
+          SB.SetPartText(2, 0, S1+': '+
             SizeToStr(StrToInt(Copy(Files[i], LastDelimiter('|', Files[i])+1, MaxInt))));
           Break;
         end;
@@ -368,25 +393,30 @@ var
   List: TStringList;
   CMask: TMask;
 
-  procedure FillFindNode(Node: Integer; const S: string);
+  function FillFindNode(Node: Integer; const S: string): Int64;
   var
-    L: TStringList;
+    FD: TFolderData;
+    j: Integer;
   begin
-    L:=TStringList.Create;
-    Lists.Add(L);
+    FD:=TFolderData.Create;
+    Garbage.Add(FD);
     Inc(i);
-    Node:=InsertTreeItem(Node, S, L);
+    Node:=InsertTreeItem(Node, S, FD);
     while true do
     begin
       if i=List.Count then Exit;
       case List[i][1] of
-        '>', '|': FillFindNode(Node, Copy(List[i], 2, MaxInt));
+        '>', '|': FD.FolderSize:=FD.FolderSize+FillFindNode(Node, Copy(List[i], 2, MaxInt));
         '<': Break;
-        '+': L.Add(Copy(List[i], 2, MaxInt));
+        '+': FD.Files.Add(Copy(List[i], 2, MaxInt));
       end;
       Inc(i);
     end;
+    for j:=0 to FD.Files.Count-1 do
+      FD.FilesSize:=FD.FilesSize+StrToInt(Copy(FD.Files[i], FirstDelimiter('|', FD.Files[i])+1, MaxInt));
+    FD.FolderSize:=FD.FolderSize+FD.FilesSize;  
     TVFolders.Perform(TV_FIRST+19, 0, Node);//Sort childrens
+    Result:=FD.FolderSize;
   end;
 
 begin
@@ -606,23 +636,28 @@ begin
   Result:=TVFolders.Perform(TVM_INSERTITEM, 0, Integer(@TVIns));
 end;
 
-procedure TMainForm.FillNode(Node: Integer; S: string);
+function TMainForm.FillNode(Node: Integer; S: string): Int64;
 var
-  List: TStringList;
+  FD: TFolderData;
+  i: Integer;
 begin
-  List:=TStringList.Create;
-  Lists.Add(List);
-  GetFolderFiles(List);
-  if Node=Integer(TVI_ROOT) then Files:=List;
-  Node:=InsertTreeItem(Node, S, List);
+  FD:=TFolderData.Create;
+  Garbage.Add(FD);
+  GetFolderFiles(FD.Files);
+  for i:=0 to FD.Files.Count-1 do
+    FD.FilesSize:=FD.FilesSize+StrToInt(Copy(FD.Files[i], FirstDelimiter('|', FD.Files[i])+1, MaxInt));
+  FD.FolderSize:=FD.FilesSize;
+  if Node=Integer(TVI_ROOT) then Files:=FD.Files;
+  Node:=InsertTreeItem(Node, S, FD);
   while true do
   begin
     S:=GetNextFolder;
     if S='|' then Break;
-    FillNode(Node, S);
+    FD.FolderSize:=FD.FolderSize+FillNode(Node, S);
   end;
   TVFolders.Perform(TV_FIRST+19, 0, Node);//Sort childrens
   PBStatus.Position:=10+Round(90*(CurFolder/Data.Count));
+  Result:=FD.FolderSize;
   ProcessMessages;
 end;
 
@@ -644,7 +679,6 @@ var
   ImgList: HIMAGELIST;
 begin
   if not Assigned(Files) then Exit;
-  SB.SetPartText(0, 0, 'Files: '+IntToStr(Files.Count));
   LVFiles.BeginUpdate;
   LVFiles.Clear;
   for i:= 0 to Files.Count-1 do
@@ -670,16 +704,14 @@ procedure TMainForm.ClearTree;
 var
   i: Integer;
 begin
-  for i:=0 to Lists.Count-1 do
-    if Assigned(Lists[i]) then TObject(Lists[i]).Free;
-  Lists.Clear;
+  for i:=0 to Garbage.Count-1 do
+    if Assigned(Garbage[i]) then TObject(Garbage[i]).Free;
+  Garbage.Clear;
   TVFolders.Perform(TV_FIRST+1, 0, Integer(TVI_ROOT));//Clear tree view
 end;
 
 procedure TMainForm.ShowAbout;
 const
-  AboutText=CCapt+#13#10 +
-            'Copyright '#169'VgaSoft, 2004-2006';
   AboutCaption='About';
   AboutIcon='MAINICON';
 var

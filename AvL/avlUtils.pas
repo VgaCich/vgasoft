@@ -47,7 +47,7 @@ function GetTempDir: string;
 function MessageDlg(const Text, Title: string; Style: Cardinal): Integer;
 procedure MessageFmt(const Fmt: string; const Args: array of const);
 function FullExeName: string;
-function SizeToStr(Size: Cardinal): string;
+function SizeToStr(Size: Int64): string;
 function CheckPath(const Path: string; Abs: Boolean): Boolean;
 {function GetShiftState: TShiftState; }
 function FindCmdLineSwitch(const Switch: string; SwitchChars: TSysCharSet; IgnoreCase: Boolean): Boolean;
@@ -478,15 +478,17 @@ begin
   Result:=ExpandFileName(ExeName);
 end;
 
-function SizeToStr(Size: Cardinal): string;
+function SizeToStr(Size: Int64): string;
 const
   KB=$400;
   MB=$100000;
   GB=$40000000;
-  BS=' bytes';
-  KBS=' Kb';
-  MBS=' Mb';
-  GBS=' Gb';
+  TB=$10000000000;
+  BS=' Bytes';
+  KBS=' KB';
+  MBS=' MB';
+  GBS=' GB';
+  TBS=' TB';
 begin
   Result:=IntToStr(Size)+BS;
   if Size>=KB
@@ -495,6 +497,8 @@ begin
     then Result:=FloatToStr2(Size/MB, 1, 2)+MBS;
   if Size>=GB
     then Result:=FloatToStr2(Size/GB, 1, 2)+GBS;
+  if Size>=TB
+    then Result:=FloatToStr2(Size/TB, 1, 2)+TBS;
 end;
 
 function CheckPath(const Path: string; Abs: Boolean): Boolean;
