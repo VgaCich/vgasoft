@@ -1,0 +1,4 @@
+LIBRARY J2000
+EXPORTS
+  j2k_decode
+  j2k_release

@@ -1,0 +1,4 @@
+; dlltool --base-file C:\Windows\Temp/cca03192.base --output-exp J2000Dec.exp --dllname J2000Dec.dll --output-def libJ2000Dec.def --no-export-all-symbols --add-stdcall-alias --exclude-symbol=DllMainCRTStartup@12 --def J2000Dec.def --output-lib libJ2000Dec.a
+EXPORTS
+	j2k_release @ 1
+	j2k_decode @ 2

@@ -1,0 +1,73 @@
+# Project: J2000Dec
+# Makefile created by Dev-C++ 4.9.9.2
+
+CPP  = g++.exe
+CC   = gcc.exe
+WINDRES = windres.exe
+RES  = J2000_private.res
+OBJ  = j2k.o cio.o int.o tcd.o tgt.o bio.o dwt.o fix.o mct.o t1.o mqc.o t2.o pi.o $(RES)
+LINKOBJ  = j2k.o cio.o int.o tcd.o tgt.o bio.o dwt.o fix.o mct.o t1.o mqc.o t2.o pi.o $(RES)
+LIBS =  -L"C:/Dev-Cpp/lib" --def J2000Dec.def --no-export-all-symbols --add-stdcall-alias  -s 
+INCS =  -I"C:/Dev-Cpp/include" 
+CXXINCS =  -I"C:/DEV-CPP/include/c++"  -I"C:/DEV-CPP/include/c++/mingw32"  -I"C:/DEV-CPP/include/c++/backward"  -I"C:/DEV-CPP/include" 
+BIN  = J2000Dec.dll
+CXXFLAGS = $(CXXINCS)   -fexpensive-optimizations -O2
+CFLAGS = $(INCS) -DBUILDING_DLL=1   -fexpensive-optimizations -O2
+RM = rm -f
+
+.PHONY: all all-before all-after clean clean-custom
+
+all: all-before J2000Dec.dll all-after
+
+
+clean: clean-custom
+	${RM} $(OBJ) $(BIN)
+
+DLLWRAP=dllwrap.exe
+DEFFILE=libJ2000Dec.def
+STATICLIB=libJ2000Dec.a
+
+$(BIN): $(LINKOBJ)
+	$(DLLWRAP) --output-def $(DEFFILE) --implib $(STATICLIB) $(LINKOBJ) $(LIBS) -o $(BIN)
+
+j2k.o: j2k.c
+	$(CC) -c j2k.c -o j2k.o $(CFLAGS)
+
+cio.o: cio.c
+	$(CC) -c cio.c -o cio.o $(CFLAGS)
+
+int.o: int.c
+	$(CC) -c int.c -o int.o $(CFLAGS)
+
+tcd.o: tcd.c
+	$(CC) -c tcd.c -o tcd.o $(CFLAGS)
+
+tgt.o: tgt.c
+	$(CC) -c tgt.c -o tgt.o $(CFLAGS)
+
+bio.o: bio.c
+	$(CC) -c bio.c -o bio.o $(CFLAGS)
+
+dwt.o: dwt.c
+	$(CC) -c dwt.c -o dwt.o $(CFLAGS)
+
+fix.o: fix.c
+	$(CC) -c fix.c -o fix.o $(CFLAGS)
+
+mct.o: mct.c
+	$(CC) -c mct.c -o mct.o $(CFLAGS)
+
+t1.o: t1.c
+	$(CC) -c t1.c -o t1.o $(CFLAGS)
+
+mqc.o: mqc.c
+	$(CC) -c mqc.c -o mqc.o $(CFLAGS)
+
+t2.o: t2.c
+	$(CC) -c t2.c -o t2.o $(CFLAGS)
+
+pi.o: pi.c
+	$(CC) -c pi.c -o pi.o $(CFLAGS)
+
+J2000_private.res: J2000_private.rc 
+	$(WINDRES) -i J2000_private.rc --input-format=rc -o J2000_private.res -O coff 
