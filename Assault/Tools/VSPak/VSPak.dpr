@@ -27,7 +27,7 @@ end;
 
 procedure About;
 begin
-  WriteLn('VSE VSPak package management program 1.3.0');
+  WriteLn('VSE VSPak package management program 1.3.1');
   WriteLn('(c)VgaSoft, 2004-2006');
   WriteLn;
 end;
@@ -498,6 +498,7 @@ begin
       if DirName='|' then
       begin
         Dec(DirLevel);
+        if DirLevel<0 then raise Exception.CreateFmt('%d: closing directory entry without opening', [i+1]);
         CurDir:=ExtractFilePath(ExcludeTrailingBackslash(CurDir));
       end
       else begin
