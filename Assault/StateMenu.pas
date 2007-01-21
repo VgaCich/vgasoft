@@ -60,11 +60,13 @@ type
   TMenuLabel=class(TGUIWidget)
   private
     FCaption: string;
+    FColor: TColor;
   protected
     procedure Draw; override;
   public
     constructor Create(Left, Top, Width, Height: Integer; Parent: TGUIWidget; Caption: string);
     property Caption: string read FCaption write FCaption;
+    property Color: TColor read FColor write FColor;
   end;
 
 implementation
@@ -83,6 +85,7 @@ begin
   Game.PakMan.CloseFile(Tex);
   FMenu:=TGUI.Create(800, 600);
   FLbl:=TMenuLabel.Create(5, 5, 100, 20, nil, 'Label');
+  FLbl.Color:=clRed;
   Frm:=TMenuForm.Create(300, 130, 200, 300, nil, 'Assault 0.1');
   Btn:=TMenuButton.Create(50, 50, 100, 30, Frm, 'Intro');
   Btn.OnClick:=IntroClick;
@@ -96,6 +99,7 @@ begin
   Btn.OnClick:=ExitClick;
   FMenu.AddForm(Frm);
   FMenu.AddForm(FLbl);
+  FMenu.SetModal(Frm);
 end;
 
 destructor TStateMenu.Destroy;
@@ -402,7 +406,7 @@ begin
   glDisable(GL_LIGHTING);
   glEnable(GL_BLEND);
   glEnable(GL_COLOR_MATERIAL);
-  glColor3f(0, 1, 0);
+  glColor3ub(FColor and $FF, (FColor and $FF00) shr 8, (FColor and $FF0000) shr 16);
   gleWrite(0, (Height div 2)-8, FCaption);
 end;
 

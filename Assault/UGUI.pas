@@ -223,8 +223,11 @@ begin
   Result:=-1;
   for i:=0 to FWidgets.Count-1 do
     with TGUIWidget(FWidgets[i]) do
-      if PointInRect(Point, Rect(Left, Top, Left+Width, Top+Height))
-        then Result:=i;
+      if PointInRect(Point, Rect(Left, Top, Left+Width, Top+Height)) then
+      begin
+        Result:=i;
+        Exit;
+      end;
 end;
 
 function TGUIWidget.RegionAt(Point: TPoint): Integer;
@@ -234,8 +237,11 @@ begin
   Result:=-1;
   for i:=0 to High(FRegions) do
     with FRegions[i] do
-      if PointInRect(Point, Rect(Left, Top, Left+Width, Top+Height))
-        then Result:=i;
+      if PointInRect(Point, Rect(Left, Top, Left+Width, Top+Height)) then
+      begin
+        Result:=i;
+        Exit;
+      end;
 end;
 
 procedure TGUIWidget.SendEvent(Region, Widget: Integer; Event: TRegionEvent; Button, X, Y: Integer);
@@ -365,14 +371,19 @@ var
 begin
   Result:=-1;
   if FModal>-1 then
-  begin
     with TGUIWidget(FForms[FModal]) do
-      if PointInRect(Point, Rect(Left, Top, Left+Width, Top+Height)) then Result:=FModal;
-    Exit;
-  end;
+      if PointInRect(Point, Rect(Left, Top, Left+Width, Top+Height)) then
+      begin
+        Result:=FModal;
+        Exit;
+      end;
   for i:=0 to FForms.Count-1 do
     with TGUIWidget(FForms[i]) do
-      if PointInRect(Point, Rect(Left, Top, Left+Width, Top+Height)) then Result:=i;
+      if PointInRect(Point, Rect(Left, Top, Left+Width, Top+Height)) then
+      begin
+        Result:=i;
+        Exit;
+      end;
 end;
 
 procedure TGUI.SendEvent(Form: Integer; Event: TRegionEvent; Button, X, Y: Integer);
