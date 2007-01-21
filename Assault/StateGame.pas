@@ -15,6 +15,7 @@ type
     FGUI: TGUI;
     FModel: T3DModel;
     FConsoleSound: TConsoleSound;
+    FCursor: TCursor;
 //    FShader: TShader;
 //    FTerrain: TTerrain;
     function  GetName: string; override;
@@ -43,6 +44,8 @@ var
   F: TStream;
 begin
   inherited Create;
+  FCursor:=TCursor.Create;
+  FCursor.Load('LTCur.vcr');
   FModel:=T3DModel.Create;
   Console.RegisterCommand('setmodel', '', SetModel);
   FAngle:=0;
@@ -76,6 +79,7 @@ destructor TStateGame.Destroy;
 begin
 //  FAN(FTerrain);
 //  FAN(FShader);
+  FAN(FCursor);
   Console.UnregisterCommand('setmodel');
   FAN(FText);
   FAN(FGUI);
@@ -128,11 +132,13 @@ begin
   for i:=0 to 29 do
     gleWrite(5, i*20, FText[i]);
   FGUI.Draw;
+  FCursor.Draw;
 end;
 
 procedure TStateGame.Update;
 begin
   FGUI.Update;
+  FCursor.Update;
   FAngle:=FAngle+0.2;
   if FAngle>360 then FAngle:=FAngle-360;
 end;
@@ -140,12 +146,13 @@ end;
 function TStateGame.Activate: Cardinal;
 begin
   glClearColor(0, 0, 0, 1);
+  ShowCursor(false);
   Result:=20;
 end;
 
 procedure TStateGame.Deactivate;
 begin
-
+  ShowCursor(true);
 end;
 
 procedure TStateGame.Resume;

@@ -11,7 +11,7 @@ type
   TStateMenu=class(TGameState)
   private
     FMenu: TGUI;
-    FCurTex: Cardinal;
+    FCursor: TCursor;
     FLbl: TMenuLabel;
   protected
     function GetName: string; override;
@@ -75,14 +75,12 @@ uses UGame, PakMan;
 
 constructor TStateMenu.Create;
 var
-  Tex: TStream;
   Btn: TMenuButton;
   Frm: TMenuForm;
 begin
   inherited Create;
-  Tex:=Game.PakMan.OpenFile('Cursor.tga', ofNoCreate);
-  FCurTex:=LoadTexture(Tex, tfTGA, false, GL_NEAREST, GL_NEAREST);
-  Game.PakMan.CloseFile(Tex);
+  FCursor:=TCursor.Create;
+  FCursor.Load('Cursor.vcr');
   FMenu:=TGUI.Create(800, 600);
   FLbl:=TMenuLabel.Create(5, 5, 100, 20, nil, 'Label');
   FLbl.Color:=clRed;
@@ -104,7 +102,7 @@ end;
 
 destructor TStateMenu.Destroy;
 begin
-  glDeleteTextures(1, @FCurTex);
+  FAN(FCursor);
   FAN(FMenu);
   inherited Destroy;
 end;
@@ -117,17 +115,17 @@ begin
   glEnable(GL_COLOR_MATERIAL);
   glDisable(GL_DEPTH_TEST);
   FMenu.Draw;
-  DrawCursor;
+  FCursor.Draw;
 end;
 
 procedure TStateMenu.Update;
 begin
   FMenu.Update;
+  FCursor.Update;
 end;
 
 function TStateMenu.Activate: Cardinal;
 begin
-  SetCursor(FCurTex, 32);
   gleSelectFont('Default');
   glClearColor(0, 0, 0, 0);
   glDisable(GL_LIGHTING);

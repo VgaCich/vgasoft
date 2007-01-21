@@ -3,7 +3,7 @@ unit UGUI;
 interface
 
 uses
-  Windows, AvL, avlUtils, dglOpenGL, OpenGLExt, GameStates, CollisionCheck;
+  Windows, AvL, avlUtils, dglOpenGL, OpenGLExt, GameStates, CollisionCheck, Textures;
 
 type
   TRegionEvent=(reMouseEnter, reMouseLeave, reMouseMove, reMouseDown, reMouseUp,
@@ -81,16 +81,37 @@ type
     property VirtScreenHeight: Integer read FVSH;
     property Enabled: Boolean read FEnabled write SetEnabled;
   end;
-
-procedure SetCursor(Tex: Cardinal; Size: Single);
-procedure DrawCursor;
+  TCursor=class
+  private
+    FTexture: Cardinal;
+    FSize, FFrameSizeX, FFRameSizeY: Single;
+    FFramesCount, FFramesPerRow, FFramesPerCol, FUpdatesPerFrame, FUpdates, FFrame: Integer;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function Load(const FileName: string): Boolean;
+    procedure Update;
+    procedure Draw;
+    property FramesCount: Integer read FFramesCount;
+    property Size: Single read FSize write FSize;
+    property UpdatesPerDrame: Integer read FUpdatesPerFrame write FUpdatesPerFrame;
+  end;
 
 implementation
 
 {$B-}
 
 uses
-  UGame, ULog;
+  UGame, PakMan, ULog;
+
+type
+  TCursorInfo=packed record
+    ID: Cardinal;
+    FramesCount, FramesPerRow, FramesPerCol, TexNameSize: Word;
+  end;
+
+const
+  CursorID=$52435356;
 
 {TGUIWidget}
 
@@ -507,35 +528,105 @@ begin
   FForms.Insert(0, Form);
 end;
 
-{Misc functions}
+{TCursor}
 
-var
-  CursorTex: Cardinal;
-  CursorSize: Single;
-
-procedure SetCursor(Tex: Cardinal; Size: Single);
+constructor TCursor.Create;
 begin
-  CursorTex:=Tex;
-  CursorSize:=Size;
+  inherited Create;
+  FSize:=32;
+  FUpdatesPerFrame:=5;
 end;
 
-procedure DrawCursor;
+destructor TCursor.Destroy;
+begin
+  if FTexture<>0 then glDeleteTextures(1, @FTexture);
+  inherited Destroy;
+end;
+
+function TCursor.Load(const FileName: string): Boolean;
+var
+  CursorInfo: TCursorInfo;
+  TexName: string;
+  F: TStream;
+begin
+  Result:=false;
+  F:=Game.PakMan.OpenFile(FileName, ofNoCreate);
+  if not Assigned(F) then
+  begin
+    Log(llError, 'Cursor: Load('+FileName+') failed: cannot open file');
+    Exit;
+  end;
+  try
+    F.Read(CursorInfo, SizeOf(CursorInfo));
+    if CursorInfo.ID<>CursorID then
+    begin
+      Log(llError, 'Cursor: Load('+FileName+') failed: file is not VgaSoft Cursor');
+      Exit;
+    end;
+    SetLength(TexName, CursorInfo.TexNameSize);
+    F.Read(TexName[1], CursorInfo.TexNameSize);
+  finally
+    Game.PakMan.CloseFile(F);
+  end;
+  F:=Game.PakMan.OpenFile(TexName, ofNoCreate);
+  if not Assigned(F) then
+  begin
+    Log(llError, 'Cursor: Load('+FileName+') failed: cannot open texture');
+    Exit;
+  end;
+  try
+    FTexture:=LoadTexture(F, FmtByExt(TexName), false, GL_NEAREST, GL_NEAREST);
+    if FTexture=0 then
+    begin
+      Log(llError, 'Cursor: Load('+FileName+') failed: cannot load texture');
+      Exit;
+    end;
+  finally
+    Game.PakMan.CloseFile(F);
+  end;
+  FFramesCount:=CursorInfo.FramesCount;
+  FFramesPerRow:=CursorInfo.FramesPerRow;
+  FFramesPerCol:=CursorInfo.FramesPerCol;
+  FFrameSizeX:=1/FFramesPerRow;
+  FFrameSizeY:=1/FFramesPerCol;
+  FFrame:=0;
+  FUpdates:=0;
+  Result:=true;
+end;
+
+procedure TCursor.Update;
+begin
+  if FFramesCount<2 then Exit;
+  Inc(FUpdates);
+  if FUpdates>FUpdatesPerFrame then
+  begin
+    Inc(FFrame);
+    FUpdates:=0;
+    if FFrame>=FFramesCount then FFrame:=0;
+  end;
+end;
+
+procedure TCursor.Draw;
 var
    P: TPoint;
+   TexX, TexY: Single;
 begin
+  if (FFramesPerRow=0) or (FFramesCount=0) then Exit;
   glPushMatrix;
   glPushAttrib(GL_ENABLE_BIT or GL_TEXTURE_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT or GL_LIGHTING_BIT);
   gleOrthoMatrix(Game.ResX, Game.ResY);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glBindTexture(GL_TEXTURE_2D, CursorTex);
+  glBindTexture(GL_TEXTURE_2D, FTexture);
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
   glDisable(GL_COLOR_MATERIAL);
   GetCursorPos(P);
+  TexX:=(FFrame mod FFramesPerRow)*FFrameSizeX;
+  TexY:=(FFrame div FFramesPerRow)*FFrameSizeY;
   glBegin(GL_QUADS);
-    glTexCoord2f(0, 1); glVertex2f(P.X, P.Y);
-    glTexCoord2f(0, 0); glVertex2f(P.X, P.Y+CursorSize);
-    glTexCoord2f(1, 0); glVertex2f(P.X+CursorSize, P.Y+CursorSize);
-    glTexCoord2f(1, 1); glVertex2f(P.X+CursorSize, P.Y);
+    glTexCoord2f(TexX, TexY+FFrameSizeY); glVertex2f(P.X, P.Y);
+    glTexCoord2f(TexX, TexY); glVertex2f(P.X, P.Y+FSize);
+    glTexCoord2f(TexX+FFrameSizeX, TexY); glVertex2f(P.X+FSize, P.Y+FSize);
+    glTexCoord2f(TexX+FFrameSizeX, TexY+FFrameSizeY); glVertex2f(P.X+FSize, P.Y);
   glEnd;
   glPopAttrib;
   glPopMatrix;
