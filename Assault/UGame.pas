@@ -24,6 +24,7 @@ type
     FConfig: TIniFile;
     FKeyState: TKeyboardState;
     FPakMan: TPakMan;
+    FRegisteredVariables: TList;
     {$IFNDEF VSE_NOSOUND}FSound: TSound;{$ENDIF}
     procedure SetFullscreen(Value: Boolean);
     procedure SetState(Value: Cardinal);
@@ -32,6 +33,7 @@ type
     procedure LoadFonts;
   protected
     procedure RegisterCommands;
+    procedure UnregisterCommands;
     function  Quit(const Args: string): Boolean;
     function  Resolution(const Args: string): Boolean;
     function  CmdFullscreen(const Args: string): Boolean;
@@ -76,23 +78,23 @@ type
     property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold;
   end;
 
-function GetCursorPos(var lpPoint: TPoint): Boolean;
+function GetCursorPos(var Cursor: TPoint): Boolean;
 
 var
   Game: TGame;
 
 implementation
 
-function GetCursorPos(var lpPoint: TPoint): Boolean;
+function GetCursorPos(var Cursor: TPoint): Boolean;
 var
   Rect: TRect;
 begin
-  Result:=Windows.GetCursorPos(lpPoint);
+  Result:=Windows.GetCursorPos(Cursor);
   GetWindowRect(Game.Handle, Rect);
   if not Game.Fullscreen then
   begin
-    lpPoint.X:=lpPoint.X-Rect.Left-GetSystemMetrics(SM_CXDLGFRAME);
-    lpPoint.Y:=lpPoint.Y-Rect.Top-GetSystemMetrics(SM_CYCAPTION)-GetSystemMetrics(SM_CYDLGFRAME);
+    Cursor.X:=Cursor.X-Rect.Left-GetSystemMetrics(SM_CXDLGFRAME);
+    Cursor.Y:=Cursor.Y-Rect.Top-GetSystemMetrics(SM_CYCAPTION)-GetSystemMetrics(SM_CYDLGFRAME);
   end;
 end;
 
@@ -119,16 +121,23 @@ begin
   FPreviousUpdate:=0;
   FUpdOverloadCount:=0;
   FUpdOverloadThreshold:=100;
+  FRegisteredVariables:=TList.Create;
   Initializing:=false;
 end;
 
 destructor TGame.Destroy;
 var
   GSI: Integer;
+  StateName: string;
 begin
   SaveSettings;
   for GSI:=0 to High(FStates) do
+  try
+    StateName:=FStates[GSI].Name;
     FAN(FStates[GSI]);
+  except
+    LogException('in state '+StateName+'.Free');
+  end;
   {$IFNDEF VSE_NOSOUND}FAN(FSound);{$ENDIF}
   FAN(FPakMan);
   gleFreeFonts;
@@ -138,6 +147,8 @@ begin
   ShowCursor(true);
   FAN(FConfig);
   timeKillEvent(FFPSTimer);
+  UnregisterCommands;
+  FAN(FRegisteredVariables);
   inherited Destroy;
 end;
 
@@ -213,13 +224,25 @@ begin
   begin
     UpdTime:=Time;
     for i:=1 to T div FUpdInt do
+    try
       FCurState.Update;
+    except
+      LogException('in state '+FCurState.Name+'.Update');
+    end;
     if Time-UpdTime>T
       then Inc(FUpdOverloadCount, T div FUpdInt)
       else FUpdOverloadCount:=0;
-    if (FUpdOverloadThreshold>0) and (FUpdOverloadCount>FUpdOverloadThreshold)
-      then FCurState.SysNotify(snUpdateOverload);
-    FCurState.Draw;
+    if (FUpdOverloadThreshold>0) and (FUpdOverloadCount>FUpdOverloadThreshold) then
+    try
+      FCurState.SysNotify(snUpdateOverload);
+    except
+      LogException('in state '+FCurState.Name+'.SysNotify(snUpdateOverload)');
+    end;
+    try
+      FCurState.Draw;
+    except
+      LogException('in state '+FCurState.Name+'.Draw');
+    end;
     if WGL_EXT_swap_control and (FVSync<>wglGetSwapIntervalEXT)
       then wglSwapIntervalEXT(FVSync);
     SwapBuffers(FDC);
@@ -232,7 +255,12 @@ begin
   Log(llInfo, 'Maximized');
   if FFullscreen then gleGoFullscreen(ResX, ResY, Refresh, FDepth);
   FMinimized:=false;
-  if FCurState<>nil then FCurState.Resume;
+  if FCurState<>nil then
+  try
+    FCurState.Resume;
+  except
+    LogException('in state '+FCurState.Name+'.Resume');
+  end;
   {$IFNDEF VSE_NOSOUND}Sound.Start;{$ENDIF}
 end;
 
@@ -250,7 +278,12 @@ begin
     then SetCapture(FHandle)
     else if Event=meUp
       then ReleaseCapture;
-  if FCurState<>nil then FCurState.MouseEvent(Button, Event, X, Y);
+  if FCurState<>nil then
+  try
+    FCurState.MouseEvent(Button, Event, X, Y);
+  except
+    LogException('in state '+FCurState.Name+Format('.MouseEvent(%d, %d, %d, %d)', [Button, Integer(Event), X, Y]));
+  end;
 end;
 
 procedure TGame.KeyEvent(Button: Integer; Event: TKeyEvent);
@@ -260,12 +293,22 @@ begin
     StopEngine;
     Exit;
   end;
-  if FCurState<>nil then FCurState.KeyEvent(Button, Event);
+  if FCurState<>nil then
+  try
+    FCurState.KeyEvent(Button, Event);
+  except
+    LogException('in state '+FCurState.Name+Format('.KeyEvent(%d, %d)', [Button, Integer(Event)]));
+  end;
 end;
 
 procedure TGame.CharEvent(C: Char);
 begin
-  if FCurState<>nil then FCurState.CharEvent(C);
+  if FCurState<>nil then
+  try
+    FCurState.CharEvent(C);
+  except
+    LogException('in state '+FCurState.Name+'.CharEvent("'+C+'")');
+  end;
 end;
 
 function TGame.AddState(State: TGameState): Cardinal;
@@ -398,10 +441,20 @@ begin
     then LogFNC(llInfo, 'Switch state from %s to %s', [FStates[FState].Name, FStates[Value].Name]);
   FNeedSwitch:=false;
   if (FState=Value) or (Value>High(FStates)) then Exit;
-  if FCurState<>nil then FCurState.Deactivate;
+  if FCurState<>nil then
+  try
+    FCurState.Deactivate;
+  except
+    LogException('in state '+FCurState.Name+'Deactivate');
+  end;
   FState:=Value;
   FCurState:=FStates[Value];
-  FUpdInt:=FCurState.Activate;
+  try
+    FUpdInt:=FCurState.Activate;
+  except
+    LogException('in state '+FCurState.Name+'.Activate');
+    if FUpdInt<=1 then FUpdInt:=50;
+  end;
 end;
 
 function TGame.GetKeyPressed(Index: Byte): Boolean;
@@ -473,8 +526,20 @@ begin
   Console.RegisterCommand('quit', QuitHelp, Quit);
   Console.RegisterCommand('resolution', ResolutionHelp, Resolution);
   Console.RegisterCommand('fullscreen', FullscreenHelp, CmdFullscreen);
-  RegisterCVI('vsync', VSyncHelp, @FVSync, 0, 1, 1, false);
-  RegisterCVI('fps', FPSHelp, @FFPS, 0, 0, 0, true);
+  FRegisteredVariables.Add(RegisterCVI('vsync', VSyncHelp, @FVSync, 0, 1, 1, false));
+  FRegisteredVariables.Add(RegisterCVI('fps', FPSHelp, @FFPS, 0, 0, 0, true));
+end;
+
+procedure TGame.UnregisterCommands;
+var
+  i: Integer;
+begin
+  Console.UnregisterCommand('quit');
+  Console.UnregisterCommand('resolution');
+  Console.UnregisterCommand('fullscreen');
+  for i:=0 to FRegisteredVariables.Count-1 do
+    TConsoleVariable(FRegisteredVariables[i]).Free;
+  FRegisteredVariables.Clear;
 end;
 
 function TGame.Quit(const Args: string): Boolean;

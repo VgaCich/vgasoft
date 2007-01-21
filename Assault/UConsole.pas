@@ -40,7 +40,7 @@ type
     function  ExecCommand(const Cmd: string): Boolean;
     procedure AddToConsole(const S: string);
     function  RegisterCommand(const Name, Help: string; Func: TConsoleCmdFunction): Boolean;
-    procedure DeleteCommand(Name: string);
+    procedure UnregisterCommand(Name: string);
     procedure IncrementalFind(CmdPrefix: string; CmdList: TStringList);
     property  History[Index: Cardinal]: string read GetHistory; default;
     property  HistoryCount: Cardinal read GetHistoryCount;
@@ -119,7 +119,12 @@ begin
   if FHistoryEnabled then AddToConsole(Cmd);
   if FHistoryEnabled then FCommandsHistory.Add(Cmd);
   if FCommandsHistory.Count>256 then FCommandsHistory.Delete(0);
-  if Assigned(FOnExec) then Result:=FOnExec(Self, Cmd);
+  if Assigned(FOnExec) then
+  try
+    Result:=FOnExec(Self, Cmd);
+  except
+    LogException('in Console.OnExec('+Cmd+')');
+  end;
   if FCapture then Exit;
   if (Cmd='') or (Cmd[1]<>ConsoleCommandPrefix) then Exit;
   Index:=Pos(' ', Cmd);
@@ -138,13 +143,22 @@ begin
     LogF(llError, 'Command "%s" is not defined', [CmdName]);
     Exit;
   end;
-  Result:=FCommands[Index].Func(CmdArgs);
+  try
+    Result:=FCommands[Index].Func(CmdArgs);
+  except
+    LogException('in console command "'+CmdName+' '+CmdArgs+'"');  
+  end;
 end;
 
 procedure TConsole.AddToConsole(const S: string);
 begin
   FConsoleHistory.Add(S);
-  if Assigned(FOnAdding) then FOnAdding(Self);
+  if Assigned(FOnAdding) then
+  try
+    FOnAdding(Self);
+  except
+    LogException('in Console.OnAdding('+S+')');
+  end;
 end;
 
 function TConsole.RegisterCommand(const Name, Help: string; Func: TConsoleCmdFunction): Boolean;
@@ -179,7 +193,7 @@ begin
   Result:=true;
 end;
 
-procedure TConsole.DeleteCommand(Name: string);
+procedure TConsole.UnregisterCommand(Name: string);
 var
   i: Integer;
 begin

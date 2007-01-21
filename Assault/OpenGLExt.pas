@@ -167,7 +167,7 @@ type
 
 var
   Fonts: array of TFontRec;
-  CurFont: Integer;
+  CurFont: Integer=0;
 
 function  gleLoadFont(const FontID: string; FontData: TStream): Boolean;
 var
@@ -220,7 +220,7 @@ begin
   Result:=true;
 end;
 
-procedure GleFreeFonts;
+procedure gleFreeFonts;
 var
   i: Integer;
 begin
@@ -233,7 +233,7 @@ begin
       glDeleteTextures(1, @(Fonts[i].FontTex));
       glDeleteLists(Fonts[i].FontBase, 256);
     end;
-  CurFont:=-1;
+  CurFont:=0;
   Finalize(Fonts);
 end;
 
@@ -242,6 +242,7 @@ var
   OldFont: Integer;
 begin
   Log(llInfo, 'Freeing font ID='+FontID);
+  if Length(Fonts)=0 then Exit;
   OldFont:=CurFont;
   gleSelectFont(FontID);
   if (CurFont=OldFont) and (LowerCase(FontID)<>Fonts[CurFont].ID) or not Fonts[CurFont].Exist then Exit;
@@ -256,6 +257,7 @@ procedure gleSelectFont(FontID: string);
 var
   i: Integer;
 begin
+  if Length(Fonts)=0 then Exit;
   FontID:=LowerCase(FontID);
   if FontID=Fonts[CurFont].ID then Exit;
   for i:=0 to Length(Fonts)-1 do
@@ -271,12 +273,14 @@ var
   i: Integer;
 begin
   Result:=0;
+  if Length(Fonts)=0 then Exit;
   if not Fonts[CurFont].Exist then Exit;
   for i:=1 to Length(Text) do Result:=Result+Fonts[CurFont].FontWidth[Ord(Text[i])]+1;
 end;
 
 procedure gleWrite(const Text: string);
 begin
+  if Length(Fonts)=0 then Exit;
   if not Fonts[CurFont].Exist then Exit;
   glPushAttrib(GL_ENABLE_BIT or GL_TEXTURE_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT);
   glEnable(GL_BLEND);
@@ -293,6 +297,7 @@ end;
 
 procedure gleWrite(X, Y: Double; const Text: string);
 begin
+  if Length(Fonts)=0 then Exit;
   if not Fonts[CurFont].Exist then Exit;
   glPushAttrib(GL_ENABLE_BIT or GL_TEXTURE_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT);
   glEnable(GL_BLEND);

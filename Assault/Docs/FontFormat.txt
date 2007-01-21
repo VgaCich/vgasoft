@@ -2,5 +2,5 @@
 
 Texture format:
 {MipLevels[FontTextureL$i:(Width/2^$i)*(Height/2^$i)*BitDepth/8]}
-$i: MipLevel, 0, 1,...
+$i: MipLevel - 0, 1,...
 Valid depths: 1, 2, 4, 8

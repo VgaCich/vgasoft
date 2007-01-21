@@ -30,7 +30,13 @@ begin
 end;
 
 destructor TConsoleSound.Destroy;
+var
+  i: Integer;
 begin
+  Console.UnregisterCommand('snd_createstream');
+  Console.UnregisterCommand('snd_playchannel');
+  for i:=0 to 7 do
+    if Assigned(Channels[i]) then FAN(Channels[i]);
   inherited Destroy;
 end;
 

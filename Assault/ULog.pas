@@ -14,6 +14,7 @@ procedure LogAssert(Condition: Boolean; const Msg: string);
 procedure LogNC(Level: TLogLevel; const S: string);
 procedure LogFNC(Level: TLogLevel; const Fmt: string; const Args: array of const);
 procedure LogRawNC(const S: string);
+procedure LogException(const Comment: string);
 
 implementation
 
@@ -83,6 +84,12 @@ begin
   WriteLn(LogFile, S);
   {$IFDEF VSEDEBUG}Flush(LogFile);{$ENDIF}
 end;
+
+procedure LogException(const Comment: string);
+begin
+  Log(llError, 'Exception "'+ExceptObject.ClassName+'" at '+IntToHex(Cardinal(ExceptAddr), 8)+' with message "'+Exception(ExceptObject).Message+'" '+Comment);
+end;
+
 
 initialization
 

@@ -3,14 +3,16 @@ unit StateMenu;
 interface
 
 uses
-  Windows, Messages, AvL, avlMath, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
+  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
   GameStates, StateLoad, ULog, UGUI, GUIWidgets;
 
 type
+  TMenuLabel=class;
   TStateMenu=class(TGameState)
   private
     FMenu: TGUI;
     FCurTex: Cardinal;
+    FLbl: TMenuLabel;
   protected
     function GetName: string; override;
     function Load(ProgFunc: TProgFunc): Boolean;
@@ -38,20 +40,30 @@ type
     procedure EventHandler(Event: TRegionEvent; Button, X, Y, Tag: Integer); override;
     procedure Draw; override;
   public
-    constructor Create(Rect: TRect; Parent: TGUIWidget; Caption: string);
+    constructor Create(Left, Top, Width, Height: Integer; Parent: TGUIWidget; Caption: string);
     property Caption: string read FCaption write FCaption;
   end;
   TMenuForm=class(TGUIWidget)
   private
-    FHilightClose, FDownClose: Boolean;
+    FHilightClose, FDownClose, FDragging: Boolean;
+    FDragPoint: TPoint;
     FCaption: string;
   protected
-    procedure AdjustRect(ARect: TRect); override;
+    procedure AdjustRect(AWidth, AHeight: Integer); override;
     procedure EventHandler(Event: TRegionEvent; Button, X, Y, Tag: Integer); override;
     procedure HandleClose(Event: TRegionEvent; Button, X, Y, Tag: Integer);
     procedure Draw; override;
   public
-    constructor Create(Rect: TRect; Parent: TGUIWidget; Caption: string);
+    constructor Create(Left, Top, Width, Height: Integer; Parent: TGUIWidget; Caption: string);
+    property Caption: string read FCaption write FCaption;
+  end;
+  TMenuLabel=class(TGUIWidget)
+  private
+    FCaption: string;
+  protected
+    procedure Draw; override;
+  public
+    constructor Create(Left, Top, Width, Height: Integer; Parent: TGUIWidget; Caption: string);
     property Caption: string read FCaption write FCaption;
   end;
 
@@ -70,18 +82,20 @@ begin
   FCurTex:=LoadTexture(Tex, tfTGA, false, GL_NEAREST, GL_NEAREST);
   Game.PakMan.CloseFile(Tex);
   FMenu:=TGUI.Create(800, 600);
-  Frm:=TMenuForm.Create(Rect(300, 130, 500, 430), nil, 'Assault 0.1');
-  Btn:=TMenuButton.Create(Rect(350, 170, 450, 200), Frm, 'Intro');
+  FLbl:=TMenuLabel.Create(5, 5, 100, 20, nil, 'Label');
+  Frm:=TMenuForm.Create(300, 130, 200, 300, nil, 'Assault 0.1');
+  Btn:=TMenuButton.Create(50, 50, 100, 30, Frm, 'Intro');
   Btn.OnClick:=IntroClick;
-  Btn:=TMenuButton.Create(Rect(350, 220, 450, 250), Frm, 'Load');
+  Btn:=TMenuButton.Create(50, 100, 100, 30, Frm, 'Load');
   Btn.OnClick:=LoadClick;
-  Btn:=TMenuButton.Create(Rect(350, 270, 450, 300), Frm, 'Game');
+  Btn:=TMenuButton.Create(50, 150, 100, 30, Frm, 'Game');
   Btn.OnClick:=GameClick;
-  Btn:=TMenuButton.Create(Rect(350, 320, 450, 350), Frm, 'Console');
+  Btn:=TMenuButton.Create(50, 200, 100, 30, Frm, 'Console');
   Btn.OnClick:=ConsoleClick;
-  Btn:=TMenuButton.Create(Rect(350, 370, 450, 400), Frm, 'Exit');
+  Btn:=TMenuButton.Create(50, 250, 100, 30, Frm, 'Exit');
   Btn.OnClick:=ExitClick;
   FMenu.AddForm(Frm);
+  FMenu.AddForm(FLbl);
 end;
 
 destructor TStateMenu.Destroy;
@@ -97,6 +111,7 @@ begin
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
   glBindTexture(GL_TEXTURE_2D, 0);
   glEnable(GL_COLOR_MATERIAL);
+  glDisable(GL_DEPTH_TEST);
   FMenu.Draw;
   DrawCursor;
 end;
@@ -134,6 +149,7 @@ end;
 
 procedure TStateMenu.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 begin
+  FLbl.Caption:=Format('X=%d Y=%d', [X, Y]);
   FMenu.MouseEvent(Button, Event, X, Y);
 end;
 
@@ -199,9 +215,9 @@ begin
   Game.StopEngine;
 end;
 
-constructor TMenuButton.Create(Rect: TRect; Parent: TGUIWidget; Caption: string);
+constructor TMenuButton.Create(Left, Top, Width, Height: Integer; Parent: TGUIWidget; Caption: string);
 begin
-  inherited Create(Rect, Parent);
+  inherited Create(Left, Top, Width, Height, Parent);
   FCaption:=Caption;
 end;
 
@@ -234,50 +250,70 @@ begin
     then glColor3d(1, 0.5, 0.5)
     else glColor3d(0.5, 1, 0.5);
   glBegin(GL_QUADS);
-    glVertex2d(FRect.Left, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Bottom);
-    glVertex2d(FRect.Left, FRect.Bottom);
+    glVertex2d(0, 0);
+    glVertex2d(Width, 0);
+    glVertex2d(Width, Height);
+    glVertex2d(0, Height);
   glEnd;
   if FHilight
     then glColor3d(1, 0, 0)
     else glColor3d(0, 1, 0);
   glBegin(GL_LINE_LOOP);
-    glVertex2d(FRect.Left, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Bottom);
-    glVertex2d(FRect.Left, FRect.Bottom);
+    glVertex2d(0, 0);
+    glVertex2d(Width, 0);
+    glVertex2d(Width, Height);
+    glVertex2d(0, Height);
   glEnd;
   glBegin(GL_POINTS);
-    glVertex2d(FRect.Left, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Bottom);
-    glVertex2d(FRect.Left, FRect.Bottom);
+    glVertex2d(0, 0);
+    glVertex2d(Width, 0);
+    glVertex2d(Width, Height);
+    glVertex2d(0, Height);
   glEnd;
   if FDown
     then glColor3d(0, 1, 0)
     else glColor3d(0, 0.7, 0);
-  gleWrite(Mean([FRect.Left, FRect.Right])-gleTextWidth(FCaption)/2, Mean([FRect.Top, FRect.Bottom])-8, FCaption);
+  gleWrite((Width div 2)-gleTextWidth(FCaption)/2, (Height div 2)-8, FCaption);
 end;
 
-constructor TMenuForm.Create(Rect: TRect; Parent: TGUIWidget; Caption: string);
+constructor TMenuForm.Create(Left, Top, Width, Height: Integer; Parent: TGUIWidget; Caption: string);
 begin
-  inherited Create(Rect, Parent);
+  inherited Create(Left, Top, Width, Height, Parent);
   FCaption:=Caption;
   SetLength(FRegions, 1);
-  FRegions[0].Rect:=AvL.Rect(Rect.Right-20, Rect.Top+5, Rect.Right-5, Rect.Top+20);
+  FRegions[0].Left:=Width-20;
+  FRegions[0].Top:=5;
+  FRegions[0].Width:=15;
+  FRegions[0].Height:=15;
   FRegions[0].Handler:=HandleClose;
+  FDragging:=false;
 end;
 
-procedure TMenuForm.AdjustRect(ARect: TRect);
+procedure TMenuForm.AdjustRect(AWidth, AHeight: Integer);
 begin
-  inherited AdjustRect(ARect);
-  FRegions[0].Rect:=AvL.Rect(FRect.Right-20, FRect.Top+5, FRect.Right-5, FRect.Top+20);
+  inherited AdjustRect(AWidth, AHeight);
+  FRegions[0].Left:=Width-20;
 end;
 
 procedure TMenuForm.EventHandler(Event: TRegionEvent; Button, X, Y, Tag: Integer);
 begin
   inherited;
+  case Event of
+    reMouseDown:
+      if (Button=1) and (Y<=25) then
+      begin
+        FDragging:=true;
+        FDragPoint.X:=X;
+        FDragPoint.Y:=Y;
+      end;
+    reMouseUp: if Button=1 then FDragging:=false;
+    reMouseMove:
+      if FDragging then
+      begin
+        Left:=Left+X-FDragPoint.X;
+        Top:=Top+Y-FDragPoint.Y;
+      end;
+  end;
 end;
 
 procedure TMenuForm.HandleClose(Event: TRegionEvent; Button, X, Y, Tag: Integer);
@@ -306,48 +342,68 @@ begin
   glEnable(GL_COLOR_MATERIAL);
   glBegin(GL_QUADS);
     glColor3d(0.5, 1, 0.5);
-    glVertex2d(FRect.Left, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Bottom);
-    glVertex2d(FRect.Left, FRect.Bottom);
-    glColor3d(0, 1, 0.5);
-    glVertex2d(FRect.Left, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Top+25);
-    glVertex2d(FRect.Left, FRect.Top+25);
+    glVertex2d(0, 0);
+    glVertex2d(Width, 0);
+    glVertex2d(Width, Height);
+    glVertex2d(0, Height);
+    if FDragging
+      then glColor3d(0, 1, 0.5)
+      else glColor3d(0, 0.9, 0.5);
+    glVertex2d(0, 0);
+    glVertex2d(Width, 0);
+    glVertex2d(Width, 25);
+    glVertex2d(0, 25);
   glEnd;
   glColor3d(1, 1, 0);
   glBegin(GL_LINE_LOOP);
-    glVertex2d(FRect.Left, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Top);
-    glVertex2d(FRect.Right, FRect.Bottom);
-    glVertex2d(FRect.Left, FRect.Bottom);
+    glVertex2d(0, 0);
+    glVertex2d(Width, 0);
+    glVertex2d(Width, Height);
+    glVertex2d(0, Height);
   glEnd;
   glColor3d(1, 1, 0);
-  gleWrite(FRect.Left+5, FRect.Top+5, FCaption);
+  gleWrite(5, 5, FCaption);
   if FHilightClose
     then glColor3d(1, 0, 0)
     else glColor3d(0.8, 0, 0);
   if FDownClose then glColor3d(1, 0.2, 0.2);
-  glBegin(GL_QUADS);
-    glVertex2d(FRegions[0].Rect.Left, FRegions[0].Rect.Top);
-    glVertex2d(FRegions[0].Rect.Right, FRegions[0].Rect.Top);
-    glVertex2d(FRegions[0].Rect.Right, FRegions[0].Rect.Bottom);
-    glVertex2d(FRegions[0].Rect.Left, FRegions[0].Rect.Bottom);
-  glEnd;
-  glColor3d(0, 0, 0);
-  glBegin(GL_LINE_LOOP);
-    glVertex2d(FRegions[0].Rect.Left, FRegions[0].Rect.Top);
-    glVertex2d(FRegions[0].Rect.Right, FRegions[0].Rect.Top);
-    glVertex2d(FRegions[0].Rect.Right, FRegions[0].Rect.Bottom);
-    glVertex2d(FRegions[0].Rect.Left, FRegions[0].Rect.Bottom);
-  glEnd;
-  glBegin(GL_LINES);
-    glVertex2d(FRegions[0].Rect.Left+2, FRegions[0].Rect.Top+2);
-    glVertex2d(FRegions[0].Rect.Right-2, FRegions[0].Rect.Bottom-2);
-    glVertex2d(FRegions[0].Rect.Right-2, FRegions[0].Rect.Top+2);
-    glVertex2d(FRegions[0].Rect.Left+2, FRegions[0].Rect.Bottom-2);
-  glEnd;
+  with FRegions[0] do
+  begin
+    glBegin(GL_QUADS);
+      glVertex2d(Left, Top);
+      glVertex2d(Left+Width, Top);
+      glVertex2d(Left+Width, Top+Height);
+      glVertex2d(Left, Top+Height);
+    glEnd;
+    glColor3d(0, 0, 0);
+    glBegin(GL_LINE_LOOP);
+      glVertex2d(Left, Top);
+      glVertex2d(Left+Width, Top);
+      glVertex2d(Left+Width, Top+Height);
+      glVertex2d(Left, Top+Height);
+    glEnd;
+    glBegin(GL_LINES);
+      glVertex2d(Left+2, Top+2);
+      glVertex2d(Left+Width-2, Top+Height-2);
+      glVertex2d(Left+Width-2, Top+2);
+      glVertex2d(Left+2, Top+Height-2);
+    glEnd;
+  end;
+end;
+
+constructor TMenuLabel.Create(Left, Top, Width, Height: Integer; Parent: TGUIWidget; Caption: string);
+begin
+  inherited Create(Left, Top, Width, Height, Parent);
+  FCaption:=Caption;
+end;
+
+procedure TMenuLabel.Draw;
+begin
+  glDisable(GL_LIGHTING);
+  glEnable(GL_BLEND);
+  glEnable(GL_COLOR_MATERIAL);
+  glColor3f(0, 1, 0);
+  gleWrite(0, (Height div 2)-8, FCaption);
 end;
 
 end.

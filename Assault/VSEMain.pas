@@ -37,10 +37,18 @@ begin
         Log(llInfo, 'Engine created');
         Game.SetResolution(Game.ResX, Game.ResY, Game.Refresh, false);
         Log(llInfo, 'Init states');
-        if Assigned(InitStates)
-          then InitStates
+        if Assigned(InitStates) then
+          try
+            InitStates;
+          except
+            LogException('in InitStates');
+            MessageBox(Handle, PChar('Exception "'+ExceptObject.ClassName+'" at '+IntToHex(Cardinal(ExceptAddr), 8)+' with message "'+Exception(ExceptObject).Message+'" in InitStates'), 'Error', MB_ICONERROR);
+            Game.StopEngine;
+            Exit;
+          end
           else begin
             Log(llError, 'InitStates() not initialized');
+            MessageBox(0, 'InitStates() not initialized', 'Error', MB_ICONERROR);
             Game.StopEngine;
             Exit;
           end;
@@ -49,18 +57,19 @@ begin
     WM_KEYUP: Game.KeyEvent(wParam, keUp);
     WM_KEYDOWN: Game.KeyEvent(wParam, keDown);
     WM_CHAR: Game.CharEvent(Chr(wParam));
-    WM_MOUSEMOVE: Game.MouseEvent(0, meMove, LoWord(lParam), HiWord(lParam));
-    WM_LBUTTONDOWN: Game.MouseEvent(1, meDown, LoWord(lParam), HiWord(lParam));
-    WM_LBUTTONUP: Game.MouseEvent(1, meUp, LoWord(lParam), HiWord(lParam));
-    WM_RBUTTONDOWN: Game.MouseEvent(2, meDown, LoWord(lParam), HiWord(lParam));
-    WM_RBUTTONUP: Game.MouseEvent(2, meUp, LoWord(lParam), HiWord(lParam));
-    WM_MBUTTONDOWN: Game.MouseEvent(3, meDown, LoWord(lParam), HiWord(lParam));
-    WM_MBUTTONUP: Game.MouseEvent(3, meUp, LoWord(lParam), HiWord(lParam));
-    WM_XBUTTONDOWN: Game.MouseEvent(3+HiWord(wParam), meDown, LoWord(lParam), HiWord(lParam));
-    WM_XBUTTONUP: Game.MouseEvent(3+HiWord(wParam), meUp, LoWord(lParam), HiWord(lParam));
-    WM_MOUSEWHEEL: Game.MouseEvent(SmallInt(HiWord(wParam)) div 120, meWheel, LoWord(lParam), HiWord(lParam));
-    WM_CLOSE:
+    WM_MOUSEMOVE: Game.MouseEvent(0, meMove, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_LBUTTONDOWN: Game.MouseEvent(1, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_LBUTTONUP: Game.MouseEvent(1, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_RBUTTONDOWN: Game.MouseEvent(2, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_RBUTTONUP: Game.MouseEvent(2, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_MBUTTONDOWN: Game.MouseEvent(3, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_MBUTTONUP: Game.MouseEvent(3, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_XBUTTONDOWN: Game.MouseEvent(3+HiWord(wParam), meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_XBUTTONUP: Game.MouseEvent(3+HiWord(wParam), meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_MOUSEWHEEL: Game.MouseEvent(SmallInt(HiWord(wParam)) div 120, meWheel, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_DESTROY:
       begin
+        Log(llInfo, 'Destroying engine');
         if Game.Fullscreen then gleGoBack;
         FAN(Game);
         Quitting:=true;
@@ -151,6 +160,12 @@ begin
           then Game.Update
           else if GetForegroundWindow=Handle
             then Game.Resume;
+  end;
+  if not UnregisterClass(WndClassName, hInstance) then
+  begin
+    LogNC(llError, 'Failed to unregister the window class');
+    MessageBox(0, 'Failed to unregister the window class!', 'Error', MB_ICONERROR);
+    Halt(1);
   end;
 end;
 

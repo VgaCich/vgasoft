@@ -8,7 +8,6 @@ type
   TConsoleVariables=class;
   TConsoleVariable=class
   protected
-    FIndex: Integer;
     FName: string;
     FHelp: string;
   public
@@ -31,7 +30,7 @@ type
     function  GetVariableInt(Index: Integer): TConsoleVariable;
     function  GetVariableStr(const Name: string): TConsoleVariable;
     function  FindVariable(Name: string): Integer;
-    procedure DeleteVariable(Index: Integer);
+    procedure UnregisterVariable(const Name: string);
     function  DoSet(const Args: string): Boolean;
     function  DoVarList(const Args: string): Boolean;
     function  DoVarHelp(const Args: string): Boolean;
@@ -53,7 +52,7 @@ type
     function  DoCommand(const Args: string): Boolean; override;
   end;
 
-procedure RegisterCVI(AName, AHelp: string; Variable: PInteger; Min, Max, Default: Integer; ReadOnly: Boolean);
+function  RegisterCVI(AName, AHelp: string; Variable: PInteger; Min, Max, Default: Integer; ReadOnly: Boolean): TConsoleVariableInteger;
 
 var
   ConsoleVariables: TConsoleVariables;
@@ -67,15 +66,14 @@ begin
   inherited Create;
   FName:=LowerCase(AName);
   FHelp:=AHelp;
-  FIndex:=-1;
   if not Console.RegisterCommand('var_'+FName, FHelp, DoCommand)
     then LogF(llError, 'Cannot register console variable %s', [AName]);
 end;
 
 destructor TConsoleVariable.Destroy;
 begin
-  Console.DeleteCommand('var_'+FName);
-  if FIndex>-1 then ConsoleVariables.DeleteVariable(FIndex);
+  Console.UnregisterCommand('var_'+FName);
+  ConsoleVariables.UnregisterVariable(FName);
   inherited Destroy;
 end;
 
@@ -131,8 +129,16 @@ var
 begin
   FDestroying:=true;
   for i:=0 to FVariablesCount-1 do
-    if FVariables[i].Exist then FAN(FVariables[i].Variable);
+    if FVariables[i].Exist then
+    try
+      FAN(FVariables[i].Variable);
+    except
+      LogException('in console variable '+FVariables[i].Name+'.Free');
+    end;
   Finalize(FVariables);
+  Console.UnregisterCommand('set');
+  Console.UnregisterCommand('varlist');
+  Console.UnregisterCommand('varhelp');
   inherited Destroy;
 end;
 
@@ -143,7 +149,6 @@ begin
   FVariables[FVariablesCount].Variable:=Variable;
   FVariables[FVariablesCount].Name:=Variable.FName;
   FVariables[FVariablesCount].Exist:=true;
-  Variable.FIndex:=FVariablesCount;
   Result:=FVariablesCount;
   Inc(FVariablesCount);
 end;
@@ -180,8 +185,11 @@ begin
     end;
 end;
 
-procedure TConsoleVariables.DeleteVariable(Index: Integer);
+procedure TConsoleVariables.UnregisterVariable(const Name: string);
+var
+  Index: Integer;
 begin
+  Index:=FindVariable(Name);
   if (Index<0) or (Index>FVariablesCount-1) then Exit;
   FVariables[Index].Variable:=nil;
   FVariables[Index].Exist:=false;
@@ -207,8 +215,12 @@ begin
   Name:=Copy(Args, 1, P-1);
   Value:=Trim(Copy(Args, P+1, MaxInt));
   V:=FindVariable(Name);
-  if V>-1
-    then Result:=FVariables[V].Variable.DoCommand(Value)
+  if V>-1 then
+    try
+      Result:=FVariables[V].Variable.DoCommand(Value)
+    except
+      LogException('in console variable '+FVariables[V].Name+'='+Value);
+    end
     else Console.AddToConsole(Format('^1Error: Variable %s not exist', [Name]));
 end;
 
@@ -325,12 +337,10 @@ end;
 
 {Register procedures}
 
-procedure RegisterCVI(AName, AHelp: string; Variable: PInteger; Min, Max, Default: Integer; ReadOnly: Boolean);
-var
-  CVI: TConsoleVariableInteger;
+function RegisterCVI(AName, AHelp: string; Variable: PInteger; Min, Max, Default: Integer; ReadOnly: Boolean): TConsoleVariableInteger;
 begin
-  CVI:=TConsoleVariableInteger.Create(AName, AHelp, Variable, Min, Max, Default, ReadOnly);
-  ConsoleVariables.AddVariable(CVI);
+  Result:=TConsoleVariableInteger.Create(AName, AHelp, Variable, Min, Max, Default, ReadOnly);
+  ConsoleVariables.AddVariable(Result);
 end;
 
 initialization

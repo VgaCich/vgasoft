@@ -9,7 +9,7 @@ uses
 type
   TStateGame=class(TGameState)
   private
-    FText: string;
+    FText: TStringList;
     FAngle: Single;
     FButtonMenu: TMenuButton;
     FGUI: TGUI;
@@ -20,6 +20,7 @@ type
     function  GetName: string; override;
     function  SetModel(const Args: string): Boolean;
     procedure MenuClick(Sender: TObject);
+    procedure AddText(const S: string);
   public
     constructor Create;
     destructor Destroy; override;
@@ -47,10 +48,11 @@ begin
   FAngle:=0;
   FConsoleSound:=TConsoleSound.Create;
   FGUI:=TGUI.Create(800, 600);
-  FButtonMenu:=TMenuButton.Create(Rect(745, 575, 795, 595), nil, 'Menu');
+  FButtonMenu:=TMenuButton.Create(745, 575, 50, 20, nil, 'Menu');
   FButtonMenu.OnClick:=MenuClick;
   FGUI.AddForm(FButtonMenu);
   FGUI.GrabFocus(FButtonMenu);
+  FText:=TStringList.Create;
 {  FShader:=TShader.Create;
   F:=Game.PakMan.OpenFile('Bump2.shd', ofNoCreate);
   try
@@ -74,6 +76,8 @@ destructor TStateGame.Destroy;
 begin
 //  FAN(FTerrain);
 //  FAN(FShader);
+  Console.UnregisterCommand('setmodel');
+  FAN(FText);
   FAN(FGUI);
   FAN(FModel);
   FAN(FConsoleSound);
@@ -83,6 +87,7 @@ end;
 procedure TStateGame.Draw;
 var
   S: string;
+  i: Integer;
 const
   LightPos: array[0..3] of GLfloat=(0, 0, 100, 1.0);
   LightDiffuse: array[0..3] of GLfloat=(0.7, 0.7, 0.7, 1);
@@ -103,6 +108,7 @@ begin
   glTranslatef(0, 0, -1);
   glRotatef(FAngle*10, 0, 1, 0);
   glRotatef(FAngle, 1, 0, 0);
+  glColor4d(0, 1, 0, 1);
 //  FShader.Enabled:=true;
   FModel.Draw;
 //  FTerrain.Draw;
@@ -118,7 +124,9 @@ begin
   glColor4d(0, 1, 0, 1);
   S:='FPS: '+IntToStr(Game.FPS);
   gleWrite(800-gleTextWidth(S), 5, S);
-  gleWrite(5, 580, FText);
+  glColor4d(0, 1, 0, 0.3);
+  for i:=0 to 29 do
+    gleWrite(5, i*20, FText[i]);
   FGUI.Draw;
 end;
 
@@ -149,18 +157,22 @@ procedure TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integ
 const
   Events: array[TMouseEvent] of string=('Down', 'Up', 'Move', 'Wheel');
 begin
-  FText:=Format('Button: %d, Event: %s, X=%d, Y=%d', [Button, Events[Event], X, Y]);
+  AddText(Format('MouseEvent(Button=%d, Event=%s, X=%d, Y=%d)', [Button, Events[Event], X, Y]));
   FGUI.MouseEvent(Button, Event, X, Y);
 end;
 
 procedure TStateGame.KeyEvent(Button: Integer; Event: TKeyEvent);
+const
+  Events: array[TKeyEvent] of string=('Down', 'Up');
 begin
+  AddText(Format('KeyEvent(Button=%d, Event=%s)', [Button, Events[Event]]));
   if (Button=192) and (Event=keUp) then Game.SwitchState(Game.FindState('Console'));
   FGUI.KeyEvent(Button, Event);
 end;
 
 procedure TStateGame.CharEvent(C: Char);
 begin
+  AddText('CharEvent(C='+C+')');
   FGUI.CharEvent(C);
 end;
 
@@ -186,6 +198,12 @@ end;
 procedure TStateGame.MenuClick(Sender: TObject);
 begin
   Game.SwitchState(Game.FindState('Menu'));
+end;
+
+procedure TStateGame.AddText(const S: string);
+begin
+  FText.Add(S);
+  if FText.Count>30 then FText.Delete(0);
 end;
 
 end.

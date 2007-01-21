@@ -26,7 +26,7 @@ FileTableEntry format:
 File format:
 
 NRV:
-[Adler32:4][Adler32CheckSize:4]$Adler32Start:Adler32CheckSize$[Size:4]{Ceil(Size/1048576)[BlockSize:4]}{BlocksCount<NRV2E[Block]>}$Adler32End$
+[Adler32:4][Adler32CheckSize:4]$Adler32Start:Adler32CheckSize$[Size:4]{BlocksCount=Ceil(Size/1048576)[BlockSize:4]}{BlocksCount<NRV2E[Block:<=1048576]>}$Adler32End$
 
 LZMA:
 [Adler32:4][Adler32CheckSize:4]$Adler32Start:Adler32CheckSize$[Size:4]<LZMA[Data]>$Adler32End$
