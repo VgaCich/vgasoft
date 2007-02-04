@@ -62,7 +62,7 @@ type
 implementation
 
 uses
-  ULog, UGame, PakMan;
+  ULog, UCore, PakMan;
 
 {TShaderAttrib}
 

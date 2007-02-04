@@ -101,7 +101,7 @@ type
 implementation
 
 uses
-  UGame, ULog, PakMan;
+  UCore, ULog, PakMan;
 
 {Channels manager}
 var
@@ -191,7 +191,7 @@ begin
     Log(llError, 'Sound.Create: incorrect BASS version');
     Exit;
   end;
-  if not BASS_Init(Device, Freq, Flags, Game.Handle, CLSID) then
+  if not BASS_Init(Device, Freq, Flags, Core.Handle, CLSID) then
   begin
     LogF(llError, 'Sound.Create: BASS initializing error (%s)', [LastErrorName]);
     Exit;
@@ -506,7 +506,7 @@ begin
   end;
   case Action of
     BASS_FILE_LEN: Result:=Data.Size;
-    BASS_FILE_CLOSE: Game.PakMan.CloseFile(Data);
+    BASS_FILE_CLOSE: Core.PakMan.CloseFile(Data);
     BASS_FILE_READ: Result:=Data.Read(Pointer(P2)^, P1);
     BASS_FILE_SEEK: LongBool(Result):=Data.Seek(P1, soFromBeginning)<>P1;
   end;

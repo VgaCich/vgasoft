@@ -1,4 +1,4 @@
-unit UGame;
+unit UCore;
 
 interface
 
@@ -8,7 +8,7 @@ uses
   {$IFNDEF VSE_NOSOUND}USound, {$ENDIF} SysInfo;
 
 type
-  TGame=class
+  TCore=class
   private
     FHandle: THandle;
     FDC: HDC;
@@ -81,7 +81,7 @@ type
 function GetCursorPos(var Cursor: TPoint): Boolean;
 
 var
-  Game: TGame;
+  Core: TCore;
 
 implementation
 
@@ -90,8 +90,8 @@ var
   Rect: TRect;
 begin
   Result:=Windows.GetCursorPos(Cursor);
-  GetWindowRect(Game.Handle, Rect);
-  if not Game.Fullscreen then
+  GetWindowRect(Core.Handle, Rect);
+  if not Core.Fullscreen then
   begin
     Cursor.X:=Cursor.X-Rect.Left-GetSystemMetrics(SM_CXDLGFRAME);
     Cursor.Y:=Cursor.Y-Rect.Top-GetSystemMetrics(SM_CYCAPTION)-GetSystemMetrics(SM_CYDLGFRAME);
@@ -100,11 +100,11 @@ end;
 
 procedure UpdateFPS(uID, uMsg, dwUser, dw1, dw2: Cardinal); stdcall;
 begin
-  Game.FFPS:=Game.FFramesCount;
-  Game.FFramesCount:=0;
+  Core.FFPS:=Core.FFramesCount;
+  Core.FFramesCount:=0;
 end;
 
-constructor TGame.Create(WndHandle: THandle; var Initializing: Boolean);
+constructor TCore.Create(WndHandle: THandle; var Initializing: Boolean);
 begin
   Initializing:=true;
   inherited Create;
@@ -125,7 +125,7 @@ begin
   Initializing:=false;
 end;
 
-destructor TGame.Destroy;
+destructor TCore.Destroy;
 var
   GSI: Integer;
   StateName: string;
@@ -154,7 +154,7 @@ end;
 
 //Public
 
-procedure TGame.StartEngine;
+procedure TCore.StartEngine;
 begin
   FConfig:=TIniFile.Create(ChangeFileExt(FullExeName, '.ini'));
   FResX:=FConfig.ReadInteger('Settings', 'ResX', 800);
@@ -185,12 +185,12 @@ begin
   RegisterCommands;
 end;
 
-procedure TGame.StopEngine;
+procedure TCore.StopEngine;
 begin
   PostMessage(Handle, WM_CLOSE, 0, 0);
 end;
 
-procedure TGame.SaveSettings;
+procedure TCore.SaveSettings;
 begin
   FConfig.WriteInteger('Settings', 'ResX', FResX);
   FConfig.WriteInteger('Settings', 'ResY', FResY);
@@ -201,7 +201,7 @@ begin
   {$IFNDEF VSE_NOSOUND}FConfig.WriteString('Settings', 'SoundDevice', Sound.DeviceName);{$ENDIF}
 end;
 
-procedure TGame.Update;
+procedure TCore.Update;
 var
   T, i, UpdTime: Cardinal;
 begin
@@ -250,7 +250,7 @@ begin
   end;
 end;
 
-procedure TGame.Resume;
+procedure TCore.Resume;
 begin
   Log(llInfo, 'Maximized');
   if FFullscreen then gleGoFullscreen(ResX, ResY, Refresh, FDepth);
@@ -264,12 +264,12 @@ begin
   {$IFNDEF VSE_NOSOUND}Sound.Start;{$ENDIF}
 end;
 
-procedure TGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+procedure TCore.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 var
   Rect: TRect;
 begin
-  GetWindowRect(Game.Handle, Rect);
-  if (Event=meWheel) and not Game.Fullscreen then
+  GetWindowRect(Handle, Rect);
+  if (Event=meWheel) and not Fullscreen then
   begin
     X:=X-Rect.Left-GetSystemMetrics(SM_CXDLGFRAME);
     Y:=Y-Rect.Top-GetSystemMetrics(SM_CYCAPTION)-GetSystemMetrics(SM_CYDLGFRAME);
@@ -286,7 +286,7 @@ begin
   end;
 end;
 
-procedure TGame.KeyEvent(Button: Integer; Event: TKeyEvent);
+procedure TCore.KeyEvent(Button: Integer; Event: TKeyEvent);
 begin
   if (Button=27) and (Event=keUp) then
   begin
@@ -301,7 +301,7 @@ begin
   end;
 end;
 
-procedure TGame.CharEvent(C: Char);
+procedure TCore.CharEvent(C: Char);
 begin
   if FCurState<>nil then
   try
@@ -311,14 +311,14 @@ begin
   end;
 end;
 
-function TGame.AddState(State: TGameState): Cardinal;
+function TCore.AddState(State: TGameState): Cardinal;
 begin
   Result:=Length(FStates);
   SetLength(FStates, Result+1);
   FStates[Result]:=State;
 end;
 
-function TGame.ReplaceState(OrigState: Cardinal; NewState: TGameState): Boolean;
+function TCore.ReplaceState(OrigState: Cardinal; NewState: TGameState): Boolean;
 begin
   Result:=true;
   if OrigState<Length(FStates)
@@ -326,7 +326,7 @@ begin
     else Result:=false;
 end;
 
-procedure TGame.DeleteState(State: Cardinal);
+procedure TCore.DeleteState(State: Cardinal);
 begin
   if State<Length(FStates) then
   begin
@@ -336,25 +336,25 @@ begin
   end;
 end;
 
-procedure TGame.SwitchState(NewState: Cardinal);
+procedure TCore.SwitchState(NewState: Cardinal);
 begin
   FSwitchTo:=NewState;
   FNeedSwitch:=true;
 end;
 
-function TGame.StateExists(State: Cardinal): Boolean;
+function TCore.StateExists(State: Cardinal): Boolean;
 begin
   Result:=(State<Length(FStates)) and Assigned(FStates[State]);
 end;
 
-function TGame.GetState(State: Cardinal): TGameState;
+function TCore.GetState(State: Cardinal): TGameState;
 begin
   if State<Length(FStates)
     then Result:=FStates[State]
     else Result:=nil;
 end;
 
-function TGame.FindState(const Name: string): Cardinal;
+function TCore.FindState(const Name: string): Cardinal;
 var
   i: Cardinal;
 begin
@@ -367,12 +367,12 @@ begin
     end;
 end;
 
-function TGame.KeyRepeat(Key: Byte; Rate: Integer; var KeyVar: Cardinal): Boolean;
+function TCore.KeyRepeat(Key: Byte; Rate: Integer; var KeyVar: Cardinal): Boolean;
 var
   T: Cardinal;
 begin
   Result:=false;
-  if Game.KeyPressed[Key] then
+  if KeyPressed[Key] then
   begin
     T:=Time;
     if (T>KeyVar+Rate) or (KeyVar=0) then
@@ -384,7 +384,7 @@ begin
     else KeyVar:=0;
 end;
 
-procedure TGame.SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean);
+procedure TCore.SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean);
 var
   OldResX, OldResY, OldRefresh: Cardinal;
 begin
@@ -414,7 +414,7 @@ end;
 
 //Private
 
-procedure TGame.SetFullscreen(Value: Boolean);
+procedure TCore.SetFullscreen(Value: Boolean);
 begin
   if FFullscreen=Value then Exit;
   FFullscreen:=Value;
@@ -435,7 +435,7 @@ begin
   SetWindowPos(FHandle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or SWP_FRAMECHANGED or SWP_SHOWWINDOW);
 end;
 
-procedure TGame.SetState(Value: Cardinal);
+procedure TCore.SetState(Value: Cardinal);
 begin
   if StateExists(FState) and StateExists(Value)
     then LogFNC(llInfo, 'Switch state from %s to %s', [FStates[FState].Name, FStates[Value].Name]);
@@ -457,12 +457,12 @@ begin
   end;
 end;
 
-function TGame.GetKeyPressed(Index: Byte): Boolean;
+function TCore.GetKeyPressed(Index: Byte): Boolean;
 begin
   Result:=FKeyState[Index]>127;
 end;
 
-function TGame.GetTime: Cardinal;
+function TCore.GetTime: Cardinal;
 var
   T: Int64;
 begin
@@ -470,7 +470,7 @@ begin
   Result:=Trunc(1000*T/FPerformanceFrequency);
 end;
 
-procedure TGame.LoadFonts;
+procedure TCore.LoadFonts;
 
   procedure LoadFont(const Name, ID: string);
   var
@@ -509,7 +509,7 @@ end;
 
 const
   QuitHelp='quit'#13+
-           '  Quits the game';
+           '  Quits the program';
   ResolutionHelp='resolution <width> <height> [refreshrate]'#13+
                  '  Sets resolution width x height @ refreshrate'#13+
                  'resolution'#13+
@@ -521,7 +521,7 @@ const
   VSyncHelp='Vertical synchronization state (0: disabled; 1: enabled)';
   FPSHelp='Current FPS';
 
-procedure TGame.RegisterCommands;
+procedure TCore.RegisterCommands;
 begin
   Console.RegisterCommand('quit', QuitHelp, Quit);
   Console.RegisterCommand('resolution', ResolutionHelp, Resolution);
@@ -530,7 +530,7 @@ begin
   FRegisteredVariables.Add(RegisterCVI('fps', FPSHelp, @FFPS, 0, 0, 0, true));
 end;
 
-procedure TGame.UnregisterCommands;
+procedure TCore.UnregisterCommands;
 var
   i: Integer;
 begin
@@ -542,13 +542,13 @@ begin
   FRegisteredVariables.Clear;
 end;
 
-function TGame.Quit(const Args: string): Boolean;
+function TCore.Quit(const Args: string): Boolean;
 begin
   Result:=true;
   StopEngine;
 end;
 
-function TGame.Resolution(const Args: string): Boolean;
+function TCore.Resolution(const Args: string): Boolean;
 var
   ResX, ResY, Refresh: Cardinal;
   S: string;
@@ -574,7 +574,7 @@ begin
   Result:=true;
 end;
 
-function TGame.CmdFullscreen(const Args: string): Boolean;
+function TCore.CmdFullscreen(const Args: string): Boolean;
 begin
   Result:=false;
   if Args='' then

@@ -50,8 +50,8 @@ type
     FCaption: string;
   protected
     procedure AdjustRect(AWidth, AHeight: Integer); override;
-    procedure EventHandler(Event: TRegionEvent; Button, X, Y, Tag: Integer); override;
     procedure HandleClose(Event: TRegionEvent; Button, X, Y, Tag: Integer);
+    procedure HandleCaption(Event: TRegionEvent; Button, X, Y, Tag: Integer);
     procedure Draw; override;
   public
     constructor Create(Left, Top, Width, Height: Integer; Parent: TGUIWidget; Caption: string);
@@ -71,7 +71,7 @@ type
 
 implementation
 
-uses UGame, PakMan;
+uses UCore, PakMan;
 
 constructor TStateMenu.Create;
 var
@@ -190,31 +190,31 @@ end;
 
 procedure TStateMenu.IntroClick(Sender: TObject);
 begin
-  Game.SwitchState(Game.FindState('Intro'));
+  Core.SwitchState(Core.FindState('Intro'));
 end;
 
 procedure TStateMenu.LoadClick(Sender: TObject);
 var
   SL: Integer;
 begin
-  SL:=Game.FindState('Load');
-  (Game.GetState(SL) as TStateLoad).LoadFunc:=Load;
-  Game.SwitchState(SL);
+  SL:=Core.FindState('Load');
+  (Core.GetState(SL) as TStateLoad).LoadFunc:=Load;
+  Core.SwitchState(SL);
 end;
 
 procedure TStateMenu.GameClick(Sender: TObject);
 begin
-  Game.SwitchState(Game.FindState('Game'));
+  Core.SwitchState(Core.FindState('Game'));
 end;
 
 procedure TStateMenu.ConsoleClick(Sender: TObject);
 begin
-  Game.SwitchState(Game.FindState('Console'));
+  Core.SwitchState(Core.FindState('Console'));
 end;
 
 procedure TStateMenu.ExitClick(Sender: TObject);
 begin
-  Game.StopEngine;
+  Core.StopEngine;
 end;
 
 constructor TMenuButton.Create(Left, Top, Width, Height: Integer; Parent: TGUIWidget; Caption: string);
@@ -282,12 +282,17 @@ constructor TMenuForm.Create(Left, Top, Width, Height: Integer; Parent: TGUIWidg
 begin
   inherited Create(Left, Top, Width, Height, Parent);
   FCaption:=Caption;
-  SetLength(FRegions, 1);
+  SetLength(FRegions, 2);
   FRegions[0].Left:=Width-20;
   FRegions[0].Top:=5;
   FRegions[0].Width:=15;
   FRegions[0].Height:=15;
   FRegions[0].Handler:=HandleClose;
+  FRegions[1].Left:=0;
+  FRegions[1].Top:=0;
+  FRegions[1].Width:=Width;
+  FRegions[1].Height:=25;
+  FRegions[1].Handler:=HandleCaption;
   FDragging:=false;
 end;
 
@@ -295,27 +300,7 @@ procedure TMenuForm.AdjustRect(AWidth, AHeight: Integer);
 begin
   inherited AdjustRect(AWidth, AHeight);
   FRegions[0].Left:=Width-20;
-end;
-
-procedure TMenuForm.EventHandler(Event: TRegionEvent; Button, X, Y, Tag: Integer);
-begin
-  inherited;
-  case Event of
-    reMouseDown:
-      if (Button=1) and (Y<=25) then
-      begin
-        FDragging:=true;
-        FDragPoint.X:=X;
-        FDragPoint.Y:=Y;
-      end;
-    reMouseUp: if Button=1 then FDragging:=false;
-    reMouseMove:
-      if FDragging then
-      begin
-        Left:=Left+X-FDragPoint.X;
-        Top:=Top+Y-FDragPoint.Y;
-      end;
-  end;
+  FRegions[1].Width:=Width;
 end;
 
 procedure TMenuForm.HandleClose(Event: TRegionEvent; Button, X, Y, Tag: Integer);
@@ -328,7 +313,32 @@ begin
     end;
     reMouseDown: FDownClose:=true;
     reMouseUp: FDownClose:=false;
-    reMouseClick: if Button=1 then Game.StopEngine;
+    reMouseClick: if Button=1 then Core.StopEngine;
+  end;
+end;
+
+procedure TMenuForm.HandleCaption(Event: TRegionEvent; Button, X, Y, Tag: Integer);
+const
+  Events: array [reMouseEnter..reKeyUp] of string=
+    ('MouseEnter', 'MouseLeave', 'MouseMove', 'MouseDown', 'MouseUp',
+     'MouseClick', 'MouseWheel', 'Char', 'KeyDown', 'KeyUp');
+begin
+  FCaption:=Events[Event]+' '+IntToStr(X)+' '+IntToStr(Y);
+  case Event of
+    reMouseDown:
+      if Button=1 then
+      begin
+        FDragging:=true;
+        FDragPoint.X:=X;
+        FDragPoint.Y:=Y;
+      end;
+    reMouseUp: if Button=1 then FDragging:=false;
+    reMouseMove, reMouseLeave:
+      if FDragging then
+      begin
+        Left:=Left+X-FDragPoint.X;
+        Top:=Top+Y-FDragPoint.Y;
+      end;
   end;
 end;
 

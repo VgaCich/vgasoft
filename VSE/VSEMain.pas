@@ -3,7 +3,7 @@ unit VSEMain;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, UGame, GameStates,
+  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, UCore, GameStates,
   OneInstance, ULog, UConsole, VSEConfig;
 
 procedure VSEStart;
@@ -29,13 +29,13 @@ begin
   case (Msg) of
     WM_ACTIVATE:
       begin
-        if Initializing or Quitting or (Game<>nil) then Exit;
+        if Initializing or Quitting or (Core<>nil) then Exit;
         Log(llInfo, 'Creating engine');
         {$IFDEF VSEDEBUG}Log(llInfo, 'Debug mode');{$ENDIF}
-        Game:=TGame.Create(Handle, Initializing);
-        Game.StartEngine;
+        Core:=TCore.Create(Handle, Initializing);
+        Core.StartEngine;
         Log(llInfo, 'Engine created');
-        Game.SetResolution(Game.ResX, Game.ResY, Game.Refresh, false);
+        Core.SetResolution(Core.ResX, Core.ResY, Core.Refresh, false);
         Log(llInfo, 'Init states');
         if Assigned(InitStates) then
           try
@@ -43,35 +43,35 @@ begin
           except
             LogException('in InitStates');
             MessageBox(Handle, PChar('Exception "'+ExceptObject.ClassName+'" at '+IntToHex(Cardinal(ExceptAddr), 8)+' with message "'+Exception(ExceptObject).Message+'" in InitStates'), 'Error', MB_ICONERROR);
-            Game.StopEngine;
+            Core.StopEngine;
             Exit;
           end
           else begin
             Log(llError, 'InitStates() not initialized');
             MessageBox(0, 'InitStates() not initialized', 'Error', MB_ICONERROR);
-            Game.StopEngine;
+            Core.StopEngine;
             Exit;
           end;
         if DoAutoexec then Console.ExecCommand('/exec autoexec');
       end;
-    WM_KEYUP: Game.KeyEvent(wParam, keUp);
-    WM_KEYDOWN: Game.KeyEvent(wParam, keDown);
-    WM_CHAR: Game.CharEvent(Chr(wParam));
-    WM_MOUSEMOVE: Game.MouseEvent(0, meMove, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_LBUTTONDOWN: Game.MouseEvent(1, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_LBUTTONUP: Game.MouseEvent(1, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_RBUTTONDOWN: Game.MouseEvent(2, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_RBUTTONUP: Game.MouseEvent(2, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_MBUTTONDOWN: Game.MouseEvent(3, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_MBUTTONUP: Game.MouseEvent(3, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_XBUTTONDOWN: Game.MouseEvent(3+HiWord(wParam), meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_XBUTTONUP: Game.MouseEvent(3+HiWord(wParam), meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_MOUSEWHEEL: Game.MouseEvent(SmallInt(HiWord(wParam)) div 120, meWheel, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_KEYUP: Core.KeyEvent(wParam, keUp);
+    WM_KEYDOWN: Core.KeyEvent(wParam, keDown);
+    WM_CHAR: Core.CharEvent(Chr(wParam));
+    WM_MOUSEMOVE: Core.MouseEvent(0, meMove, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_LBUTTONDOWN: Core.MouseEvent(1, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_LBUTTONUP: Core.MouseEvent(1, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_RBUTTONDOWN: Core.MouseEvent(2, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_RBUTTONUP: Core.MouseEvent(2, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_MBUTTONDOWN: Core.MouseEvent(3, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_MBUTTONUP: Core.MouseEvent(3, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_XBUTTONDOWN: Core.MouseEvent(3+HiWord(wParam), meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_XBUTTONUP: Core.MouseEvent(3+HiWord(wParam), meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_MOUSEWHEEL: Core.MouseEvent(SmallInt(HiWord(wParam)) div 120, meWheel, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
     WM_DESTROY:
       begin
         Log(llInfo, 'Destroying engine');
-        if Game.Fullscreen then gleGoBack;
-        FAN(Game);
+        if Core.Fullscreen then gleGoBack;
+        FAN(Core);
         Quitting:=true;
         LogNC(llInfo, 'Engine destroyed');
         Result:=0;
@@ -79,23 +79,23 @@ begin
       end;
     WM_QUERYENDSESSION:
       begin
-        Game.StopEngine;
+        Core.StopEngine;
         Result:=1;
       end;
     WM_SIZE:
       begin
-        if (ExtensionsRead and ImplementationRead) and Assigned(Game) then begin
-          if Game.Fullscreen then
+        if (ExtensionsRead and ImplementationRead) and Assigned(Core) then begin
+          if Core.Fullscreen then
           begin
-            WndWidth:=Game.ResX;
-            WndHeight:=Game.ResY;
+            WndWidth:=Core.ResX;
+            WndHeight:=Core.ResY;
           end
           else begin
-            WndWidth:=Game.ResX+GetSystemMetrics(SM_CXDLGFRAME)*2;
-            WndHeight:=Game.ResY+GetSystemMetrics(SM_CYCAPTION)+GetSystemMetrics(SM_CYDLGFRAME)*2;
+            WndWidth:=Core.ResX+GetSystemMetrics(SM_CXDLGFRAME)*2;
+            WndHeight:=Core.ResY+GetSystemMetrics(SM_CYCAPTION)+GetSystemMetrics(SM_CYDLGFRAME)*2;
           end;
-          gleResizeWnd(Game.ResX, Game.ResY);
-          if Game.Fullscreen
+          gleResizeWnd(Core.ResX, Core.ResY);
+          if Core.Fullscreen
             then SetWindowPos(Handle, HWND_TOPMOST, 0, 0, WndWidth, WndHeight, 0)
             else SetWindowPos(Handle, HWND_TOP, 0, 0, WndWidth, WndHeight, SWP_NOMOVE or SWP_FRAMECHANGED);
         end;
@@ -155,11 +155,11 @@ begin
       end;
     end
     else
-      if Game<>nil then
-        if not Game.Minimized
-          then Game.Update
+      if Core<>nil then
+        if not Core.Minimized
+          then Core.Update
           else if GetForegroundWindow=Handle
-            then Game.Resume;
+            then Core.Resume;
   end;
   if not UnregisterClass(WndClassName, hInstance) then
   begin

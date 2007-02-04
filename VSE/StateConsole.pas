@@ -34,7 +34,7 @@ type
 
 implementation
 
-uses UGame, VSEConfig;
+uses UCore, VSEConfig;
 
 const
   Prompt='>';
@@ -78,7 +78,7 @@ var
       '5': SetColor(1, 0, 1); //FUCHSIA
       '6': SetColor(0, 1, 1); //AQUA
       '7': SetColor(1, 1, 1); //WHITE
-      'b': CurColor.Alpha:=Abs(Sin(Game.Time mod 300/300*pi))/2+0.5; //BLINK
+      'b': CurColor.Alpha:=Abs(Sin(Core.Time mod 300/300*pi))/2+0.5; //BLINK
       'n': CurColor.Alpha:=1; //NORMAL
     end;
     glColor4fv(@CurColor);
@@ -195,9 +195,9 @@ end;
 
 function TStateConsole.Activate: Cardinal;
 begin
-  FGameState:=Game.FindState('Game');
-  FConsoleState:=Game.FindState('Console');
-  FGame:=Game.GetState(FGameState) as TStateGame;
+  FGameState:=Core.FindState('Game');
+  FConsoleState:=Core.FindState('Console');
+  FGame:=Core.GetState(FGameState) as TStateGame;
   GetEnd(FCurLine, FSubLine);
   FCurCmdHist:=Console.CommandsHistoryCount;
   FCursor:=1;
@@ -289,7 +289,7 @@ begin
                  FCurCmd:=Console.CommandsHistory[FCurCmdHist];
                  FCursor:=Length(FCurCmd)+1;
                end;
-      192: Game.SwitchState(FGameState); // ~
+      192: Core.SwitchState(FGameState); // ~
     end;
 end;
 
@@ -385,7 +385,7 @@ end;
 
 procedure TStateConsole.Adding(Sender: TObject);
 begin
-  if Assigned(Game) and (Game.State=FConsoleState) and not FNotEnd then GetEnd(FCurLine, FSubLine);
+  if Assigned(Core) and (Core.State=FConsoleState) and not FNotEnd then GetEnd(FCurLine, FSubLine);
 end;
 
 end.

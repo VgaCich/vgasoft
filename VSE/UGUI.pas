@@ -26,6 +26,7 @@ type
     FWidgetLast, FRegionLast: TMouseButtons;
     FWidgets: TList;
     FRegions: array of TRegion;
+    procedure AfterConstruction; override;
     procedure SetLeft(Value: Integer);
     procedure SetTop(Value: Integer);
     procedure SetWidth(Value: Integer);
@@ -102,7 +103,7 @@ implementation
 {$B-}
 
 uses
-  UGame, PakMan, ULog;
+  UCore, PakMan, ULog;
 
 type
   TCursorInfo=packed record
@@ -135,7 +136,6 @@ begin
   FWidgetLast[0]:=-1;
   FWidgetLast[1]:=-1;
   FWidgetLast[2]:=-1;
-  if Assigned(FParent) then FParent.AddWidget(Self);
 end;
 
 destructor TGUIWidget.Destroy;
@@ -149,6 +149,11 @@ begin
   Finalize(FRegions);
   if Assigned(FParent) then FParent.DeleteWidget(Self);
   inherited Destroy;
+end;
+
+procedure TGUIWidget.AfterConstruction;
+begin
+  if Assigned(FParent) then FParent.AddWidget(Self);
 end;
 
 procedure TGUIWidget.SetLeft(Value: Integer);
@@ -291,7 +296,7 @@ begin
   Widget:=WidgetAt(Point(X, Y));
   Region:=RegionAt(Point(X, Y));
   case Event of
-    reMouseEnter, reMouseDown, reMouseUp, reMouseWheel: begin
+    {reMouseEnter, }reMouseDown, reMouseUp, reMouseWheel: begin
       SendEvent(Region, Widget, Event, Button, X, Y);
       if Event=reMouseEnter then SetActive(Region, Widget);
       if (Button>0) and (Button<=3) then
@@ -311,23 +316,22 @@ begin
     end;
     reMouseMove: begin
       SetActive(Region, Widget);
+      SendEvent(FRegionActive, FWidgetActive, reMouseMove, 0, X, Y);
       if FRegionActive<>FRegionLastActive then
       begin
         SendEvent(FRegionLastActive, -1, reMouseLeave, 0, X, Y);
         SendEvent(FRegionActive, -1, reMouseEnter, 0, X, Y);
-      end
-        else SendEvent(FRegionActive, -1, reMouseMove, 0, X, Y);
+      end;
       if FWidgetActive<>FWidgetLastActive then
       begin
         SendEvent(-1, FWidgetLastActive, reMouseLeave, 0, X, Y);
         SendEvent(-1, FWidgetActive, reMouseEnter, 0, X, Y);
-      end
-        else SendEvent(-1, FWidgetActive, reMouseMove, 0, X, Y);
+      end;
     end;
-    reMouseLeave: begin
+    {reMouseLeave: begin
       SendEvent(FRegionActive, FWidgetActive, reMouseLeave, 0, X, Y);
       SetActive(-1, -1);
-    end;
+    end;}
   end;
 end;
 
@@ -382,8 +386,8 @@ end;
 
 procedure TGUI.MapCursor(var Cursor: TPoint);
 begin
-  Cursor.X:=Round(Cursor.X*FVSW/Game.ResX);
-  Cursor.Y:=Round(Cursor.Y*FVSH/Game.ResY);
+  Cursor.X:=Round(Cursor.X*FVSW/Core.ResX);
+  Cursor.Y:=Round(Cursor.Y*FVSH/Core.ResY);
 end;
 
 function TGUI.FormAt(Point: TPoint): Integer;
@@ -550,7 +554,7 @@ var
   F: TStream;
 begin
   Result:=false;
-  F:=Game.PakMan.OpenFile(FileName, ofNoCreate);
+  F:=Core.PakMan.OpenFile(FileName, ofNoCreate);
   if not Assigned(F) then
   begin
     Log(llError, 'Cursor: Load('+FileName+') failed: cannot open file');
@@ -566,9 +570,9 @@ begin
     SetLength(TexName, CursorInfo.TexNameSize);
     F.Read(TexName[1], CursorInfo.TexNameSize);
   finally
-    Game.PakMan.CloseFile(F);
+    Core.PakMan.CloseFile(F);
   end;
-  F:=Game.PakMan.OpenFile(TexName, ofNoCreate);
+  F:=Core.PakMan.OpenFile(TexName, ofNoCreate);
   if not Assigned(F) then
   begin
     Log(llError, 'Cursor: Load('+FileName+') failed: cannot open texture');
@@ -582,7 +586,7 @@ begin
       Exit;
     end;
   finally
-    Game.PakMan.CloseFile(F);
+    Core.PakMan.CloseFile(F);
   end;
   FFramesCount:=CursorInfo.FramesCount;
   FFramesPerRow:=CursorInfo.FramesPerRow;
@@ -614,7 +618,7 @@ begin
   if (FFramesPerRow=0) or (FFramesCount=0) then Exit;
   glPushMatrix;
   glPushAttrib(GL_ENABLE_BIT or GL_TEXTURE_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT or GL_LIGHTING_BIT);
-  gleOrthoMatrix(Game.ResX, Game.ResY);
+  gleOrthoMatrix(Core.ResX, Core.ResY);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBindTexture(GL_TEXTURE_2D, FTexture);
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);

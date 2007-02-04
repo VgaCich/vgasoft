@@ -43,7 +43,7 @@ type
 
 implementation
 
-uses UGame;
+uses UCore;
 
 constructor TLoadThread.Create(CreateSuspended: Boolean; AParent: TStateLoad);
 begin
@@ -96,7 +96,7 @@ end;
 
 procedure TStateLoad.Update;
 begin
-  if FLoadThread.Done then Game.SwitchState(Game.FindState('Menu'));
+  if FLoadThread.Done then Core.SwitchState(Core.FindState('Menu'));
 end;
 
 function TStateLoad.Activate: Cardinal;

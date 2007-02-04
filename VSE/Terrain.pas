@@ -30,7 +30,7 @@ type
 implementation
 
 uses
-  UGame, ULog, PakMan;
+  UCore, ULog, PakMan;
 
 const
   TerrainID: Cardinal=$52545356;
@@ -115,11 +115,11 @@ begin
       FIndexBuffer[2*(j*(FWidth+1)+i)+1]:=(j+1)*FWidth;
     end;
   end;
-  Tex:=Game.PakMan.OpenFile('Grass.tga', ofNoCreate);
+  Tex:=Core.PakMan.OpenFile('Grass.tga', ofNoCreate);
   try
     FTexture:=LoadTexture(Tex, tfTGA, true, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
   finally
-    Game.PakMan.CloseFile(Tex);
+    Core.PakMan.CloseFile(Tex);
   end;
 end;
 

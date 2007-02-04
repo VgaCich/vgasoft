@@ -37,7 +37,7 @@ type
 
 implementation
 
-uses UGame;
+uses UCore;
 
 constructor TStateGame.Create;
 var
@@ -57,7 +57,7 @@ begin
   FGUI.GrabFocus(FButtonMenu);
   FText:=TStringList.Create;
 {  FShader:=TShader.Create;
-  F:=Game.PakMan.OpenFile('Bump2.shd', ofNoCreate);
+  F:=Core.PakMan.OpenFile('Bump2.shd', ofNoCreate);
   try
     FShader.Load(F);
     FShader.Link;
@@ -65,13 +65,13 @@ begin
       then Log('StateGame.Create: Shader is not valid');
     Log('Shader log: '+FShader.InfoLog);
   finally
-    Game.PakMan.CloseFile(F);
+    Core.PakMan.CloseFile(F);
   end;}
-{  F:=Game.PakMan.OpenFile('TestTerrain.vtr', ofNoCreate);
+{  F:=Core.PakMan.OpenFile('TestTerrain.vtr', ofNoCreate);
   try
     FTerrain:=TTerrain.Create(F, 0.01, 0.001);
   finally
-    Game.PakMan.CloseFile(F);
+    Core.PakMan.CloseFile(F);
   end; }
 end;
 
@@ -105,7 +105,7 @@ begin
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
-  glePerspectiveMatrix(Game.ResX, Game.ResY);
+  glePerspectiveMatrix(Core.ResX, Core.ResY);
   glLightfv(GL_LIGHT0, GL_POSITION, @LightPos);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, @LightDiffuse);
   glLightfv(GL_LIGHT0, GL_SPECULAR, @LightSpecular);
@@ -126,7 +126,7 @@ begin
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
   gleOrthoMatrix(800, 600);
   glColor4d(0, 1, 0, 1);
-  S:='FPS: '+IntToStr(Game.FPS);
+  S:='FPS: '+IntToStr(Core.FPS);
   gleWrite(800-gleTextWidth(S), 5, S);
   glColor4d(0, 1, 0, 0.3);
   for i:=0 to 29 do
@@ -173,7 +173,7 @@ const
   Events: array[TKeyEvent] of string=('Down', 'Up');
 begin
   AddText(Format('KeyEvent(Button=%d, Event=%s)', [Button, Events[Event]]));
-  if (Button=192) and (Event=keUp) then Game.SwitchState(Game.FindState('Console'));
+  if (Button=192) and (Event=keUp) then Core.SwitchState(Core.FindState('Console'));
   FGUI.KeyEvent(Button, Event);
 end;
 
@@ -193,18 +193,18 @@ var
   ModelData: TStream;
 begin
   Result:=false;
-  ModelData:=Game.PakMan.OpenFile(Args+'.3ds', ofNoCreate);
+  ModelData:=Core.PakMan.OpenFile(Args+'.3ds', ofNoCreate);
   try
     if Assigned(ModelData) then FModel.Load(ModelData);
   finally
-    Game.PakMan.CloseFile(ModelData);
+    Core.PakMan.CloseFile(ModelData);
   end;
   Result:=true;
 end;
 
 procedure TStateGame.MenuClick(Sender: TObject);
 begin
-  Game.SwitchState(Game.FindState('Menu'));
+  Core.SwitchState(Core.FindState('Menu'));
 end;
 
 procedure TStateGame.AddText(const S: string);

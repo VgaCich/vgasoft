@@ -22,7 +22,7 @@ type
 
 implementation
 
-uses UGame,VSEConfig;
+uses UCore, VSEConfig;
 
 procedure TStateIntro.Draw;
 begin
@@ -34,7 +34,7 @@ end;
 procedure TStateIntro.Update;
 begin
   Inc(FU);
-  if FU>50 then Game.SwitchState(Game.FindState('Menu'));
+  if FU>50 then Core.SwitchState(Core.FindState('Menu'));
 end;
 
 function TStateIntro.Activate: Cardinal;
@@ -63,12 +63,12 @@ end;
 
 procedure TStateIntro.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 begin
-  Game.SwitchState(Game.FindState('Menu'));
+  Core.SwitchState(Core.FindState('Menu'));
 end;
 
 procedure TStateIntro.KeyEvent(Button: Integer; Event: TKeyEvent);
 begin
-  Game.SwitchState(Game.FindState('Menu'));
+  Core.SwitchState(Core.FindState('Menu'));
 end;
 
 function TStateIntro.GetName: string;

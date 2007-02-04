@@ -10,11 +10,14 @@ type
   protected
     FName: string;
     FHelp: string;
+    FOnChange: TOnEvent;
+    procedure Change;
   public
     constructor Create(const AName, AHelp: string);
     destructor Destroy; override;
     function  DoCommand(const Args: string): Boolean; virtual; abstract;
     property  Name: string read FName;
+    property  OnChange: TOnEvent read FOnChange write FOnChange;
   end;
   TConsoleVariableRec=record
     Name: string;
@@ -52,7 +55,7 @@ type
     function  DoCommand(const Args: string): Boolean; override;
   end;
 
-function  RegisterCVI(AName, AHelp: string; Variable: PInteger; Min, Max, Default: Integer; ReadOnly: Boolean): TConsoleVariableInteger;
+function RegisterCVI(AName, AHelp: string; Variable: PInteger; Min, Max, Default: Integer; ReadOnly: Boolean; OnChange: TOnEvent=nil): TConsoleVariableInteger;
 
 var
   ConsoleVariables: TConsoleVariables;
@@ -75,6 +78,11 @@ begin
   Console.UnregisterCommand('var_'+FName);
   ConsoleVariables.UnregisterVariable(FName);
   inherited Destroy;
+end;
+
+procedure TConsoleVariable.Change;
+begin
+  if Assigned(FOnChange) then FOnChange(Self);
 end;
 
 {TConsoleVariables}
@@ -333,13 +341,15 @@ begin
   end;
   FVariable^:=i;
   Result:=true;
+  Change;
 end;
 
 {Register procedures}
 
-function RegisterCVI(AName, AHelp: string; Variable: PInteger; Min, Max, Default: Integer; ReadOnly: Boolean): TConsoleVariableInteger;
+function RegisterCVI(AName, AHelp: string; Variable: PInteger; Min, Max, Default: Integer; ReadOnly: Boolean; OnChange: TOnEvent=nil): TConsoleVariableInteger;
 begin
   Result:=TConsoleVariableInteger.Create(AName, AHelp, Variable, Min, Max, Default, ReadOnly);
+  Result.OnChange:=OnChange;
   ConsoleVariables.AddVariable(Result);
 end;
 

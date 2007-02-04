@@ -296,7 +296,7 @@ end;
 
 implementation
 
-uses avlUtils, Textures, avlMath{, OpenGLExt}, UGame, PakMan;
+uses avlUtils, Textures, avlMath{, OpenGLExt}, UCore, PakMan;
 
 
 // Convert TColor to RGBA
@@ -562,13 +562,13 @@ begin
            SetLength(FMaterialFile, I);
            NewChunk.ReadBuffer(FMaterialFile[1], I);
            SetLength(FMaterialFile, Length(FMaterialFile) - 1);
-           TexData:=Game.PakMan.OpenFile(FMaterialFile, ofNoCreate);
+           TexData:=Core.PakMan.OpenFile(FMaterialFile, ofNoCreate);
            try
              FGenTexture:=0;
              FGenTexture:=LoadTexture(TexData, FmtByExt(FMaterialFile), true, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
              FHasTexture:=FGenTexture<>0;
            finally
-             Game.PakMan.CloseFile(TexData);
+             Core.PakMan.CloseFile(TexData);
            end;
            //FHasTexture:=LoadTexture(FMaterialFile, FGenTexture, False, 0, 0);
          end;
