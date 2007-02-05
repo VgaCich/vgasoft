@@ -319,7 +319,7 @@ begin
     for i:=0 to List.Count-1 do ExecCommand(List[i]);
   finally
     HistoryEnabled:=true;
-    PakMan.CloseFile(F);
+    FAN(F);
     FAN(List);
   end;
 end;

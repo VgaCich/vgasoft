@@ -506,7 +506,7 @@ begin
   end;
   case Action of
     BASS_FILE_LEN: Result:=Data.Size;
-    BASS_FILE_CLOSE: Core.PakMan.CloseFile(Data);
+    BASS_FILE_CLOSE: FAN(Data);
     BASS_FILE_READ: Result:=Data.Read(Pointer(P2)^, P1);
     BASS_FILE_SEEK: LongBool(Result):=Data.Seek(P1, soFromBeginning)<>P1;
   end;

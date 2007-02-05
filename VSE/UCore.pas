@@ -480,7 +480,7 @@ procedure TCore.LoadFonts;
     try
       if not gleLoadFont(ID, Data) then LogF(llError, 'Could''n load font %s(%s)!', [ID, Name]);
     finally
-      PakMan.CloseFile(Data);
+      FAN(Data);
     end;
   end;
 
@@ -494,7 +494,7 @@ begin
   try
     FntListFile:=PakMan.OpenFile('Fonts.ini', 0);
     FntList.LoadFromStream(FntListFile);
-    PakMan.CloseFile(FntListFile);
+    FAN(FntListFile);
     for i:=0 to FntList.Count-1 do
     begin
       P:=Pos('=', FntList[i]);

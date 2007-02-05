@@ -119,7 +119,7 @@ begin
   try
     FTexture:=LoadTexture(Tex, tfTGA, true, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
   finally
-    Core.PakMan.CloseFile(Tex);
+    FAN(Tex);
   end;
 end;
 

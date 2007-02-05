@@ -146,13 +146,12 @@ end;
 function TStateGame.Activate: Cardinal;
 begin
   glClearColor(0, 0, 0, 1);
-  ShowCursor(false);
   Result:=20;
 end;
 
 procedure TStateGame.Deactivate;
 begin
-  ShowCursor(true);
+
 end;
 
 procedure TStateGame.Resume;
@@ -197,7 +196,7 @@ begin
   try
     if Assigned(ModelData) then FModel.Load(ModelData);
   finally
-    Core.PakMan.CloseFile(ModelData);
+    FAN(ModelData);
   end;
   Result:=true;
 end;

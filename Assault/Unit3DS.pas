@@ -568,7 +568,7 @@ begin
              FGenTexture:=LoadTexture(TexData, FmtByExt(FMaterialFile), true, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
              FHasTexture:=FGenTexture<>0;
            finally
-             Core.PakMan.CloseFile(TexData);
+             FAN(TexData);
            end;
            //FHasTexture:=LoadTexture(FMaterialFile, FGenTexture, False, 0, 0);
          end;

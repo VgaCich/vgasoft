@@ -570,7 +570,7 @@ begin
     SetLength(TexName, CursorInfo.TexNameSize);
     F.Read(TexName[1], CursorInfo.TexNameSize);
   finally
-    Core.PakMan.CloseFile(F);
+    FAN(F);
   end;
   F:=Core.PakMan.OpenFile(TexName, ofNoCreate);
   if not Assigned(F) then
@@ -586,7 +586,7 @@ begin
       Exit;
     end;
   finally
-    Core.PakMan.CloseFile(F);
+    FAN(F);
   end;
   FFramesCount:=CursorInfo.FramesCount;
   FFramesPerRow:=CursorInfo.FramesPerRow;

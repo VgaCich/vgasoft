@@ -79,6 +79,7 @@ var
   Frm: TMenuForm;
 begin
   inherited Create;
+  ShowCursor(false);
   FCursor:=TCursor.Create;
   FCursor.Load('Cursor.vcr');
   FMenu:=TGUI.Create(800, 600);
@@ -102,6 +103,7 @@ end;
 
 destructor TStateMenu.Destroy;
 begin
+  ShowCursor(true);
   FAN(FCursor);
   FAN(FMenu);
   inherited Destroy;
@@ -135,13 +137,12 @@ begin
   glEnable(GL_TEXTURE_2D);
   glLineWidth(4);
   glPointSize(4);
-  ShowCursor(false);
   Result:=50;
 end;
 
 procedure TStateMenu.Deactivate;
 begin
-  ShowCursor(true);
+
 end;
 
 procedure TStateMenu.Resume;

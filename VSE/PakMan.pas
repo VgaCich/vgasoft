@@ -49,19 +49,28 @@ type
   protected
     function  FindFile(Name: string): PFileInfo;
     procedure LoadPak(const PakName: string);
+    procedure CloseFile(F: TStream);
   public
     constructor Create(const BaseDir: string);
     destructor Destroy; override;
     function  OpenFile(const Name: string; Flags: Cardinal): TStream;
     function  CreateFile(Name: string; Flags: Cardinal): TStream;
-    procedure CloseFile(F: TStream);
     procedure DeleteFile(Name: string);
     function  FileExists(const Name: string): Boolean;
     procedure FindFiles(const Mask: string; Recursive: Boolean; List: TStringList);
   end;
 
+  TPakFileStream=class(TFileStream)
+  private
+    FPakMan: TPakMan;
+  public
+    constructor Create(FileInfo: TFileInfo; Flags: Cardinal; PakMan: TPakMan);
+    destructor Destroy; override;
+  end;
+
   TPakNRVStream=class(TStream)
   private
+    FPakMan: TPakMan;
     FBuffer: Pointer;
     FSize, FPosition, FIndexLen: Integer;
     FInStream: TFileStream;
@@ -71,15 +80,16 @@ type
     function GetSize: Integer; override;
     function GetPosition: Integer; override;
   public
-    constructor Create(FileInfo: TFileInfo; Flags: Cardinal);
+    constructor Create(FileInfo: TFileInfo; Flags: Cardinal; PakMan: TPakMan);
     destructor Destroy; override;
     function Read(var Buffer; Count: Longint): Longint; override;
     function Write(const Buffer; Count: Longint): Longint; override;
     function Seek(Offset: Longint; Origin: Word): Longint; override;
-  end; 
-  
+  end;
+
   TPakLZMAStream=class(TStream)
   private
+    FPakMan: TPakMan;
     FInStream: TFileStream;
     FDecompressor: TLZMADecompressor;
     FSize, FPosition: Integer;
@@ -87,7 +97,7 @@ type
     function GetSize: Integer; override;
     function GetPosition: Integer; override;
   public
-    constructor Create(FileInfo: TFileInfo; Flags: Cardinal);
+    constructor Create(FileInfo: TFileInfo; Flags: Cardinal; PakMan: TPakMan);
     destructor Destroy; override;
     function Read(var Buffer; Count: Longint): Longint; override;
     function Write(const Buffer; Count: Longint): Longint; override;
@@ -96,13 +106,14 @@ type
 
   TPakStoreStream=class(TStream)
   private
+    FPakMan: TPakMan;
     FSize, FOffset: Integer;
     FInStream: TFileStream;
   protected
     function GetSize: Integer; override;
     function GetPosition: Integer; override;
   public
-    constructor Create(FileInfo: TFIleInfo; Flags: Cardinal);
+    constructor Create(FileInfo: TFileInfo; Flags: Cardinal; PakMan: TPakMan);
     destructor Destroy; override;
     function Read(var Buffer; Count: Longint): Longint; override;
     function Write(const Buffer; Count: Longint): Longint; override;
@@ -310,8 +321,12 @@ var
   i: Integer;
 begin
   FAN(FIndex);
-  for i:=0 to FOpenedFiles.Count-1 do
-    if Assigned(FOpenedFiles[i]) then TObject(FOpenedFiles[i]).Free;
+  if FOpenedFiles.Count>0 then
+  begin
+    LogF(llWarning, 'PakMan: %d files not closed', [FOpenedFiles.Count]);
+    for i:=0 to FOpenedFiles.Count-1 do
+      if Assigned(FOpenedFiles[i]) then TObject(FOpenedFiles[i]).Free;
+  end;
   FAN(FOpenedFiles);
   inherited Destroy;
 end;
@@ -325,10 +340,10 @@ begin
   if FI<>nil then
   begin
     case FI.Source of
-      fsFile: Result:=TFileStream.Create(FI.PakFile+FI.Name, Flags and $FFFF);
-      fsPakNRV: Result:=TPakNRVStream.Create(FI^, Flags);
-      fsPakLZMA: Result:=TPakLZMAStream.Create(FI^, Flags);
-      fsPakStore: Result:=TPakStoreStream.Create(FI^, Flags);
+      fsFile: Result:=TPakFileStream.Create(FI^, Flags, Self);
+      fsPakNRV: Result:=TPakNRVStream.Create(FI^, Flags, Self);
+      fsPakLZMA: Result:=TPakLZMAStream.Create(FI^, Flags, Self);
+      fsPakStore: Result:=TPakStoreStream.Create(FI^, Flags, Self);
     end;
     FOpenedFiles.Add(Result);
   end
@@ -343,6 +358,7 @@ end;
 function TPakMan.CreateFile(Name: string; Flags: Cardinal): TStream;
 var
   i: Integer;
+  FI: TFileInfo;
 begin
   Result:=nil;
   for i:=1 to Length(Name) do
@@ -350,11 +366,13 @@ begin
   if (Pos('..\', Name)>0) or not CheckPath(Name, false) then
   begin
     Log(llError, 'PakMan: CreateFile('+Name+') failed: invalid file name');
-    Exit; 
+    Exit;
   end;
   ForceDirectories(FBaseDir+AvL.ExtractFilePath(Name));
   if AvL.FileExists(FBaseDir+Name) then AvL.DeleteFile(FBaseDir+Name);
-  Result:=TFileStream.Create(FBaseDir+Name, fmCreate or (Flags and $FFF0));
+  FI.PakFile:=FBaseDir;
+  FI.Name:=Name;
+  Result:=TPakFileStream.Create(FI, fmCreate, Self);
   FOpenedFiles.Add(Result);
   FIndex.ReadDir(FBaseDir);
 end;
@@ -363,7 +381,6 @@ procedure TPakMan.CloseFile(F: TStream);
 begin
   if not Assigned(F) then Exit;
   FOpenedFiles.Remove(F);
-  FAN(F);
 end;
 
 procedure TPakMan.DeleteFile(Name: string);
@@ -551,14 +568,29 @@ begin
   end;
 end;
 
+{TPakFileStream}
+
+constructor TPakFileStream.Create(FileInfo: TFileInfo; Flags: Cardinal; PakMan: TPakMan);
+begin
+  inherited Create(FileInfo.PakFile+FileInfo.Name, Flags and $FFFF);
+  FPakMan:=PakMan;
+end;
+
+destructor TPakFileStream.Destroy;
+begin
+  FPakMan.CloseFile(Self);
+  inherited Destroy;
+end;
+
 {TPakNRVStream}
 
-constructor TPakNRVStream.Create(FileInfo: TFileInfo; Flags: Cardinal);
+constructor TPakNRVStream.Create(FileInfo: TFileInfo; Flags: Cardinal; PakMan: TPakMan);
 var
   i: Integer;
   Adler32, CheckSize: Cardinal;
 begin
   inherited Create;
+  FPakMan:=PakMan;
   GetMem(FBuffer, UCLOutputBlockSize(CBufSize));
   FInStream:=TFileStream.Create(FileInfo.PakFile, fmOpenRead or fmShareDenyWrite);
   FInStream.Seek(FileInfo.Offset, soFromBeginning);
@@ -581,6 +613,7 @@ end;
 
 destructor TPakNRVStream.Destroy;
 begin
+  FPakMan.CloseFile(Self);
   FAN(FInStream);
   FreeMemAndNil(FBuffer, UCLOutputBlockSize(CBufSize));
   Finalize(FIndex);
@@ -674,11 +707,12 @@ end;
 
 {TPakLZMAStream}
 
-constructor TPakLZMAStream.Create(FileInfo: TFileInfo; Flags: Cardinal);
+constructor TPakLZMAStream.Create(FileInfo: TFileInfo; Flags: Cardinal; PakMan: TPakMan);
 var
   Adler32, CheckSize: Cardinal;
 begin
   inherited Create;
+  FPakMan:=PakMan;
   FInStream:=TFileStream.Create(FileInfo.PakFile, fmOpenRead or fmShareDenyWrite);
   FInStream.Seek(FileInfo.Offset, soFromBeginning);
   FInStream.Read(Adler32, 4);
@@ -694,6 +728,7 @@ end;
 
 destructor TPakLZMAStream.Destroy;
 begin
+  FPakMan.CloseFile(Self);
   FAN(FDecompressor);
   FAN(FInStream);
   inherited Destroy;
@@ -751,11 +786,12 @@ end;
 
 {TPakStoreStream}
 
-constructor TPakStoreStream.Create(FileInfo: TFileInfo; Flags: Cardinal);
+constructor TPakStoreStream.Create(FileInfo: TFileInfo; Flags: Cardinal; PakMan: TPakMan);
 var
   Adler32: Cardinal;
 begin
   inherited Create;
+  FPakMan:=PakMan;
   FInStream:=TFileStream.Create(FileInfo.PakFile, fmOpenRead or fmShareDenyWrite);
   FInStream.Seek(FileInfo.Offset, soFromBeginning);
   FInStream.Read(Adler32, 4);
@@ -769,6 +805,7 @@ end;
 
 destructor TPakStoreStream.Destroy;
 begin
+  FPakMan.CloseFile(Self);
   FAN(FInStream);
   inherited Destroy;
 end;
