@@ -156,13 +156,28 @@ end;
 
 procedure TCore.StartEngine;
 begin
-  FConfig:=TIniFile.Create(ChangeFileExt(FullExeName, '.ini'));
-  FResX:=FConfig.ReadInteger('Settings', 'ResX', 800);
-  FResY:=FConfig.ReadInteger('Settings', 'ResY', 600);
-  FRefresh:=FConfig.ReadInteger('Settings', 'Refresh', 60);
-  FDepth:=FConfig.ReadInteger('Settings', 'Depth', 32);
-  Fullscreen:=FConfig.ReadBool('Settings', 'Fullscreen', false);
-  FVSync:=FConfig.ReadInteger('Settings', 'VSync', 1);
+  if UseINI then
+  begin
+    FConfig:=TIniFile.Create(ChangeFileExt(FullExeName, '.ini'));
+    FResX:=FConfig.ReadInteger('Settings', 'ResX', 800);
+    FResY:=FConfig.ReadInteger('Settings', 'ResY', 600);
+    FRefresh:=FConfig.ReadInteger('Settings', 'Refresh', 60);
+    FDepth:=FConfig.ReadInteger('Settings', 'Depth', 32);
+    Fullscreen:=FConfig.ReadBool('Settings', 'Fullscreen', false);
+    FVSync:=FConfig.ReadInteger('Settings', 'VSync', 1);
+    {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(FConfig.ReadString('Settings', 'SoundDevice', 'Default'));{$ENDIF}
+  end
+  else begin
+    FResX:=VSEConfig.ResX;
+    FResY:=VSEConfig.ResY;
+    FRefresh:=VSEConfig.Refresh;
+    FDepth:=VSEConfig.Depth;
+    Fullscreen:=VSEConfig.Fullscreen;
+    FVSync:=VSEConfig.VSync;
+    {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(VSEConfig.SoundDevice);{$ENDIF}
+  end;
+  FPakMan:=TPakMan.Create(ExePath+BaseDir);
+  Console.PakMan:=FPakMan;
   if (FVSync<>0) and (FVSync<>1) then FVSync:=1;
   if FResX<640 then FResX:=640;
   if FResY<480 then FResY:=480;
@@ -177,9 +192,6 @@ begin
   glHint(GL_SHADE_MODEL, GL_NICEST);
   glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
   glEnable(GL_NORMALIZE);
-  FPakMan:=TPakMan.Create(ExePath+BaseDir);
-  Console.PakMan:=FPakMan;
-  {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(FConfig.ReadString('Settings', 'SoundDevice', 'Default'));{$ENDIF}
   LoadFonts;
   FFPSTimer:=timeSetEvent(1000, 0, @UpdateFPS, 0, TIME_PERIODIC);
   RegisterCommands;
@@ -192,13 +204,25 @@ end;
 
 procedure TCore.SaveSettings;
 begin
-  FConfig.WriteInteger('Settings', 'ResX', FResX);
-  FConfig.WriteInteger('Settings', 'ResY', FResY);
-  FConfig.WriteInteger('Settings', 'Refresh', FRefresh);
-  FConfig.WriteInteger('Settings', 'Depth', FDepth);
-  FConfig.WriteBool('Settings', 'Fullscreen', FFullscreen);
-  FConfig.WriteInteger('Settings', 'VSync', FVSync);
-  {$IFNDEF VSE_NOSOUND}FConfig.WriteString('Settings', 'SoundDevice', Sound.DeviceName);{$ENDIF}
+  if UseINI then
+  begin
+    FConfig.WriteInteger('Settings', 'ResX', FResX);
+    FConfig.WriteInteger('Settings', 'ResY', FResY);
+    FConfig.WriteInteger('Settings', 'Refresh', FRefresh);
+    FConfig.WriteInteger('Settings', 'Depth', FDepth);
+    FConfig.WriteBool('Settings', 'Fullscreen', FFullscreen);
+    FConfig.WriteInteger('Settings', 'VSync', FVSync);
+    {$IFNDEF VSE_NOSOUND}FConfig.WriteString('Settings', 'SoundDevice', Sound.DeviceName);{$ENDIF}
+  end
+  else begin
+    VSEConfig.ResX:=FResX;
+    VSEConfig.ResY:=FResY;
+    VSEConfig.Refresh:=FRefresh;
+    VSEConfig.Depth:=FDepth;
+    VSEConfig.Fullscreen:=FFullscreen;
+    VSEConfig.VSync:=FVSync;
+    {$IFNDEF VSE_NOSOUND}VSEConfig.SoundDevice:=Sound.DeviceName;{$ENDIF}
+  end;
 end;
 
 procedure TCore.Update;
@@ -489,10 +513,11 @@ var
   FntListFile: TStream;
   i, P: Integer;
 begin
+  if FontsList='' then Exit;
   Log(llInfo, 'Loading fonts');
   FntList:=TStringList.Create;
   try
-    FntListFile:=PakMan.OpenFile('Fonts.ini', 0);
+    FntListFile:=PakMan.OpenFile(FontsList, 0);
     FntList.LoadFromStream(FntListFile);
     FAN(FntListFile);
     for i:=0 to FntList.Count-1 do

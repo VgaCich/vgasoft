@@ -9,5 +9,6 @@ begin
   VSEConfig.InitStates:=States.InitStates;
   Caption:='Assault';
   Version:='0.1';
+  FontsList:='Fonts.ini';
   VSEStart;
 end.
