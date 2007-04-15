@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
-  GameStates, StateLoad, ULog, UGUI, GUIWidgets;
+  GameStates, StateLoad, ULog, UGUI, GUIWidgets, UTexMan;
 
 type
   TMenuLabel=class;

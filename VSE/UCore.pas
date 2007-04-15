@@ -3,7 +3,7 @@ unit UCore;
 interface
 
 uses
-  Windows, Messages, MMSystem, AvL, avlUtils, dglOpenGL, OpenGLExt, Textures,
+  Windows, Messages, MMSystem, AvL, avlUtils, dglOpenGL, OpenGLExt,
   VSEInit, UPakMan, GameStates, UConsole, UConsoleVariables, ULog, UManagers,
   {$IFNDEF VSE_NOSOUND}USound, {$ENDIF} SysInfo;
 

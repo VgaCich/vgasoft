@@ -3,7 +3,7 @@ unit GameStates;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures;
+  Windows, Messages, AvL, avlUtils;
 
 type
   TMouseEvent=(meDown, meUp, meMove, meWheel);
