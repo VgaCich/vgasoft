@@ -103,7 +103,7 @@ implementation
 {$B-}
 
 uses
-  UCore, PakMan, ULog;
+  UCore, UPakMan, ULog;
 
 type
   TCursorInfo=packed record
@@ -554,7 +554,7 @@ var
   F: TStream;
 begin
   Result:=false;
-  F:=Core.PakMan.OpenFile(FileName, ofNoCreate);
+  F:=PakMan.OpenFile(FileName, ofNoCreate);
   if not Assigned(F) then
   begin
     Log(llError, 'Cursor: Load('+FileName+') failed: cannot open file');
@@ -572,7 +572,7 @@ begin
   finally
     FAN(F);
   end;
-  F:=Core.PakMan.OpenFile(TexName, ofNoCreate);
+  F:=PakMan.OpenFile(TexName, ofNoCreate);
   if not Assigned(F) then
   begin
     Log(llError, 'Cursor: Load('+FileName+') failed: cannot open texture');

@@ -71,7 +71,7 @@ type
 
 implementation
 
-uses UCore, PakMan;
+uses UCore, UPakMan, States;
 
 constructor TStateMenu.Create;
 var
@@ -314,7 +314,11 @@ begin
     end;
     reMouseDown: FDownClose:=true;
     reMouseUp: FDownClose:=false;
-    reMouseClick: if Button=1 then Core.StopEngine;
+    reMouseClick: if Button=1 then
+                  begin
+                    NeedRestart:=true;
+                    Core.StopEngine;
+                  end;
   end;
 end;
 

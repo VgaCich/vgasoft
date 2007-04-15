@@ -34,7 +34,7 @@ type
 
 implementation
 
-uses UCore, VSEConfig;
+uses UCore, VSEInit;
 
 const
   Prompt='>';
@@ -234,6 +234,7 @@ procedure TStateConsole.KeyEvent(Button: Integer; Event: TKeyEvent);
       if (FCurCmd<>'') and (FCurCmd[1]=ConsoleCommandPrefix)
         then S:=Copy(FCurCmd, 2, MaxInt)
         else S:=FCurCmd;
+      if Pos(' ', S)>0 then S:=Copy(S, 1, FirstDelimiter(' ', S)-1);
       Console.IncrementalFind(S, CmdList);
       case CmdList.Count of
         0: Console.AddToConsole('No commands, starts with "'+S+'"');

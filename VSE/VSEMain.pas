@@ -4,9 +4,12 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, UCore, GameStates,
-  OneInstance, ULog, UConsole, VSEConfig;
+  OneInstance, ULog, UConsole, VSEInit;
 
-procedure VSEStart;
+function VSEStart: Boolean;
+
+var
+  VSEStopState: Integer=0;
 
 implementation
 
@@ -32,8 +35,15 @@ begin
         if Initializing or Quitting or (Core<>nil) then Exit;
         Log(llInfo, 'Creating engine');
         {$IFDEF VSEDEBUG}Log(llInfo, 'Debug mode');{$ENDIF}
-        Core:=TCore.Create(Handle, Initializing);
-        Core.StartEngine;
+        try
+          Core:=TCore.Create(Handle, Initializing);
+          Core.StartEngine;
+        except
+          LogException('while initializing engine');
+          VSEStopState:=0;
+          SendMessage(Handle, WM_CLOSE, 0, 0);
+          Exit;
+        end;
         Log(llInfo, 'Engine created');
         Core.SetResolution(Core.ResX, Core.ResY, Core.Refresh, false);
         Log(llInfo, 'Init states');
@@ -43,12 +53,14 @@ begin
           except
             LogException('in InitStates');
             MessageBox(Handle, PChar('Exception "'+ExceptObject.ClassName+'" at '+IntToHex(Cardinal(ExceptAddr), 8)+' with message "'+Exception(ExceptObject).Message+'" in InitStates'), 'Error', MB_ICONERROR);
+            VSEStopState:=1;
             Core.StopEngine;
             Exit;
           end
           else begin
             Log(llError, 'InitStates() not initialized');
             MessageBox(0, 'InitStates() not initialized', 'Error', MB_ICONERROR);
+            VSEStopState:=1;
             Core.StopEngine;
             Exit;
           end;
@@ -70,12 +82,13 @@ begin
     WM_DESTROY:
       begin
         Log(llInfo, 'Destroying engine');
-        if Core.Fullscreen then gleGoBack;
+        if Assigned(Core) and Core.Fullscreen then gleGoBack;
         FAN(Core);
         Quitting:=true;
-        LogNC(llInfo, 'Engine destroyed');
+        Log(llInfo, 'Engine destroyed');
+        LogRaw('');
         Result:=0;
-        PostQuitMessage(0);
+        PostQuitMessage(VSEStopState);
       end;
     WM_QUERYENDSESSION:
       begin
@@ -106,8 +119,9 @@ begin
   end;
 end;
 
-procedure VSEStart;
+function VSEStart: Boolean;
 begin
+  Result:=false;
   if CaptionVer='' then CaptionVer:=Caption+' '+Version;
   if IsRunning(Caption) then Exit;
   Log(llInfo, CaptionVer+' started');
@@ -128,18 +142,18 @@ begin
   end;    
   if Windows.RegisterClass(WndClass)=0 then
   begin
-    LogNC(llError, 'Failed to register the window class');
+    Log(llError, 'Failed to register the window class');
     MessageBox(0, 'Failed to register the window class!', 'Error', MB_ICONERROR);
-    Halt(1);
+    Exit;
   end;
   Handle:=CreateWindowEx(WS_EX_APPWINDOW or WS_EX_WINDOWEDGE, WndClassName, PChar(Caption),
     WS_OVERLAPPED or WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX or WS_MAXIMIZEBOX or WS_CLIPCHILDREN or WS_CLIPSIBLINGS,
     0, 0, 800, 600, 0, 0, hInstance, nil);
   if Handle=0 then
   begin
-    LogNC(llError, 'Unable to create window');
+    Log(llError, 'Unable to create window');
     MessageBox(0, 'Unable to create window!', 'Error', MB_ICONERROR);
-    Halt(1);
+    Exit;
   end;
   SendMessage(Handle, WM_SETICON, 1, LoadIcon(hInstance, 'MAINICON'));
   ShowWindow(Handle, SW_SHOW);
@@ -161,11 +175,12 @@ begin
           else if GetForegroundWindow=Handle
             then Core.Resume;
   end;
+  Result:=Msg.wParam=0;
   if not UnregisterClass(WndClassName, hInstance) then
   begin
-    LogNC(llError, 'Failed to unregister the window class');
+    Log(llError, 'Failed to unregister the window class');
     MessageBox(0, 'Failed to unregister the window class!', 'Error', MB_ICONERROR);
-    Halt(1);
+    Exit;
   end;
 end;
 

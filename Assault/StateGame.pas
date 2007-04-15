@@ -3,8 +3,9 @@ unit StateGame;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures, PakMan,
-  GameStates, UConsole, Unit3DS, ULog, ConsoleSound, Shaders, Terrain, StateMenu, UGUI;
+  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
+  UPakMan, GameStates, UConsole, Unit3DS, ULog, ConsoleSound, Shaders, Terrain,
+  StateMenu, UGUI;
 
 type
   TStateGame=class(TGameState)
@@ -192,7 +193,7 @@ var
   ModelData: TStream;
 begin
   Result:=false;
-  ModelData:=Core.PakMan.OpenFile(Args+'.3ds', ofNoCreate);
+  ModelData:=PakMan.OpenFile(Args+'.3ds', ofNoCreate);
   try
     if Assigned(ModelData) then FModel.Load(ModelData);
   finally

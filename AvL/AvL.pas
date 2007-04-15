@@ -14412,7 +14412,7 @@ end;
 
 function GetExceptionObject(P: PExceptionRecord): TObject;
 begin
-  Result := Exception.Create('Exception code: '+IntToStr(P.ExceptionCode));
+  Result := Exception.Create('Exception code: $'+IntToHex(P.ExceptionCode, 8));
 end;
 
 function GetExceptionClass(P: PExceptionRecord): ExceptClass;
@@ -14425,9 +14425,9 @@ begin
   raise Exception.Create('Error code: '+IntToStr(ErrorCode)) at ErrorAddr;
 end;
 
-procedure ExceptHandler(ExceptObject: TObject; ExceptAddr: Pointer); far;
+procedure ExceptHandler(ExceptObject: Exception; ExceptAddr: Pointer); far;
 begin
-  ShowMessage('Exception '+ExceptObject.ClassName+' at '+IntToHex(Cardinal(ExceptAddr), 8));
+  ShowMessage('Exception "'+ExceptObject.ClassName+'" at '+IntToHex(Cardinal(ExceptAddr), 8)+' with message "'+ExceptObject.Message+'"');
   Halt(1);
 end;
 

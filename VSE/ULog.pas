@@ -2,7 +2,7 @@ unit ULog;
 
 interface
 
-uses AvL, avlUtils, UConsole;
+uses AvL, avlUtils, ULogFile, UConsole;
 
 type
   TLogLevel=(llInfo, llWarning, llError);
@@ -17,10 +17,6 @@ procedure LogRawNC(const S: string);
 procedure LogException(const Comment: string);
 
 implementation
-
-var
-  LogFile: TextFile;
-  CanLog: Boolean;
 
 procedure Log(Level: TLogLevel; const S: string);
 begin
@@ -89,18 +85,5 @@ procedure LogException(const Comment: string);
 begin
   Log(llError, 'Exception "'+ExceptObject.ClassName+'" at '+IntToHex(Cardinal(ExceptAddr), 8)+' with message "'+Exception(ExceptObject).Message+'" '+Comment);
 end;
-
-
-initialization
-
-AssignFile(LogFile, ChangeFileExt(FullExeName, '.log'));
-ReWrite(LogFile);
-CanLog:=true;
-
-finalization
-
-CanLog:=false;
-Flush(LogFile);
-CloseFile(LogFile);
 
 end.

@@ -45,9 +45,7 @@ begin
   DM.dmDisplayFrequency:=Refresh;
   DM.dmFields:=DM_BITSPERPEL or DM_PELSWIDTH or DM_PELSHEIGHT;
   if Refresh>0 then DM.dmFields:=DM.dmFields or DM_DISPLAYFREQUENCY;
-  Result:=False;
-  if ChangeDisplaySettings(DM, CDS_FULLSCREEN)<>DISP_CHANGE_SUCCESSFUL then Exit;
-  Result:=True;
+  Result:=ChangeDisplaySettings(DM, CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
 end;
 
 procedure gleGoBack;
@@ -61,6 +59,7 @@ var
   PFD: TPIXELFORMATDESCRIPTOR;
   PixelFormat: Cardinal;
 begin
+  Result:=0;
   Log(llInfo, 'Init OpenGL');
   InitOpenGL;
   Log(llInfo, 'Setting pixel format');
@@ -79,25 +78,27 @@ begin
   if PixelFormat=0 then
   begin
     Log(llError, 'Unable to find a suitable pixel format');
-    Halt(1);
+    Exit;
   end;
   if not SetPixelFormat(DC, PixelFormat, @PFD) then
   begin
     Log(llError, 'Unable to set the pixel format');
-    Halt(1);
+    Exit;
   end;
   Log(llInfo, 'Creating rendering context');
   Result:=wglCreateContext(DC);
   if Result=0 then
   begin
     Log(llError, 'Unable to create an OpenGL rendering context');
-    Halt(1);
+    Exit;
   end;
   Log(llInfo, 'Activating rendering context');
   if not wglMakeCurrent(DC, Result) then
   begin
     Log(llError, 'Unable to activate OpenGL rendering context');
-    Halt(1);
+    wglDeleteContext(Result);
+    Result:=0;
+    Exit;
   end;
   Log(llInfo, 'Reading extensions');
   ReadExtensions;
@@ -225,11 +226,11 @@ var
   i: Integer;
 begin
   if Length(Fonts)=0 then Exit;
-  LogNC(llInfo, 'Freeing fonts:');
+  Log(llInfo, 'Freeing fonts:');
   for i:=0 to Length(Fonts)-1 do
     if Fonts[i].Exist then
     begin
-      LogNC(llInfo, '  '+Fonts[i].ID);
+      Log(llInfo, '  '+Fonts[i].ID);
       glDeleteTextures(1, @(Fonts[i].FontTex));
       glDeleteLists(Fonts[i].FontBase, 256);
     end;

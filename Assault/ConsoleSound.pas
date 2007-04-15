@@ -17,7 +17,7 @@ type
 
 implementation
 
-uses UCore, ULog, PakMan, UConsole, USound, BASS;
+uses UCore, ULog, UPakMan, UConsole, USound, BASS;
 
 var
   Channels: array[0..7] of TSoundChannel;
@@ -58,7 +58,7 @@ begin
     Log(llError, 'ConsoleSound: none free streams');
     Exit;
   end;
-  Data:=Core.PakMan.OpenFile(Args, ofNoCreate);
+  Data:=PakMan.OpenFile(Args, ofNoCreate);
   if Data=nil then
   begin
     LogF(llError, 'ConsoleSound: cannot load sound stream "%s". File not found', [Args]);

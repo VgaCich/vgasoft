@@ -28,7 +28,7 @@ type
 implementation
 
 uses
-  UCore, ULog;
+  VSEMain, UCore, ULog;
 
 procedure TGameState.Deactivate;
 begin
@@ -60,6 +60,7 @@ begin
   case Notify of
     snUpdateOverload: begin
                         Log(llError, 'Update overload');
+                        VSEStopState:=1;
                         Core.StopEngine;
                       end;
   end;

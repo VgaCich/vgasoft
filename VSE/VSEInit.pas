@@ -1,17 +1,23 @@
-unit VSEConfig;
+//Must be first unit in projects, except of memory manager etc
+unit VSEInit;
 
 interface
+
+uses AvL, avlUtils, ULogFile, UManagers, UPakMan, UConsole, UConsoleVariables;
+
+type
+  TInitStates=procedure;
 
 const
   VSECaptVer='VgaSoft Engine 0.1';
 
 var
-  InitStates: procedure;
+  InitStates: TInitStates;
   DoAutoexec: Boolean=true;
   Caption: string='VgaSoft Engine';
   Version: string='0.1';
   CaptionVer: string;
-  BaseDir: string='Data';
+  BaseDir: string;
   UseINI: Boolean=true;
   ResX: Integer=640;
   ResY: Integer=480;
@@ -23,5 +29,8 @@ var
   FontsList: string='';     
 
 implementation
+
+initialization
+  BaseDir:=ExePath+'Data';
 
 end.

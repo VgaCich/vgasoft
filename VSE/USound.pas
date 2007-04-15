@@ -101,7 +101,7 @@ type
 implementation
 
 uses
-  UCore, ULog, PakMan;
+  UCore, ULog, UPakMan;
 
 {Channels manager}
 var

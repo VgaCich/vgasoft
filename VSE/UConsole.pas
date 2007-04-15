@@ -3,25 +3,23 @@ unit UConsole;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, PakMan;
+  Windows, Messages, AvL, avlUtils, UManagers, UPakMan;
 
 type
   TConsoleCmdFunction=function(const Args: string): Boolean of object;
   TConsoleCmd=record
     Name, Help: string;
     Func: TConsoleCmdFunction;
-    Exist: Boolean;
+    Exist, LowLevel: Boolean;
   end;
   TOnConsoleExec=function(Sender: TObject; const Cmd: string): Boolean of object;
-  TConsole=class
+  TConsole=class(TManager)
   private
     FConsoleHistory, FCommandsHistory: TStringList;
     FCommands: array of TConsoleCmd;
-    FCommandsSize: Cardinal;
     FOnAdding: TOnEvent;
     FOnExec: TOnConsoleExec;
     FGenericHelp: string;
-    FPakMan: TPakMan;
     FHistoryEnabled, FCapture: Boolean;
     procedure Grow;
     function  FindCmd(Name: string): Integer;
@@ -30,6 +28,8 @@ type
     function  GetCommandsHistory(Index: Cardinal): string;
     function  GetCommandsHistoryCount: Cardinal;
   protected
+    procedure Init; override;
+    procedure Cleanup; override;
     procedure RegisterBuiltIns;
     function  CmdList(const Args: string): Boolean;
     function  Exec(const Args: string): Boolean;
@@ -39,19 +39,18 @@ type
     destructor Destroy; override;
     function  ExecCommand(const Cmd: string): Boolean;
     procedure AddToConsole(const S: string);
-    function  RegisterCommand(const Name, Help: string; Func: TConsoleCmdFunction): Boolean;
+    function  RegisterCommand(const Name, Help: string; Func: TConsoleCmdFunction; LowLevel: Boolean=false): Boolean;
     procedure UnregisterCommand(Name: string);
     procedure IncrementalFind(CmdPrefix: string; CmdList: TStringList);
     property  History[Index: Cardinal]: string read GetHistory; default;
     property  HistoryCount: Cardinal read GetHistoryCount;
     property  CommandsHistory[Index: Cardinal]: string read GetCommandsHistory;
     property  CommandsHistoryCount: Cardinal read GetCommandsHistoryCount;
-    property  OnAdding: TOnEvent read FOnAdding write FOnAdding;
-    property  OnExec: TOnConsoleExec read FOnExec write FOnExec;
     property  GenericHelp: string read FGenericHelp write FGenericHelp;
     property  HistoryEnabled: Boolean read FHistoryEnabled write FHistoryEnabled;
     property  Capture: Boolean read FCapture write FCapture;
-    property  PakMan: TPakMan read FPakMan write FPakMan;
+    property  OnAdding: TOnEvent read FOnAdding write FOnAdding;
+    property  OnExec: TOnConsoleExec read FOnExec write FOnExec;
   end;
 
 var
@@ -91,23 +90,48 @@ const
 
 constructor TConsole.Create;
 begin
+  LogNC(llInfo, 'Console: Create');
   inherited Create;
   FConsoleHistory:=TStringList.Create;
   FCommandsHistory:=TStringList.Create;
-  FCommandsSize:=8;
+  SetLength(FCommands, 8);
+  ZeroMemory(@FCommands[0], SizeOf(TConsoleCmd)*8);
   FGenericHelp:=GenericHelpInit;
   FHistoryEnabled:=true;
-  Grow;
   RegisterBuiltIns;
 end;
 
 destructor TConsole.Destroy;
 begin
+  LogNC(llInfo, 'Console: Destroy');
   {$IFDEF VSEDEBUG}FConsoleHistory.SaveToFile(ExePath+'Console.log');{$ENDIF}
+  if Console=Self then Console:=nil;
   FAN(FConsoleHistory);
   FAN(FCommandsHistory);
   Finalize(FCommands);
   inherited Destroy;
+end;
+
+procedure TConsole.Init;
+begin
+  Log(llInfo, 'Console: Initialize');
+end;
+
+procedure TConsole.Cleanup;
+var
+  i: Integer;
+begin
+  Log(llInfo, 'Console: Cleanup');
+  FCommandsHistory.Clear;
+  for i:=0 to High(FCommands) do
+    if not FCommands[i].LowLevel then
+    begin
+      FCommands[i].Name:='';
+      FCommands[i].Help:='';
+      FCommands[i].Func:=nil;
+      FCommands[i].Exist:=false;
+      FCommands[i].LowLevel:=false;
+    end;
 end;
 
 function TConsole.ExecCommand(const Cmd: string): Boolean;
@@ -161,7 +185,7 @@ begin
   end;
 end;
 
-function TConsole.RegisterCommand(const Name, Help: string; Func: TConsoleCmdFunction): Boolean;
+function TConsole.RegisterCommand(const Name, Help: string; Func: TConsoleCmdFunction; LowLevel: Boolean=false): Boolean;
 
   procedure AddCommand(Index: Integer);
   begin
@@ -169,6 +193,7 @@ function TConsole.RegisterCommand(const Name, Help: string; Func: TConsoleCmdFun
     FCommands[Index].Help:=Help;
     FCommands[Index].Func:=Func;
     FCommands[Index].Exist:=true;
+    FCommands[Index].LowLevel:=LowLevel;
   end;
 
 var
@@ -180,14 +205,14 @@ begin
     LogF(llError, 'Registering console command: name contains spaces (%s)', [Name]);
     Exit;
   end;
-  for i:=0 to FCommandsSize-1 do
+  for i:=0 to High(FCommands) do
     if not FCommands[i].Exist then
     begin
       AddCommand(i);
       Result:=true;
       Exit;
     end;
-  i:=FCommandsSize;
+  i:=Length(FCommands);
   Grow;
   AddCommand(i);
   Result:=true;
@@ -198,14 +223,17 @@ var
   i: Integer;
 begin
   Name:=LowerCase(Name);
-  for i:=0 to FCommandsSize-1 do
+  for i:=0 to High(FCommands) do
     if FCommands[i].Exist and (FCommands[i].Name=Name) then
     begin
       FCommands[i].Name:='';
       FCommands[i].Help:='';
       FCommands[i].Func:=nil;
       FCommands[i].Exist:=false;
+      FCommands[i].LowLevel:=false;
     end;
+  FOnAdding:=nil;
+  FOnExec:=nil;  
 end;
 
 procedure TConsole.IncrementalFind(CmdPrefix: string; CmdList: TStringList);
@@ -217,7 +245,7 @@ begin
   PrefixLen:=Pos(' ', CmdPrefix);
   if PrefixLen>0 then CmdPrefix:=Copy(CmdPrefix, 1, PrefixLen-1);
   PrefixLen:=Length(CmdPrefix);
-  for i:=0 to FCommandsSize-1 do
+  for i:=0 to High(FCommands) do
     if FCommands[i].Exist and (Copy(FCommands[i].Name, 1, PrefixLen)=CmdPrefix)
       then CmdList.Add(FCommands[i].Name);
   CmdList.Sort;
@@ -227,10 +255,8 @@ end;
 
 procedure TConsole.Grow;
 begin
-  FCommandsSize:=2*FCommandsSize;
-  SetLength(FCommands, FCommandsSize);
-  ZeroMemory(@FCommands[FCommandsSize div 2], SizeOf(TConsoleCmd)*FCommandsSize div 2);
-  if FCommandsSize=16 then ZeroMemory(@FCommands[0], SizeOf(TConsoleCmd)*8);
+  SetLength(FCommands, 2*Length(FCommands));
+  ZeroMemory(@FCommands[Length(FCommands) div 2], SizeOf(TConsoleCmd)*Length(FCommands) div 2);
 end;
 
 function TConsole.FindCmd(Name: string): Integer;
@@ -239,7 +265,7 @@ var
 begin
   Result:=-1;
   Name:=LowerCase(Name);
-  for i:=0 to FCommandsSize-1 do
+  for i:=0 to High(FCommands) do
     if FCommands[i].Exist and (FCommands[i].Name=Name) then
     begin
       Result:=i;
@@ -275,9 +301,9 @@ end;
 
 procedure TConsole.RegisterBuiltIns;
 begin
-  RegisterCommand('cmdlist', CmdListHelp, CmdList);
-  RegisterCommand('exec', ExecHelp, Exec);
-  RegisterCommand('help', HelpHelp, Help);
+  RegisterCommand('cmdlist', CmdListHelp, CmdList, true);
+  RegisterCommand('exec', ExecHelp, Exec, true);
+  RegisterCommand('help', HelpHelp, Help, true);
 end;
 
 function TConsole.CmdList(const Args: string): Boolean;
@@ -362,9 +388,5 @@ end;
 initialization
 
 Console:=TConsole.Create;
-
-finalization
-
-FAN(Console);
 
 end.

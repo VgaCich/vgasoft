@@ -22,7 +22,7 @@ type
 
 implementation
 
-uses UCore, VSEConfig;
+uses UCore, VSEInit;
 
 procedure TStateIntro.Draw;
 begin

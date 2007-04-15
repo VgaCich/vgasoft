@@ -1,9 +1,10 @@
-unit PakMan;
+unit UPakMan;
 
 interface
 
 uses
-  Windows, AvL, avlMath, avlUtils, UCLAPI, avlLZMADec, avlAdler32, avlMasks;
+  Windows, AvL, avlMath, avlUtils, UCLAPI, avlLZMADec, avlAdler32, avlMasks,
+  UManagers;
 
 type
   TFileSource=(fsFile, fsPakNRV, fsPakLZMA, fsPakStore);
@@ -41,17 +42,19 @@ type
     function  FindFile(Name: string): Integer;
   end;
 
-  TPakMan=class(TObject)
+  TPakMan=class(TManager)
   private
     FIndex: TDirInfo;
     FBaseDir: string;
     FOpenedFiles: TList;
   protected
+    procedure Init; override;
+    procedure Cleanup; override;
     function  FindFile(Name: string): PFileInfo;
     procedure LoadPak(const PakName: string);
     procedure CloseFile(F: TStream);
   public
-    constructor Create(const BaseDir: string);
+    constructor Create;
     destructor Destroy; override;
     function  OpenFile(const Name: string; Flags: Cardinal): TStream;
     function  CreateFile(Name: string; Flags: Cardinal): TStream;
@@ -129,9 +132,12 @@ const
   ofNoCreate=$00010000;
   ofNoCheck=$00020000;
 
+var
+  PakMan: TPakMan;
+
 implementation
 
-uses ULog;
+uses ULog, VSEInit;
 
 {$I PakTypes.inc}
 
@@ -292,16 +298,41 @@ end;
 
 {TPakMan}
 
-constructor TPakMan.Create(const BaseDir: string);
+constructor TPakMan.Create;
+begin
+  LogNC(llInfo, 'PakMan: Create');
+  inherited Create;
+  FOpenedFiles:=TList.Create;
+end;
+
+destructor TPakMan.Destroy;
+var
+  i: Integer;
+begin
+  LogNC(llInfo, 'PakMan: Destroy');
+  if Assigned(FIndex) then FAN(FIndex);
+  if FOpenedFiles.Count>0 then
+  begin
+    LogF(llWarning, 'PakMan: %d files not closed', [FOpenedFiles.Count]);
+    for i:=0 to FOpenedFiles.Count-1 do
+      if Assigned(FOpenedFiles[i]) then TObject(FOpenedFiles[i]).Free;
+    FOpenedFiles.Clear;
+  end;
+  if PakMan=Self then PakMan:=nil;
+  FAN(FOpenedFiles);
+  inherited Destroy;
+end;
+
+procedure TPakMan.Init;
 var
   SR: TSearchRec;
   i: Integer;
   Paks: TStringList;
 begin
-  inherited Create;
+  if Assigned(FIndex) then Cleanup;
+  Log(llInfo, 'PakMan: Initialize');
   FBaseDir:=AddTrailingBackslash(BaseDir);
   FIndex:=TDirInfo.Create('');
-  FOpenedFiles:=TList.Create;
   Paks:=TStringList.Create;
   try
     if FindFirst(FBaseDir+PakMask, 0, SR)=0 then
@@ -316,19 +347,19 @@ begin
   FIndex.ReadDir(FBaseDir);
 end;
 
-destructor TPakMan.Destroy;
+procedure TPakMan.Cleanup;
 var
   i: Integer;
 begin
-  FAN(FIndex);
+  Log(llInfo, 'PakMan: Cleanup');
+  if Assigned(FIndex) then FAN(FIndex);
   if FOpenedFiles.Count>0 then
   begin
     LogF(llWarning, 'PakMan: %d files not closed', [FOpenedFiles.Count]);
     for i:=0 to FOpenedFiles.Count-1 do
       if Assigned(FOpenedFiles[i]) then TObject(FOpenedFiles[i]).Free;
+    FOpenedFiles.Clear;
   end;
-  FAN(FOpenedFiles);
-  inherited Destroy;
 end;
 
 function TPakMan.OpenFile(const Name: string; Flags: Cardinal): TStream;
@@ -336,6 +367,7 @@ var
   FI: PFileInfo;
 begin
   Result:=nil;
+  if FIndex=nil then Exit;
   FI:=FindFile(Name);
   if FI<>nil then
   begin
@@ -361,6 +393,7 @@ var
   FI: TFileInfo;
 begin
   Result:=nil;
+  if FIndex=nil then Exit;
   for i:=1 to Length(Name) do
     if Name[i]='/' then Name[i]:='\';
   if (Pos('..\', Name)>0) or not CheckPath(Name, false) then
@@ -387,6 +420,7 @@ procedure TPakMan.DeleteFile(Name: string);
 var
   i: Integer;
 begin
+  if FIndex=nil then Exit;
   for i:=1 to Length(Name) do
     if Name[i]='/' then Name[i]:='\';
   if (Pos('..\', Name)>0) or not CheckPath(Name, false) then
@@ -424,6 +458,7 @@ var
 
 begin
   List.Clear;
+  if FIndex=nil then Exit;
   Path:=ExtractFilePath(Mask);
   M:=TMask.Create(ExtractFileName(Mask));
   try
@@ -449,8 +484,9 @@ var
   CurDir: TDirInfo;
   i: Integer;
 begin
-  NextTok:=Tok(Sep, Name);
   Result:=nil;
+  if FIndex=nil then Exit;
+  NextTok:=Tok(Sep, Name);
   CurDir:=FIndex;
   repeat
     CurTok:=NextTok;
@@ -850,5 +886,8 @@ begin
   end;
   Result:=Position;
 end;
+
+initialization
+  PakMan:=TPakMan.Create;
 
 end.

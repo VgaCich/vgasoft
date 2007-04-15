@@ -12,6 +12,8 @@ function GetMemoryFree: Cardinal;
 
 implementation
 
+uses UCore;
+
 procedure LogSysInfo;
 begin
   GetWinVer;
@@ -24,6 +26,8 @@ begin
   Log(llInfo, 'GL_RENDERER='+string(glGetString(GL_RENDERER)));
   Log(llInfo, 'GL_VERSION='+string(glGetString(GL_VERSION)));
   Log(llInfo, 'GL_EXTENSIONS='+string(glGetString(GL_EXTENSIONS)));
+  if WGL_ARB_extensions_string
+    then Log(llInfo, 'WGL_EXTENSIONS='+string(wglGetExtensionsStringARB(Core.DC)));
   LogRaw('');
 end;
 

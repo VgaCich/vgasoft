@@ -3,12 +3,15 @@ program Assault;
 {$R *.res}
 
 uses
-  {FastMM4,} VSEConfig, VSEMain, States;
+  {FastMM4,} VSEInit, VSEMain, States;
 
 begin
-  VSEConfig.InitStates:=States.InitStates;
+  VSEInit.InitStates:=States.InitStates;
   Caption:='Assault';
   Version:='0.1';
   FontsList:='Fonts.ini';
-  VSEStart;
+  repeat
+    NeedRestart:=false;
+    VSEStart;
+  until NeedRestart=false;
 end.

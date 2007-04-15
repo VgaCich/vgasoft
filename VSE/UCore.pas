@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, MMSystem, AvL, avlUtils, dglOpenGL, OpenGLExt, Textures,
-  VSEConfig, PakMan, GameStates, UConsole, UConsoleVariables, ULog,
+  VSEInit, UPakMan, GameStates, UConsole, UConsoleVariables, ULog, UManagers,
   {$IFNDEF VSE_NOSOUND}USound, {$ENDIF} SysInfo;
 
 type
@@ -23,8 +23,6 @@ type
     FFullscreen, FNeedSwitch, FMinimized: Boolean;
     FConfig: TIniFile;
     FKeyState: TKeyboardState;
-    FPakMan: TPakMan;
-    FRegisteredVariables: TList;
     {$IFNDEF VSE_NOSOUND}FSound: TSound;{$ENDIF}
     procedure SetFullscreen(Value: Boolean);
     procedure SetState(Value: Cardinal);
@@ -33,7 +31,6 @@ type
     procedure LoadFonts;
   protected
     procedure RegisterCommands;
-    procedure UnregisterCommands;
     function  Quit(const Args: string): Boolean;
     function  Resolution(const Args: string): Boolean;
     function  CmdFullscreen(const Args: string): Boolean;
@@ -72,7 +69,6 @@ type
     property State: Cardinal read FState write SetState;
     property CurState: TGameState read FCurState;
     property FPS: Cardinal read FFPS;
-    property PakMan: TPakMan read FPakMan;
     {$IFNDEF VSE_NOSOUND}property Sound: TSound read FSound;{$ENDIF}
     property UpdateInterval: Cardinal read FUpdInt write FUpdInt;
     property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold;
@@ -84,6 +80,9 @@ var
   Core: TCore;
 
 implementation
+
+uses
+  VSEMain;
 
 function GetCursorPos(var Cursor: TPoint): Boolean;
 var
@@ -121,7 +120,6 @@ begin
   FPreviousUpdate:=0;
   FUpdOverloadCount:=0;
   FUpdOverloadThreshold:=100;
-  FRegisteredVariables:=TList.Create;
   Initializing:=false;
 end;
 
@@ -139,7 +137,7 @@ begin
     LogException('in state '+StateName+'.Free');
   end;
   {$IFNDEF VSE_NOSOUND}FAN(FSound);{$ENDIF}
-  FAN(FPakMan);
+  Managers.CleanupManagers;
   gleFreeFonts;
   wglMakeCurrent(FDC, 0);
   wglDeleteContext(FRC);
@@ -147,8 +145,6 @@ begin
   ShowCursor(true);
   FAN(FConfig);
   timeKillEvent(FFPSTimer);
-  UnregisterCommands;
-  FAN(FRegisteredVariables);
   inherited Destroy;
 end;
 
@@ -168,22 +164,22 @@ begin
     {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(FConfig.ReadString('Settings', 'SoundDevice', 'Default'));{$ENDIF}
   end
   else begin
-    FResX:=VSEConfig.ResX;
-    FResY:=VSEConfig.ResY;
-    FRefresh:=VSEConfig.Refresh;
-    FDepth:=VSEConfig.Depth;
-    Fullscreen:=VSEConfig.Fullscreen;
-    FVSync:=VSEConfig.VSync;
-    {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(VSEConfig.SoundDevice);{$ENDIF}
+    FResX:=VSEInit.ResX;
+    FResY:=VSEInit.ResY;
+    FRefresh:=VSEInit.Refresh;
+    FDepth:=VSEInit.Depth;
+    Fullscreen:=VSEInit.Fullscreen;
+    FVSync:=VSEInit.VSync;
+    {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(VSEInit.SoundDevice);{$ENDIF}
   end;
-  FPakMan:=TPakMan.Create(ExePath+BaseDir);
-  Console.PakMan:=FPakMan;
   if (FVSync<>0) and (FVSync<>1) then FVSync:=1;
   if FResX<640 then FResX:=640;
   if FResY<480 then FResY:=480;
   if FRefresh<60 then Frefresh:=60;
   FDC:=GetDC(FHandle);
   FRC:=gleSetPix(FDC, FDepth);
+  if FRC=0 then raise Exception.Create('Unable to set rendering context');
+  Managers.InitManagers;
   LogSysInfo;
   glShadeModel(GL_SMOOTH);
   glEnable(GL_BLEND);
@@ -215,13 +211,13 @@ begin
     {$IFNDEF VSE_NOSOUND}FConfig.WriteString('Settings', 'SoundDevice', Sound.DeviceName);{$ENDIF}
   end
   else begin
-    VSEConfig.ResX:=FResX;
-    VSEConfig.ResY:=FResY;
-    VSEConfig.Refresh:=FRefresh;
-    VSEConfig.Depth:=FDepth;
-    VSEConfig.Fullscreen:=FFullscreen;
-    VSEConfig.VSync:=FVSync;
-    {$IFNDEF VSE_NOSOUND}VSEConfig.SoundDevice:=Sound.DeviceName;{$ENDIF}
+    VSEInit.ResX:=FResX;
+    VSEInit.ResY:=FResY;
+    VSEInit.Refresh:=FRefresh;
+    VSEInit.Depth:=FDepth;
+    VSEInit.Fullscreen:=FFullscreen;
+    VSEInit.VSync:=FVSync;
+    {$IFNDEF VSE_NOSOUND}VSEInit.SoundDevice:=Sound.DeviceName;{$ENDIF}
   end;
 end;
 
@@ -429,7 +425,8 @@ begin
         then SetResolution(OldResX, OldResY, OldRefresh, false)
         else begin
           MessageBox(FHandle, 'Unable to enter fullscreen! Choose lower resolution or refresh rate', PChar(CaptionVer), MB_ICONERROR);
-          Halt(1);
+          VSEStopState:=1;
+          Exit;
         end;
     end;
   end
@@ -443,8 +440,9 @@ begin
   if FFullscreen=Value then Exit;
   FFullscreen:=Value;
   if Value
-    then gleGoFullscreen(FResX, FResY, FRefresh, FDepth)
+    then FFullscreen:=gleGoFullscreen(FResX, FResY, FRefresh, FDepth)
     else gleGoBack;
+  if FFullscreen<>Value then Log(llError, 'Unable to enter fullscreen! Choose lower resolution or refresh rate');
   if FFullscreen then
   begin
     SetWindowLong(FHandle, GWL_EXSTYLE, WS_EX_APPWINDOW);
@@ -551,20 +549,8 @@ begin
   Console.RegisterCommand('quit', QuitHelp, Quit);
   Console.RegisterCommand('resolution', ResolutionHelp, Resolution);
   Console.RegisterCommand('fullscreen', FullscreenHelp, CmdFullscreen);
-  FRegisteredVariables.Add(RegisterCVI('vsync', VSyncHelp, @FVSync, 0, 1, 1, false));
-  FRegisteredVariables.Add(RegisterCVI('fps', FPSHelp, @FFPS, 0, 0, 0, true));
-end;
-
-procedure TCore.UnregisterCommands;
-var
-  i: Integer;
-begin
-  Console.UnregisterCommand('quit');
-  Console.UnregisterCommand('resolution');
-  Console.UnregisterCommand('fullscreen');
-  for i:=0 to FRegisteredVariables.Count-1 do
-    TConsoleVariable(FRegisteredVariables[i]).Free;
-  FRegisteredVariables.Clear;
+  TConsoleVariableInteger.Create('vsync', VSyncHelp, @FVSync, 0, 1, 1, false);
+  TConsoleVariableInteger.Create('fps', FPSHelp, @FFPS, 0, 0, 0, true);
 end;
 
 function TCore.Quit(const Args: string): Boolean;

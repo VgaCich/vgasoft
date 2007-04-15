@@ -7,6 +7,9 @@ uses
 
 procedure InitStates;
 
+var
+  NeedRestart: Boolean=false;
+
 implementation
 
 procedure InitStates;
