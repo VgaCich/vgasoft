@@ -1,0 +1,13 @@
+#include "constant.pas"
+
+MAINMENU MENU 
+BEGIN
+  POPUP "Dummy" BEGIN
+    MENUITEM "&toonel.net", ID_TOONEL
+    MENUITEM "&About", ID_ABOUT
+    MENUITEM SEPARATOR 
+    MENUITEM "E&xit", ID_CLOSE
+  END
+END
+
+ 
