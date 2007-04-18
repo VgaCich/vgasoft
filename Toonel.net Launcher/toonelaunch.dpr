@@ -109,6 +109,7 @@ begin
       end;
     WM_DESTROY:
       begin
+        TaskBarDeleteIcon(hWnd, ICON_ID);
         PostQuitMessage(0);
         Exit;
       end;
