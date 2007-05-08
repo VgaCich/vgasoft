@@ -3,7 +3,7 @@ program Assault;
 {$R *.res}
 
 uses
-  {FastMM4,} VSEInit, VSEMain, States;
+  {FastMM4,} Windows, VSEInit, VSEMain, States, UPakMan;
 
 begin
   VSEInit.InitStates:=States.InitStates;
@@ -12,6 +12,8 @@ begin
   FontsList:='Fonts.ini';
   repeat
     NeedRestart:=false;
+    ShowCursor(false);
     VSEStart;
+    ShowCursor(true);
   until NeedRestart=false;
 end.

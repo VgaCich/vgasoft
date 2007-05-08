@@ -1,10 +1,10 @@
 //----------------------------------------------------------------------------//
 //                                                                            //
-// PakMan.dpr 1.3.0, 20.11.2006; 2:00                                         //
+// PakMan.dpr 1.4.0, 08.05.2007; 3:40                                         //
 //                                                                            //
-// VSE Package Manager 1.3.0                                                  //
+// VSE Package Manager 1.4.0                                                  //
 //                                                                            //
-// Copyright (C) 2004-2006 VgaSoft                                            //
+// Copyright (C) 2004-2007 VgaSoft                                            //
 //                                                                            //
 //This program is free software; you can redistribute it and/or               //
 //modify it under the terms of the GNU General Public License                 //
@@ -27,6 +27,8 @@ uses SysSfIni, UPakMan;
 exports
   PakInit,
   PakFree,
+  PakAddMountPoint,
+  PakDeleteMountPoint,
   PakOpenFile,
   PakCreateFile,
   PakCloseFile,

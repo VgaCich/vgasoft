@@ -142,7 +142,6 @@ begin
   wglMakeCurrent(FDC, 0);
   wglDeleteContext(FRC);
   if FDC>0 then ReleaseDC(FHandle, FDC);
-  ShowCursor(true);
   FAN(FConfig);
   timeKillEvent(FFPSTimer);
   inherited Destroy;
@@ -154,7 +153,7 @@ procedure TCore.StartEngine;
 begin
   if UseINI then
   begin
-    FConfig:=TIniFile.Create(ChangeFileExt(FullExeName, '.ini'));
+    FConfig:=TIniFile.Create(IniFileName);
     FResX:=FConfig.ReadInteger('Settings', 'ResX', 800);
     FResY:=FConfig.ReadInteger('Settings', 'ResY', 600);
     FRefresh:=FConfig.ReadInteger('Settings', 'Refresh', 60);

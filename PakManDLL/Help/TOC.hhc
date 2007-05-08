@@ -30,6 +30,14 @@
 			<param name="Local" value="PakFree.html">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakAddMountPoint">
+			<param name="Local" value="PakAddMountPoint.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="PakDeleteMountPoint">
+			<param name="Local" value="PakDeleteMountPoint.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="PakOpenFile">
 			<param name="Local" value="PakOpenFile.html">
 			</OBJECT>

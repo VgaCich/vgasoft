@@ -23,12 +23,16 @@ type
     Offset: Cardinal;
   end;
 
+  TMountPoint=record
+    Exist: Boolean;
+    MountPoint, Source: string;
+  end;
+
   TDirInfo=class;
 
   TDirInfo=class(TObject)
   public
-    FilesCount, DirsCount: Integer;
-    Name: string;
+    Name, Source: string;
     Hash: Cardinal;
     Files: array of TFileInfo;
     Dirs: array of TDirInfo;
@@ -37,7 +41,7 @@ type
     destructor Destroy; override;
     function  AddDir(const Name: string): Integer;
     function  AddFile(const Name: string): Integer;
-    procedure ReadDir(const Dir: string);
+    procedure ReadDir(Dir: string);
     function  FindDir(Name: string): Integer;
     function  FindFile(Name: string): Integer;
   end;
@@ -45,17 +49,21 @@ type
   TPakMan=class(TManager)
   private
     FIndex: TDirInfo;
+    FMountPoints: array of TMountPoint;
     FBaseDir: string;
     FOpenedFiles: TList;
   protected
     procedure Init; override;
     procedure Cleanup; override;
     function  FindFile(Name: string): PFileInfo;
+    procedure Mount(MountPoint: TMountPoint);
     procedure LoadPak(const PakName: string);
     procedure CloseFile(F: TStream);
   public
     constructor Create;
     destructor Destroy; override;
+    procedure AddMountPoint(MountPoint, Source: string);
+    procedure DeleteMountPoint(MountPoint: string);
     function  OpenFile(const Name: string; Flags: Cardinal): TStream;
     function  CreateFile(Name: string; Flags: Cardinal): TStream;
     procedure DeleteFile(Name: string);
@@ -187,15 +195,13 @@ begin
   inherited Create;
   Name:=LowerCase(Dir);
   Hash:=NextAdler32(1, @Name[1], Length(Name));
-  FilesCount:=0;
-  DirsCount:=0;
 end;
 
 destructor TDirInfo.Destroy;
 var
   i: Integer;
 begin
-  for i:=0 to DirsCount-1 do
+  for i:=0 to High(Dirs) do
     if Assigned(Dirs[i]) then Dirs[i].Free;
   Finalize(FilesRes);
   Finalize(Files);
@@ -208,10 +214,9 @@ begin
   Result:=FindDir(Name);
   if Result<0 then
   begin
-    SetLength(Dirs, DirsCount+1);
-    Dirs[DirsCount]:=TDirInfo.Create(Name);
-    Result:=DirsCount;
-    Inc(DirsCount);
+    SetLength(Dirs, Length(Dirs)+1);
+    Dirs[High(Dirs)]:=TDirInfo.Create(Name);
+    Result:=High(Dirs);
   end;
 end;
 
@@ -220,25 +225,36 @@ begin
   Result:=FindFile(Name);
   if Result<0 then
   begin
-    SetLength(Files, FilesCount+1);
-    Result:=FilesCount;
+    SetLength(Files, Length(Files)+1);
+    Result:=High(Files);
     Files[Result].Name:=LowerCase(Name);
     Files[Result].Hash:=NextAdler32(1, @Files[Result].Name[1], Length(Files[Result].Name));
     Files[Result].Source:=fsFile;
-    Inc(FilesCount);
+    Files[Result].Offset:=0;
   end;
 end;
 
-procedure TDirInfo.ReadDir(const Dir: string);
+procedure TDirInfo.ReadDir(Dir: string);
 var
   SR: TSearchRec;
   i: Integer;
+  SubDir: TDirInfo;
 begin
+  if Source<>'' then Dir:=Source;
+  for i:=0 to High(Dirs) do
+    Dirs[i].ReadDir(Dir+Dirs[i].Name+'\');
   if FindFirst(Dir+'*', faAnyFile, SR)=0 then
     repeat
       if (SR.Name='.') or (SR.Name='..') or ((SR.Attr and faDirectory=0) and (LowerCase(AvL.ExtractFileExt(SR.Name))=PakExt)) then Continue;
       if (SR.Attr and faDirectory)<>0 then
-        Dirs[AddDir(SR.Name)].ReadDir(Dir+SR.Name+'\')
+      begin
+        if FindDir(SR.Name)<0 then
+        begin
+          SubDir:=Dirs[AddDir(SR.Name)];
+          if Source<>'' then SubDir.Source:=Source+SR.Name+'\';
+          SubDir.ReadDir(Dir+SR.Name+'\');
+        end;
+      end
       else
         with Files[AddFile(SR.Name)] do
         begin
@@ -249,14 +265,13 @@ begin
             FilesRes[High(FilesRes)].PakFile:=PakFile;
             FilesRes[High(FilesRes)].Offset:=Offset;
             Offset:=High(FilesRes)+1;
-          end
-            else Offset:=0;
+          end;
           Source:=fsFile;
           PakFile:=Dir;
         end;
     until FindNext(SR)<>0;
   FindClose(SR);
-  for i:=0 to FilesCount-1 do
+  for i:=0 to High(Files) do
     if (Files[i].Source=fsFile) and not FileExists(Files[i].PakFile+Files[i].Name) then
       with Files[i] do
         if Offset>0 then
@@ -278,7 +293,7 @@ begin
   Result:=-1;
   Name:=LowerCase(Name);
   Hash:=NextAdler32(1, @Name[1], Length(Name));
-  for Result:=0 to DirsCount-1 do
+  for Result:=0 to High(Dirs) do
     if (Dirs[Result].Hash=Hash) and (Dirs[Result].Name=Name) then Exit;
   Result:=-1;
 end;
@@ -291,7 +306,7 @@ begin
   if Name='' then Exit;
   Name:=LowerCase(Name);
   Hash:=NextAdler32(1, @Name[1], Length(Name));
-  for Result:=0 to FilesCount-1 do
+  for Result:=0 to High(Files) do
     if (Files[Result].Hash=Hash) and (Files[Result].Name=Name) then Exit;
   Result:=-1;
 end;
@@ -303,6 +318,7 @@ begin
   LogNC(llInfo, 'PakMan: Create');
   inherited Create;
   FOpenedFiles:=TList.Create;
+  SetLength(FMountPoints, 8);
 end;
 
 destructor TPakMan.Destroy;
@@ -311,6 +327,7 @@ var
 begin
   LogNC(llInfo, 'PakMan: Destroy');
   if Assigned(FIndex) then FAN(FIndex);
+  Finalize(FMountPoints);
   if FOpenedFiles.Count>0 then
   begin
     LogF(llWarning, 'PakMan: %d files not closed', [FOpenedFiles.Count]);
@@ -333,6 +350,8 @@ begin
   Log(llInfo, 'PakMan: Initialize');
   FBaseDir:=AddTrailingBackslash(BaseDir);
   FIndex:=TDirInfo.Create('');
+  for i:=0 to  High(FMountPoints) do
+    if FMountPoints[i].Exist then Mount(FMountPoints[i]);
   Paks:=TStringList.Create;
   try
     if FindFirst(FBaseDir+PakMask, 0, SR)=0 then
@@ -362,6 +381,54 @@ begin
   end;
 end;
 
+procedure TPakMan.AddMountPoint(MountPoint, Source: string);
+var
+  i, Index: Integer;
+begin
+  if Assigned(FIndex)
+    then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: PakMan is initialized', [MountPoint, Source]);
+  if Pos(Sep, MountPoint)>0
+    then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: invalid mount point', [MountPoint, Source]);
+  Index:=-1;
+  MountPoint:=LowerCase(MountPoint);
+  for i:=0 to High(FMountPoints) do
+  begin
+    if (Index=-1) and not FMountPoints[i].Exist then Index:=i;
+    if FMountPoints[i].Exist and (FMountPoints[i].MountPoint=MountPoint)
+      then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: mount point already exists', [MountPoint, Source]);
+  end;
+  Source:=AddTrailingBackslash(ExpandFileName(Source));
+  if not DirectoryExists(Source) then
+    if not ForceDirectories(Source)
+      then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: cannot create source dir', [MountPoint, Source]);
+  if Index=-1 then
+  begin
+    Index:=Length(FMountPoints);
+    SetLength(FMountPoints, 2*Index);
+  end;
+  FMountPoints[Index].Exist:=true;
+  FMountPoints[Index].MountPoint:=MountPoint;
+  FMountPoints[Index].Source:=Source;
+end;
+
+procedure TPakMan.DeleteMountPoint(MountPoint: string);
+var
+  i: Integer;
+begin
+  if Assigned(FIndex) then raise Exception.CreateFmt('PakMan: DeleteMountPoint(%s) failed: PakMan is initialized', [MountPoint]);
+  MountPoint:=LowerCase(MountPoint);
+  for i:=0 to High(FMountPoints) do
+    if FMountPoints[i].Exist and (FMountPoints[i].MountPoint=MountPoint) then
+      with FMountPoints[i] do
+      begin
+        Exist:=false;
+        MountPoint:='';
+        Source:='';
+        Exit;
+      end;
+  raise Exception.CreateFmt('PakMan: DeleteMountPoint(%s) failed: mount point not exists', [MountPoint]);
+end;
+
 function TPakMan.OpenFile(const Name: string; Flags: Cardinal): TStream;
 var
   FI: PFileInfo;
@@ -389,22 +456,39 @@ end;
 
 function TPakMan.CreateFile(Name: string; Flags: Cardinal): TStream;
 var
+  CurTok, NextTok, DestDir: string;
+  CurDir: TDirInfo;
   i: Integer;
   FI: TFileInfo;
 begin
   Result:=nil;
   if FIndex=nil then Exit;
-  for i:=1 to Length(Name) do
-    if Name[i]='/' then Name[i]:='\';
-  if (Pos('..\', Name)>0) or not CheckPath(Name, false) then
+  NextTok:=Tok(Sep, Name);
+  CurDir:=FIndex;
+  DestDir:=FBaseDir;
+  while true do
   begin
-    Log(llError, 'PakMan: CreateFile('+Name+') failed: invalid file name');
+    CurTok:=NextTok;
+    NextTok:=Tok(Sep, Name);
+    if NextTok<>'' then
+    begin
+      i:=CurDir.AddDir(CurTok);
+      if (CurDir.Source<>'') and (CurDir.Dirs[i].Source='')
+        then CurDir.Dirs[i].Source:=CurDir.Source+CurTok+'\';
+      CurDir:=CurDir.Dirs[i];
+      DestDir:=DestDir+CurTok+'\';
+    end
+      else Break;
+  end;
+  if CurDir.Source<>'' then DestDir:=CurDir.Source;
+  if not ForceDirectories(DestDir) then
+  begin
+    Log(llError, 'PakMan: CreateFile('+Name+') failed: cannot create destination dir');
     Exit;
   end;
-  ForceDirectories(FBaseDir+AvL.ExtractFilePath(Name));
-  if AvL.FileExists(FBaseDir+Name) then AvL.DeleteFile(FBaseDir+Name);
-  FI.PakFile:=FBaseDir;
-  FI.Name:=Name;
+  if AvL.FileExists(DestDir+CurTok) then AvL.DeleteFile(DestDir+CurTok);
+  FI.PakFile:=DestDir;
+  FI.Name:=CurTok;
   Result:=TPakFileStream.Create(FI, fmCreate, Self);
   FOpenedFiles.Add(Result);
   FIndex.ReadDir(FBaseDir);
@@ -418,17 +502,21 @@ end;
 
 procedure TPakMan.DeleteFile(Name: string);
 var
-  i: Integer;
+  FI: PFileInfo;
 begin
   if FIndex=nil then Exit;
-  for i:=1 to Length(Name) do
-    if Name[i]='/' then Name[i]:='\';
-  if (Pos('..\', Name)>0) or not CheckPath(Name, false) then
+  FI:=FindFile(Name);
+  if FI=nil then
   begin
-    Log(llError, 'PakMan: DeleteFile('+Name+') failed: invalid file name');
-    Exit; 
+    Log(llError, 'PakMan: DeleteFile('+Name+') failed: file not exists');
+    Exit;
   end;
-  if AvL.FileExists(FBaseDir+Name) then AvL.DeleteFile(FBaseDir+Name);
+  if FI.Source<>fsFile then
+  begin
+    Log(llError, 'PakMan: DeleteFile('+Name+') failed: file read-only');
+    Exit;
+  end;
+  AvL.DeleteFile(FI.PakFile+FI.Name);
   FIndex.ReadDir(FBaseDir);
 end;
 
@@ -448,12 +536,13 @@ var
   var
     i: Integer;
   begin
-    for i:=0 to Dir.FilesCount-1 do
-      if M.Matches(Dir.Files[i].Name)
+    for i:=0 to High(Dir.Files) do
+      if (Dir.Files[i].Name<>'') and M.Matches(Dir.Files[i].Name)
         then List.Add(CurPath+Dir.Files[i].Name);
     if Recursive then
-      for i:=0 to Dir.DirsCount-1 do
-        Find(Dir.Dirs[i], CurPath+Dir.Dirs[i].Name+Sep);
+      for i:=0 to High(Dir.Dirs) do
+        if Dir.Dirs[i].Name<>''
+          then Find(Dir.Dirs[i], CurPath+Dir.Dirs[i].Name+Sep);
   end;
 
 begin
@@ -491,19 +580,28 @@ begin
   repeat
     CurTok:=NextTok;
     NextTok:=Tok(Sep, Name);
-     if NextTok='' then
-     begin
-       i:=CurDir.FindFile(CurTok);
-       if i>=0 then Result:=@CurDir.Files[i];
-       Break;
-     end
-     else begin
-       i:=CurDir.FindDir(CurTok);
-       if i>=0
-         then CurDir:=CurDir.Dirs[i]
-         else Break;
-     end;
+    if NextTok='' then
+    begin
+      i:=CurDir.FindFile(CurTok);
+      if i>=0 then Result:=@CurDir.Files[i];
+      Break;
+    end
+    else begin
+      i:=CurDir.FindDir(CurTok);
+      if i>=0
+        then CurDir:=CurDir.Dirs[i]
+        else Break;
+    end;
   until false;
+end;
+
+procedure TPakMan.Mount(MountPoint: TMountPoint);
+var
+  Dir: TDirInfo;
+begin
+  if FIndex=nil then Exit;
+  Dir:=FIndex.Dirs[FIndex.AddDir(MountPoint.MountPoint)];
+  Dir.Source:=MountPoint.Source;
 end;
 
 procedure TPakMan.LoadPak(const PakName: string);

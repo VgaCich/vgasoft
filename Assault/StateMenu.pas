@@ -13,6 +13,7 @@ type
     FMenu: TGUI;
     FCursor: TCursor;
     FLbl: TMenuLabel;
+    FTestTex: TTexture;
   protected
     function GetName: string; override;
     function Load(ProgFunc: TProgFunc): Boolean;
@@ -20,6 +21,7 @@ type
     procedure LoadClick(Sender: TObject);
     procedure GameClick(Sender: TObject);
     procedure ConsoleClick(Sender: TObject);
+    procedure RestartClick(Sender: TObject);
     procedure ExitClick(Sender: TObject);
   public
     constructor Create;
@@ -71,7 +73,7 @@ type
 
 implementation
 
-uses UCore, UPakMan, States;
+uses UCore, UPakMan, States, UConsole;
 
 constructor TStateMenu.Create;
 var
@@ -79,13 +81,13 @@ var
   Frm: TMenuForm;
 begin
   inherited Create;
-  ShowCursor(false);
+  FTestTex:=TexMan.LoadTexture('Menu.tga', 1);
   FCursor:=TCursor.Create;
   FCursor.Load('Cursor.vcr');
   FMenu:=TGUI.Create(800, 600);
   FLbl:=TMenuLabel.Create(5, 5, 100, 20, nil, 'Label');
   FLbl.Color:=clRed;
-  Frm:=TMenuForm.Create(300, 130, 200, 300, nil, 'Assault 0.1');
+  Frm:=TMenuForm.Create(300, 130, 200, 350, nil, 'Assault 0.1');
   Btn:=TMenuButton.Create(50, 50, 100, 30, Frm, 'Intro');
   Btn.OnClick:=IntroClick;
   Btn:=TMenuButton.Create(50, 100, 100, 30, Frm, 'Load');
@@ -94,7 +96,9 @@ begin
   Btn.OnClick:=GameClick;
   Btn:=TMenuButton.Create(50, 200, 100, 30, Frm, 'Console');
   Btn.OnClick:=ConsoleClick;
-  Btn:=TMenuButton.Create(50, 250, 100, 30, Frm, 'Exit');
+  Btn:=TMenuButton.Create(50, 250, 100, 30, Frm, 'Restart');
+  Btn.OnClick:=RestartClick;
+  Btn:=TMenuButton.Create(50, 300, 100, 30, Frm, 'Exit');
   Btn.OnClick:=ExitClick;
   FMenu.AddForm(Frm);
   FMenu.AddForm(FLbl);
@@ -103,7 +107,7 @@ end;
 
 destructor TStateMenu.Destroy;
 begin
-  ShowCursor(true);
+  FreeTex(FTestTex);
   FAN(FCursor);
   FAN(FMenu);
   inherited Destroy;
@@ -213,6 +217,12 @@ begin
   Core.SwitchState(Core.FindState('Console'));
 end;
 
+procedure TStateMenu.RestartClick(Sender: TObject);
+begin
+  NeedRestart:=true;
+  Core.StopEngine;
+end;
+
 procedure TStateMenu.ExitClick(Sender: TObject);
 begin
   Core.StopEngine;
@@ -314,11 +324,7 @@ begin
     end;
     reMouseDown: FDownClose:=true;
     reMouseUp: FDownClose:=false;
-    reMouseClick: if Button=1 then
-                  begin
-                    NeedRestart:=true;
-                    Core.StopEngine;
-                  end;
+    reMouseClick: if Button=1 then Core.StopEngine;
   end;
 end;
 

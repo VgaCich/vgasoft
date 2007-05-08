@@ -1,10 +1,10 @@
 //----------------------------------------------------------------------------//
 //                                                                            //
-// PakMan.pas 1.3.0, 20.11.2006; 2:00                                         //
+// PakMan.pas 1.4.0, 05.08.2007; 3:40                                         //
 //                                                                            //
-// VSE Package Manager 1.3                                                    //
+// VSE Package Manager 1.4                                                    //
 //                                                                            //
-// Copyright (C) 2004-2006 VgaSoft                                            //
+// Copyright (C) 2004-2007 VgaSoft                                            //
 //                                                                            //
 //This program is free software; you can redistribute it and/or               //
 //modify it under the terms of the GNU General Public License                 //
@@ -28,6 +28,8 @@ type
 
 procedure PakInit(BaseDir: PChar; LogCallback: TLogCB); stdcall; external 'PakMan.dll';
 procedure PakFree; stdcall; external 'PakMan.dll';
+procedure PakAddMountPoint(MountPoint, Source: PChar); stdcall; external 'PakMan.dll';
+procedure PakDeleteMountPoint(MountPoint: PChar); stdcall; external 'PakMan.dll';
 function  PakOpenFile(Name: PChar; Flags: Cardinal): Cardinal; stdcall; external 'PakMan.dll';
 function  PakCreateFile(Name: PChar; Flags: Cardinal): Cardinal; stdcall; external 'PakMan.dll';
 procedure PakCloseFile(F: Cardinal); stdcall; external 'PakMan.dll';

@@ -1,9 +1,9 @@
-{(c)VgaSoft, 2004-2005}
+{(c)VgaSoft, 2004-2007}
 unit avlUtils;
 
 interface
 
-uses Windows, AVL;
+uses Windows, AvL;
 
 type
   TSysCharSet = set of Char;
@@ -199,11 +199,11 @@ begin
   if Length(Hex)<>2 then Exit;
   for i:=1 to 2 do
     if Hex[i] in ['0'..'9']
-      then Result := (Result shl 4) or (Ord(Hex[I]) - Ord('0'))
+      then Result := (Result shl 4) or (Ord(Hex[i]) - Ord('0'))
       else if Hex[i] in ['A'..'F']
-        then Result := (Result shl 4) or (Ord(Hex[I]) - Ord('A') + 10)
+        then Result := (Result shl 4) or (Ord(Hex[i]) - Ord('A') + 10)
         else if Hex[i] in ['a'..'f']
-          then Result := (Result shl 4) or (Ord(Hex[I]) - Ord('a') + 10)
+          then Result := (Result shl 4) or (Ord(Hex[i]) - Ord('a') + 10)
           else Break;
 end;
 

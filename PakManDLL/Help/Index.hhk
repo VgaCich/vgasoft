@@ -8,6 +8,10 @@
  </OBJECT>
 <UL>
  <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakAddMountPoint">
+  <PARAM name="Local" value="PakAddMountPoint.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
   <PARAM name="Name" value="PakCloseFile">
   <PARAM name="Local" value="PakCloseFile.html">
  </OBJECT>
@@ -18,6 +22,10 @@
  <LI><OBJECT type="text/sitemap">
   <PARAM name="Name" value="PakDeleteFile">
   <PARAM name="Local" value="PakDeleteFile.html">
+ </OBJECT>
+ <LI><OBJECT type="text/sitemap">
+  <PARAM name="Name" value="PakDeleteMountPoint">
+  <PARAM name="Local" value="PakDeleteMountPoint.html">
  </OBJECT>
  <LI><OBJECT type="text/sitemap">
   <PARAM name="Name" value="PakExtractFileExt">

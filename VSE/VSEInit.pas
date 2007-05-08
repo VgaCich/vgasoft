@@ -17,7 +17,7 @@ var
   Caption: string='VgaSoft Engine';
   Version: string='0.1';
   CaptionVer: string;
-  BaseDir: string;
+  BaseDir, IniFileName: string;
   UseINI: Boolean=true;
   ResX: Integer=640;
   ResY: Integer=480;
@@ -31,6 +31,7 @@ var
 implementation
 
 initialization
-  BaseDir:=ExePath+'Data';
+  if BaseDir='' then BaseDir:=ExePath+'Data';
+  if IniFileName='' then IniFileName:=ChangeFileExt(FullExeName, '.ini');
 
 end.
