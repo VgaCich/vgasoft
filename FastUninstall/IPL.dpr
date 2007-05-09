@@ -35,7 +35,7 @@ begin
     List.Clear;
     Key:=RegKeyOpenRead(HKEY_LOCAL_MACHINE, 'software\microsoft\windows\currentversion\uninstall');
     if Key=0 then Err('Unable to open key HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall');
-    RegKeyGetKeyNames(Key, S);
+    RegKeyGetKeyNamesStr(Key, S);
     Keys.Text:=S;
     for i:=0 to Keys.Count-1 do
     begin
