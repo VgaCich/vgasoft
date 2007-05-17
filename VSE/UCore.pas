@@ -21,7 +21,6 @@ type
     FState, FSwitchTo: Cardinal;
     FCurState: TGameState;
     FFullscreen, FNeedSwitch, FMinimized: Boolean;
-    FConfig: TIniFile;
     FKeyState: TKeyboardState;
     {$IFNDEF VSE_NOSOUND}FSound: TSound;{$ENDIF}
     procedure SetFullscreen(Value: Boolean);
@@ -142,7 +141,6 @@ begin
   wglMakeCurrent(FDC, 0);
   wglDeleteContext(FRC);
   if FDC>0 then ReleaseDC(FHandle, FDC);
-  FAN(FConfig);
   timeKillEvent(FFPSTimer);
   inherited Destroy;
 end;
@@ -151,26 +149,13 @@ end;
 
 procedure TCore.StartEngine;
 begin
-  if UseINI then
-  begin
-    FConfig:=TIniFile.Create(IniFileName);
-    FResX:=FConfig.ReadInteger('Settings', 'ResX', 800);
-    FResY:=FConfig.ReadInteger('Settings', 'ResY', 600);
-    FRefresh:=FConfig.ReadInteger('Settings', 'Refresh', 60);
-    FDepth:=FConfig.ReadInteger('Settings', 'Depth', 32);
-    Fullscreen:=FConfig.ReadBool('Settings', 'Fullscreen', false);
-    FVSync:=FConfig.ReadInteger('Settings', 'VSync', 1);
-    {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(FConfig.ReadString('Settings', 'SoundDevice', 'Default'));{$ENDIF}
-  end
-  else begin
-    FResX:=VSEInit.ResX;
-    FResY:=VSEInit.ResY;
-    FRefresh:=VSEInit.Refresh;
-    FDepth:=VSEInit.Depth;
-    Fullscreen:=VSEInit.Fullscreen;
-    FVSync:=VSEInit.VSync;
-    {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(VSEInit.SoundDevice);{$ENDIF}
-  end;
+  FResX:=VSEInit.ResX;
+  FResY:=VSEInit.ResY;
+  FRefresh:=VSEInit.Refresh;
+  FDepth:=VSEInit.Depth;
+  Fullscreen:=VSEInit.Fullscreen;
+  FVSync:=VSEInit.VSync;
+  {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(VSEInit.SoundDevice);{$ENDIF}
   if (FVSync<>0) and (FVSync<>1) then FVSync:=1;
   if FResX<640 then FResX:=640;
   if FResY<480 then FResY:=480;
@@ -199,25 +184,13 @@ end;
 
 procedure TCore.SaveSettings;
 begin
-  if UseINI then
-  begin
-    FConfig.WriteInteger('Settings', 'ResX', FResX);
-    FConfig.WriteInteger('Settings', 'ResY', FResY);
-    FConfig.WriteInteger('Settings', 'Refresh', FRefresh);
-    FConfig.WriteInteger('Settings', 'Depth', FDepth);
-    FConfig.WriteBool('Settings', 'Fullscreen', FFullscreen);
-    FConfig.WriteInteger('Settings', 'VSync', FVSync);
-    {$IFNDEF VSE_NOSOUND}FConfig.WriteString('Settings', 'SoundDevice', Sound.DeviceName);{$ENDIF}
-  end
-  else begin
-    VSEInit.ResX:=FResX;
-    VSEInit.ResY:=FResY;
-    VSEInit.Refresh:=FRefresh;
-    VSEInit.Depth:=FDepth;
-    VSEInit.Fullscreen:=FFullscreen;
-    VSEInit.VSync:=FVSync;
-    {$IFNDEF VSE_NOSOUND}VSEInit.SoundDevice:=Sound.DeviceName;{$ENDIF}
-  end;
+  VSEInit.ResX:=FResX;
+  VSEInit.ResY:=FResY;
+  VSEInit.Refresh:=FRefresh;
+  VSEInit.Depth:=FDepth;
+  VSEInit.Fullscreen:=FFullscreen;
+  VSEInit.VSync:=FVSync;
+  {$IFNDEF VSE_NOSOUND}VSEInit.SoundDevice:=Sound.DeviceName;{$ENDIF}
 end;
 
 procedure TCore.Update;
@@ -466,7 +439,7 @@ begin
   try
     FCurState.Deactivate;
   except
-    LogException('in state '+FCurState.Name+'Deactivate');
+    LogException('in state '+FCurState.Name+'.Deactivate');
   end;
   FState:=Value;
   FCurState:=FStates[Value];

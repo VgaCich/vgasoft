@@ -10,8 +10,9 @@ type
   TDLCListItem=class;
   TDLCListCheckFunc=function(Item: TDLCListItem; Data: Integer): Boolean of object;
   TDLCListItem=class
-  private
+  protected
     FNext, FPrev: TDLCListItem;
+    FRefCount: Integer;
     procedure Remove;
   public
     constructor Create(PrevItem: TDLCListItem);
@@ -19,6 +20,10 @@ type
     procedure ClearList;
     procedure ResetList;
     function  FindItem(CheckFunc: TDLCListCheckFunc; Data: Integer): TDLCListItem;
+    procedure AddRef;
+    procedure Release;
+    property Next: TDLCListItem read FNext;
+    property Prev: TDLCListItem read FPrev;
   end;
 
 implementation
@@ -37,6 +42,7 @@ begin
     FNext:=Self;
     FPrev:=Self;
   end;
+  FRefCount:=1;
 end;
 
 destructor TDLCListItem.Destroy;
@@ -80,6 +86,18 @@ begin
       then Exit
       else Result:=Result.FNext;
   Result:=nil;
+end;
+
+procedure TDLCListItem.AddRef;
+begin
+  Inc(FRefCount);
+end;
+
+procedure TDLCListItem.Release;
+begin
+  if not Assigned(Self) then Exit;
+  Dec(FRefCount);
+  if FRefCount<=0 then Destroy;
 end;
 
 end.

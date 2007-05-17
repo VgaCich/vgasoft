@@ -3,7 +3,7 @@ unit UTexMan;
 interface
 
 uses
-  Windows, AvL, avlUtils, avlClasses, dglOpenGL, UManagers, Textures;
+  Windows, AvL, avlUtils, avlClasses, dglOpenGL, UManagers, UTexLoader;
 
 type
   TTexMan=class;
@@ -12,7 +12,7 @@ type
   private
     FHandle: TGLuint;
     FTarget: TGLenum;
-    FRefCount, FGroup: Cardinal;
+    FGroup: Cardinal;
     FName: string;
     function  GetValid: Boolean;
     procedure SetActive(Index: Integer; Value: Boolean);
@@ -28,13 +28,14 @@ type
     procedure SetLOD(Value: Integer);
     function  GetLOD: Integer;
   protected
-    procedure AddRef;
-    destructor Destroy; override;
+    procedure Mark;
+    function  IsMarked: Boolean;
   public
     constructor Create(PrevItem: TTexture; Handle: TGLuint; Target: TGLenum; const Name: string; Group: Cardinal); overload;
+    constructor Create(PrevItem: TTexture; Data: TTextureData; Group: Cardinal; Filter: TTextureFilter; AnisoLevel: Integer; MipMap, Clamp: Boolean; LOD: Integer); overload;
     constructor Create(PrevItem: TTexture; const FileName: string; Group: Cardinal; Filter: TTextureFilter; AnisoLevel: Integer; MipMap, Clamp: Boolean; LOD: Integer); overload;
     constructor Create(PrevItem: TTexture; const Name: string; Data: TStream; Group: Cardinal; Filter: TTextureFilter; AnisoLevel: Integer; MipMap, Clamp: Boolean; LOD: Integer); overload;
-    procedure Release;
+    destructor Destroy; override;
     property Active[Index: Integer]: Boolean read GetActive write SetActive; default;
     property Filter: TTextureFilter read GetFilter write SetFilter;
     property AnisoLevel: Integer read GetAnisoLevel write SetAnisoLevel;
@@ -108,11 +109,17 @@ uses ULog, UPakMan;
 constructor TTexture.Create(PrevItem: TTexture; Handle: TGLuint; Target: TGLenum; const Name: string; Group: Cardinal);
 begin
   inherited Create(PrevItem);
-  FRefCount:=1;
   FHandle:=Handle;
   FTarget:=Target;
   FName:=LowerCase(Name);
   FGroup:=Group;
+
+end;
+
+constructor TTexture.Create(PrevItem: TTexture; Data: TTextureData; Group: Cardinal; Filter: TTextureFilter; AnisoLevel: Integer; MipMap, Clamp: Boolean; LOD: Integer);
+begin
+  inherited Create(PrevItem);
+
 end;
 
 constructor TTexture.Create(PrevItem: TTexture; const FileName: string; Group: Cardinal; Filter: TTextureFilter; AnisoLevel: Integer; MipMap, Clamp: Boolean; LOD: Integer);
@@ -130,7 +137,6 @@ end;
 constructor TTexture.Create(PrevItem: TTexture; const Name: string; Data: TStream; Group: Cardinal; Filter: TTextureFilter; AnisoLevel: Integer; MipMap, Clamp: Boolean; LOD: Integer);
 begin
   inherited Create(PrevItem);
-  FRefCount:=1;
   //FHandle:=
   //FTarget:=
   FName:=LowerCase(Name);
@@ -143,16 +149,14 @@ begin
   inherited Destroy;
 end;
 
-procedure TTexture.Release;
+procedure TTexture.Mark;
 begin
-  if not Assigned(Self) then Exit;
-  Dec(FRefCount);
-  if FRefCount<=0 then Destroy;
+  FRefCount:=0;
 end;
 
-procedure TTexture.AddRef;
+function TTexture.IsMarked: Boolean;
 begin
-  Inc(FRefCount);
+  Result:=FRefCount<=0;
 end;
 
 function TTexture.GetValid: Boolean;
@@ -366,14 +370,14 @@ end;
 function TTexMan.UpdateMark(Texture: TDLCListItem; Groups: Integer): Boolean;
 begin
   Result:=false;
-  if (TTexture(Texture).Group and Groups)<>0 then TTexture(Texture).FRefCount:=0;
+  if (TTexture(Texture).Group and Groups)<>0 then TTexture(Texture).Mark;
 end;
 
 function TTexMan.UpdateUnload(Texture: TDLCListItem; Groups: Integer): Boolean;
 begin
   Result:=false;
   FAN(UnloadTemp);
-  if ((TTexture(Texture).Group and Groups)<>0) and (TTexture(Texture).FRefCount<=0)
+  if ((TTexture(Texture).Group and Groups)<>0) and (TTexture(Texture).IsMarked)
     then UnloadTemp:=TTexture(Texture);
 end;
 

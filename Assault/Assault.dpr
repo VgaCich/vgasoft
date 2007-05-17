@@ -3,17 +3,19 @@ program Assault;
 {$R *.res}
 
 uses
-  {FastMM4,} Windows, VSEInit, VSEMain, States, UPakMan;
+  {FastMM4,} Windows, avlUtils, VSEInit, VSEMain, States;
 
 begin
   VSEInit.InitStates:=States.InitStates;
   Caption:='Assault';
   Version:='0.1';
   FontsList:='Fonts.ini';
+  LoadINI(ChangeFileExt(FullExeName, '.ini'));
   repeat
     NeedRestart:=false;
     ShowCursor(false);
     VSEStart;
     ShowCursor(true);
   until NeedRestart=false;
+  SaveINI(ChangeFileExt(FullExeName, '.ini'));
 end.

@@ -62,8 +62,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure AddMountPoint(MountPoint, Source: string);
-    procedure DeleteMountPoint(MountPoint: string);
+    function  AddMountPoint(MountPoint, Source: string): Boolean;
+    function  DeleteMountPoint(MountPoint: string): Boolean;
     function  OpenFile(const Name: string; Flags: Cardinal): TStream;
     function  CreateFile(Name: string; Flags: Cardinal): TStream;
     procedure DeleteFile(Name: string);
@@ -216,6 +216,7 @@ begin
   begin
     SetLength(Dirs, Length(Dirs)+1);
     Dirs[High(Dirs)]:=TDirInfo.Create(Name);
+    if Source<>'' then Dirs[High(Dirs)].Source:=Source+Name+'\';
     Result:=High(Dirs);
   end;
 end;
@@ -251,7 +252,6 @@ begin
         if FindDir(SR.Name)<0 then
         begin
           SubDir:=Dirs[AddDir(SR.Name)];
-          if Source<>'' then SubDir.Source:=Source+SR.Name+'\';
           SubDir.ReadDir(Dir+SR.Name+'\');
         end;
       end
@@ -381,41 +381,45 @@ begin
   end;
 end;
 
-procedure TPakMan.AddMountPoint(MountPoint, Source: string);
+function TPakMan.AddMountPoint(MountPoint, Source: string): Boolean;
 var
   i, Index: Integer;
 begin
-  if Assigned(FIndex)
-    then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: PakMan is initialized', [MountPoint, Source]);
-  if Pos(Sep, MountPoint)>0
-    then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: invalid mount point', [MountPoint, Source]);
-  Index:=-1;
-  MountPoint:=LowerCase(MountPoint);
-  for i:=0 to High(FMountPoints) do
-  begin
-    if (Index=-1) and not FMountPoints[i].Exist then Index:=i;
-    if FMountPoints[i].Exist and (FMountPoints[i].MountPoint=MountPoint)
-      then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: mount point already exists', [MountPoint, Source]);
+  Result:=false;
+  try
+    if Pos(Sep, MountPoint)>0
+      then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: invalid mount point', [MountPoint, Source]);
+    Index:=-1;
+    MountPoint:=LowerCase(MountPoint);
+    for i:=0 to High(FMountPoints) do
+    begin
+      if (Index=-1) and not FMountPoints[i].Exist then Index:=i;
+      if FMountPoints[i].Exist and (FMountPoints[i].MountPoint=MountPoint)
+        then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: mount point already exists', [MountPoint, Source]);
+    end;
+    Source:=AddTrailingBackslash(ExpandFileName(Source));
+    if not DirectoryExists(Source) then
+      if not ForceDirectories(Source)
+        then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: cannot create source dir', [MountPoint, Source]);
+    if Index=-1 then
+    begin
+      Index:=Length(FMountPoints);
+      SetLength(FMountPoints, 2*Index);
+    end;
+    FMountPoints[Index].Exist:=true;
+    FMountPoints[Index].MountPoint:=MountPoint;
+    FMountPoints[Index].Source:=Source;
+    Result:=true;
+  except
+    on E:Exception do Log(llError, E.Message);
   end;
-  Source:=AddTrailingBackslash(ExpandFileName(Source));
-  if not DirectoryExists(Source) then
-    if not ForceDirectories(Source)
-      then raise Exception.CreateFmt('PakMan: AddMountPoint(%s, %s) failed: cannot create source dir', [MountPoint, Source]);
-  if Index=-1 then
-  begin
-    Index:=Length(FMountPoints);
-    SetLength(FMountPoints, 2*Index);
-  end;
-  FMountPoints[Index].Exist:=true;
-  FMountPoints[Index].MountPoint:=MountPoint;
-  FMountPoints[Index].Source:=Source;
 end;
 
-procedure TPakMan.DeleteMountPoint(MountPoint: string);
+function TPakMan.DeleteMountPoint(MountPoint: string): Boolean;
 var
   i: Integer;
 begin
-  if Assigned(FIndex) then raise Exception.CreateFmt('PakMan: DeleteMountPoint(%s) failed: PakMan is initialized', [MountPoint]);
+  Result:=false;
   MountPoint:=LowerCase(MountPoint);
   for i:=0 to High(FMountPoints) do
     if FMountPoints[i].Exist and (FMountPoints[i].MountPoint=MountPoint) then
@@ -424,9 +428,10 @@ begin
         Exist:=false;
         MountPoint:='';
         Source:='';
+        Result:=true;
         Exit;
       end;
-  raise Exception.CreateFmt('PakMan: DeleteMountPoint(%s) failed: mount point not exists', [MountPoint]);
+  LogF(llError, 'PakMan: DeleteMountPoint(%s) failed: mount point not exists', [MountPoint]);
 end;
 
 function TPakMan.OpenFile(const Name: string; Flags: Cardinal): TStream;

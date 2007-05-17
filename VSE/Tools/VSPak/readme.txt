@@ -52,4 +52,4 @@ filename|comp/level
   level - уровень сжатия:
     для LZMA: Fast, Normal, Max, Ultra
     для NRV: 1...10
-    для Store: отсутствует
+    для Store, Discard: отсутствует
