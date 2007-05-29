@@ -137,11 +137,10 @@ begin
   if not GL_ARB_shading_language_100 then Exit;
   inherited Create;
   FLinks:=TList.Create;
-  FInfoLog:='';
   FHandle:=glCreateProgramObjectARB;
   if FHandle=0
     then Log(llError, 'Shader.Create: cannot create shader');
-  FInfoLog:=FInfoLog+GetInfoLog(FHandle);
+  FInfoLog:=GetInfoLog(FHandle);
 end;
 
 destructor TShader.Destroy;
@@ -214,7 +213,7 @@ end;
 function TShader.Link: Boolean;
 begin
   glLinkProgramARB(FHandle);
-  FInfoLog:=FInfoLog+GetInfoLog(FHandle);
+  FInfoLog:=GetInfoLog(FHandle);
   Result:=not Error(FHandle, GL_OBJECT_LINK_STATUS_ARB);
   if not Result
     then Log(llError, 'Shader.Link: cannot link shader');
@@ -223,14 +222,14 @@ end;
 function TShader.GetAttrib(const Name: string): TShaderAttrib;
 begin
   Result:=TShaderAttrib.Create(Self, Name);
-  FInfoLog:=FInfoLog+GetInfoLog(FHandle);
+  FInfoLog:=GetInfoLog(FHandle);
   FLinks.Add(Result);
 end;
 
 function TShader.GetUniform(const Name: string): TShaderUniform;
 begin
   Result:=TShaderUniform.Create(Self, Name);
-  FInfoLog:=FInfoLog+GetInfoLog(FHandle);
+  FInfoLog:=GetInfoLog(FHandle);
   FLinks.Add(Result);
 end;
 
@@ -246,12 +245,10 @@ begin
   P:=PChar(Prog);
   ShTemp:=glCreateShaderObjectARB(ObjType);
   glShaderSourceARB(ShTemp, 1, @P, nil);
-  FInfoLog:=FInfoLog+GetInfoLog(ShTemp);
   glCompileShaderARB(ShTemp);
-  FInfoLog:=FInfoLog+GetInfoLog(ShTemp);
   if Error(ShTemp, GL_OBJECT_COMPILE_STATUS_ARB) then Exit;
   glAttachObjectARB(FHandle, ShTemp);
-  FInfoLog:=FInfoLog+GetInfoLog(FHandle);
+  FInfoLog:=GetInfoLog(FHandle);
   glDeleteObjectARB(ShTemp);
   Result:=True;
 end;
@@ -280,6 +277,7 @@ end;
 
 function TShader.GetValid: Boolean;
 begin
+  glValidateProgramARB(FHandle);
   Result:=not Error(FHandle, GL_OBJECT_VALIDATE_STATUS_ARB);
 end;
 

@@ -8075,7 +8075,7 @@ end;
 
 function FloatToStr(m: Real):string;
 begin
-  Str(m:4:1, Result);
+  Str(m{:4:1}, Result);
 end;
 
 Function StrToFloat(s:String):real;
@@ -18763,3 +18763,5 @@ initialization
   ExceptObjProc  := @GetExceptionObject;
 
 end.
+
+
