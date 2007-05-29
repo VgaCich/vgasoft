@@ -1,4 +1,4 @@
-unit CollisionCheck;
+unit VSECollisionCheck;
 
 interface
 

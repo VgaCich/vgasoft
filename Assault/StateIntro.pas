@@ -3,12 +3,14 @@ unit StateIntro;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures, GameStates;
+  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
+  VSEGameStates;
 
 type
   TStateIntro=class(TGameState)
   private
     FU: Cardinal;
+  protected
     function GetName: string; override;
   public
     procedure Draw; override;
@@ -22,7 +24,7 @@ type
 
 implementation
 
-uses UCore, VSEInit;
+uses VSECore, VSEInit;
 
 procedure TStateIntro.Draw;
 begin
@@ -34,7 +36,7 @@ end;
 procedure TStateIntro.Update;
 begin
   Inc(FU);
-  if FU>50 then Core.SwitchState(Core.FindState('Menu'));
+  if FU>50 then Core.SwitchState('Menu');
 end;
 
 function TStateIntro.Activate: Cardinal;
@@ -63,12 +65,12 @@ end;
 
 procedure TStateIntro.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 begin
-  Core.SwitchState(Core.FindState('Menu'));
+  Core.SwitchState('Menu');
 end;
 
 procedure TStateIntro.KeyEvent(Button: Integer; Event: TKeyEvent);
 begin
-  Core.SwitchState(Core.FindState('Menu'));
+  Core.SwitchState('Menu');
 end;
 
 function TStateIntro.GetName: string;

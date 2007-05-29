@@ -3,7 +3,7 @@ unit SysInfo;
 interface
 
 uses
-  Windows, AvL, avlUtils, dglOpenGL, ULog;
+  Windows, AvL, avlUtils, dglOpenGL, VSELog;
 
 procedure LogSysInfo;
 function GetCPU: string;
@@ -12,7 +12,7 @@ function GetMemoryFree: Cardinal;
 
 implementation
 
-uses UCore;
+uses VSECore;
 
 procedure LogSysInfo;
 begin

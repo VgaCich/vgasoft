@@ -30,7 +30,7 @@ type
 implementation
 
 uses
-  UCore, ULog, UPakMan;
+  VSECore, VSELog, VSEPakMan;
 
 const
   TerrainID: Cardinal=$52545356;

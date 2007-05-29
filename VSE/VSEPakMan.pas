@@ -1,10 +1,10 @@
-unit UPakMan;
+unit VSEPakMan;
 
 interface
 
 uses
   Windows, AvL, avlMath, avlUtils, UCLAPI, avlLZMADec, avlAdler32, avlMasks,
-  UManagers;
+  VSEManagers;
 
 type
   TFileSource=(fsFile, fsPakNRV, fsPakLZMA, fsPakStore);
@@ -145,7 +145,7 @@ var
 
 implementation
 
-uses ULog, VSEInit;
+uses VSELog, VSEInit;
 
 {$I PakTypes.inc}
 

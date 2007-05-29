@@ -101,7 +101,7 @@ type
 implementation
 
 uses
-  UCore, ULog, UPakMan;
+  VSECore, VSELog, VSEPakMan;
 
 {Channels manager}
 var
@@ -319,13 +319,13 @@ end;
 function TSound.GetConfig(Option: DWORD): DWORD;
 begin
   Result:=BASS_GetConfig(Option);
-  if Result=-1
+  if Result=$FFFFFFFF
     then LogF(llError, 'Sound.GetConfig[%d]: %s', [Option, LastErrorName]);
 end;
 
 procedure TSound.SetConfig(Option, Value: DWORD);
 begin
-  if BASS_SetConfig(Option, Value)=-1
+  if BASS_SetConfig(Option, Value)=$FFFFFFFF
     then LogF(llError, 'Sound.SetConfig[%d]: %s', [Option, LastErrorName]);
 end;
 
@@ -499,6 +499,7 @@ function SoundStreamCallback(Action, P1, P2, User: DWORD): DWORD; stdcall;
 var
   Data: TStream absolute User;
 begin
+  Result:=0;
   if Data=nil then
   begin
     Log(llError, 'SoundStreamCallback: no source provided');

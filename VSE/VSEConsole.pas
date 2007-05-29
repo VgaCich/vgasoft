@@ -1,9 +1,9 @@
-unit UConsole;
+unit VSEConsole;
 
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, UManagers, UPakMan;
+  Windows, Messages, AvL, avlUtils, VSEManagers, VSEPakMan;
 
 type
   TConsoleCmdFunction=function(const Args: string): Boolean of object;
@@ -61,7 +61,7 @@ const
 
 implementation
 
-uses ULog;
+uses VSELog;
 
 const
   CScriptExt='.cfg';

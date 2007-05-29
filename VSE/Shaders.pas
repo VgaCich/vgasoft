@@ -62,7 +62,7 @@ type
 implementation
 
 uses
-  ULog, UCore, UPakMan;
+  VSELog, VSECore, VSEPakMan;
 
 {TShaderAttrib}
 

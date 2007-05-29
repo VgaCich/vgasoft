@@ -1,9 +1,9 @@
-unit UTexLoader;
+unit VSETexLoader;
 
 interface
 
 uses
-  AvL, avlUtils, avlClasses, dglOpenGL, UManagers;
+  AvL, avlUtils, avlClasses, dglOpenGL, VSEManagers;
 
 type
   TTextureData=class(TDLCListItem)
@@ -40,7 +40,7 @@ var
 implementation
 
 uses
-  ULog;
+  VSELog;
 
 {TTexFormatLoader}
 
@@ -87,6 +87,7 @@ function TTexLoader.LoadTextureData(Data: TStream): TTextureData;
 var
   TexFormatLoader: TTexFormatLoader;
 begin
+  Result:=nil;
   if (not Assigned(Data)) or (Data.Size=0) then
   begin
     Log(llError, 'TexLoader: LoadTexture failed: Data is void');

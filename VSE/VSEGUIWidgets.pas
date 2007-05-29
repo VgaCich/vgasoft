@@ -1,9 +1,9 @@
-unit GUIWidgets;
+unit VSEGUIWidgets;
 
 interface
 
 uses
-  Windows, AvL, avlUtils, dglOpenGL, OpenGLExt, UGUI;
+  Windows, AvL, avlUtils, dglOpenGL, OpenGLExt, VSEGUI;
 
 type
   TOnButtonClick=procedure(Sender: TObject; Button: Integer) of object;

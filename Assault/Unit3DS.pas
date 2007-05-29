@@ -296,7 +296,7 @@ end;
 
 implementation
 
-uses avlUtils, Textures, avlMath{, OpenGLExt}, UCore, UPakMan;
+uses avlUtils, Textures, avlMath{, OpenGLExt}, VSECore, VSEPakMan;
 
 
 // Convert TColor to RGBA

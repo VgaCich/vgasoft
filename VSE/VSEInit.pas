@@ -3,7 +3,7 @@ unit VSEInit;
 
 interface
 
-uses AvL, avlUtils, ULogFile, UManagers, UPakMan, UConsole, UConsoleVariables;
+uses AvL, avlUtils, VSELogFile, VSEManagers, VSEPakMan, VSEConsole, VSEConsoleVariables;
 
 type
   TInitStates=procedure;

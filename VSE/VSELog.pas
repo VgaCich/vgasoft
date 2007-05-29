@@ -1,8 +1,8 @@
-unit ULog;
+unit VSELog;
 
 interface
 
-uses AvL, avlUtils, ULogFile, UConsole;
+uses AvL, avlUtils, VSELogFile, VSEConsole;
 
 type
   TLogLevel=(llInfo, llWarning, llError);

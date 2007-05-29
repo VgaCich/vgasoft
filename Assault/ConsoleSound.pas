@@ -17,7 +17,7 @@ type
 
 implementation
 
-uses UCore, ULog, UPakMan, UConsole, USound, BASS;
+uses VSECore, VSELog, VSEPakMan, VSEConsole, USound, BASS;
 
 var
   Channels: array[0..7] of TSoundChannel;

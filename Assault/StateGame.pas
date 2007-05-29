@@ -4,8 +4,8 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
-  UPakMan, GameStates, UConsole, Unit3DS, ULog, ConsoleSound, Shaders, Terrain,
-  StateMenu, UGUI;
+  VSEPakMan, VSEGameStates, VSEConsole, Unit3DS, VSELog, ConsoleSound, Shaders,
+  Terrain, StateMenu, VSEGUI;
 
 type
   TStateGame=class(TGameState)
@@ -19,10 +19,11 @@ type
     FCursor: TCursor;
 //    FShader: TShader;
 //    FTerrain: TTerrain;
-    function  GetName: string; override;
     function  SetModel(const Args: string): Boolean;
     procedure MenuClick(Sender: TObject);
     procedure AddText(const S: string);
+  protected
+    function  GetName: string; override;
   public
     constructor Create;
     destructor Destroy; override;
@@ -38,11 +39,11 @@ type
 
 implementation
 
-uses UCore;
+uses VSECore;
 
 constructor TStateGame.Create;
-var
-  F: TStream;
+{var
+  F: TStream;}
 begin
   inherited Create;
   FCursor:=TCursor.Create;
@@ -173,7 +174,7 @@ const
   Events: array[TKeyEvent] of string=('Down', 'Up');
 begin
   AddText(Format('KeyEvent(Button=%d, Event=%s)', [Button, Events[Event]]));
-  if (Button=192) and (Event=keUp) then Core.SwitchState(Core.FindState('Console'));
+  if (Button=192) and (Event=keUp) then Core.SwitchState('Console');
   FGUI.KeyEvent(Button, Event);
 end;
 
@@ -204,7 +205,7 @@ end;
 
 procedure TStateGame.MenuClick(Sender: TObject);
 begin
-  Core.SwitchState(Core.FindState('Menu'));
+  Core.SwitchState('Menu');
 end;
 
 procedure TStateGame.AddText(const S: string);

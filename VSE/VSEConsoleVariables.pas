@@ -1,8 +1,8 @@
-unit UConsoleVariables;
+unit VSEConsoleVariables;
 
 interface
 
-uses Windows, AvL, avlUtils, UManagers, UConsole, ULog;
+uses Windows, AvL, avlUtils, VSEManagers, VSEConsole, VSELog;
 
 type
   TConsoleVariables=class;

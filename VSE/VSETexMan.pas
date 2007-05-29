@@ -1,9 +1,9 @@
-unit UTexMan;
+unit VSETexMan;
 
 interface
 
 uses
-  Windows, AvL, avlUtils, avlClasses, dglOpenGL, UManagers, UTexLoader;
+  Windows, AvL, avlUtils, avlClasses, dglOpenGL, VSEManagers, VSETexLoader;
 
 type
   TTexMan=class;
@@ -102,7 +102,7 @@ procedure FreeTex(var Tex: TTexture);
 
 implementation
 
-uses ULog, UPakMan;
+uses VSELog, VSEPakMan;
 
 {TTexture}
 

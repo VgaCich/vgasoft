@@ -2,7 +2,7 @@ unit OpenGLExt;
 
 interface
 
-uses Windows, dglOpenGL, AvL, Textures, ULog;
+uses Windows, dglOpenGL, AvL, Textures, VSELog;
 
 type
   TUpdateMatrixProc=procedure(Width, Height: Integer);

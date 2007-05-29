@@ -1,9 +1,9 @@
-unit UManagers;
+unit VSEManagers;
 
 interface
 
 uses
-  AvL, avlUtils, ULogFile;
+  AvL, avlUtils, VSELogFile;
 
 type
   TManager=class

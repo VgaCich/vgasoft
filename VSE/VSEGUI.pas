@@ -1,9 +1,10 @@
-unit UGUI;
+unit VSEGUI;
 
 interface
 
 uses
-  Windows, AvL, avlUtils, dglOpenGL, OpenGLExt, GameStates, CollisionCheck, Textures;
+  Windows, AvL, avlUtils, dglOpenGL, OpenGLExt, VSEGameStates, VSECollisionCheck,
+  Textures;
 
 type
   TRegionEvent=(reMouseEnter, reMouseLeave, reMouseMove, reMouseDown, reMouseUp,
@@ -26,7 +27,6 @@ type
     FWidgetLast, FRegionLast: TMouseButtons;
     FWidgets: TList;
     FRegions: array of TRegion;
-    procedure AfterConstruction; override;
     procedure SetLeft(Value: Integer);
     procedure SetTop(Value: Integer);
     procedure SetWidth(Value: Integer);
@@ -46,6 +46,7 @@ type
   public
     constructor Create(Left, Top, Width, Height: Integer; Parent: TGUIWidget);
     destructor Destroy; override;
+    procedure AfterConstruction; override;
     property Left: Integer read FLeft write SetLeft;
     property Top: Integer read FTop write SetTop;
     property Width: Integer read FWidth write SetWidth;
@@ -103,7 +104,7 @@ implementation
 {$B-}
 
 uses
-  UCore, UPakMan, ULog;
+  VSECore, VSEPakMan, VSELog;
 
 type
   TCursorInfo=packed record

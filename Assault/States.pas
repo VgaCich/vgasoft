@@ -3,7 +3,7 @@ unit States;
 interface
 
 uses
-  UCore, ULog, GameStates, StateIntro, StateMenu, StateGame, StateLoad, StateConsole;
+  VSECore, VSELog, VSEGameStates, StateIntro, StateMenu, StateGame, StateLoad, StateConsole;
 
 procedure InitStates;
 

@@ -3,7 +3,8 @@ unit StateLoad;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures, GameStates;
+  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
+  VSEGameStates;
 
 type
   TProgFunc=procedure(Progress: Integer; const State: string) of object;
@@ -26,6 +27,7 @@ type
     FProgress: Integer;
     FResult: Boolean;
     FState: string;
+  protected
     function GetName: string; override;
   public
     procedure Draw; override;
@@ -43,7 +45,7 @@ type
 
 implementation
 
-uses UCore;
+uses VSECore;
 
 constructor TLoadThread.Create(CreateSuspended: Boolean; AParent: TStateLoad);
 begin
@@ -96,7 +98,7 @@ end;
 
 procedure TStateLoad.Update;
 begin
-  if FLoadThread.Done then Core.SwitchState(Core.FindState('Menu'));
+  if FLoadThread.Done then Core.SwitchState('Game');
 end;
 
 function TStateLoad.Activate: Cardinal;

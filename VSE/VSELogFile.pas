@@ -1,4 +1,4 @@
-unit ULogFile;
+unit VSELogFile;
 
 interface
 

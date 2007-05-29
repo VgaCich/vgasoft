@@ -4,21 +4,22 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
-  GameStates, StateGame, UConsole, avlMath;
+  VSEGameStates, StateGame, VSEConsole, avlMath;
 
 type
   TStateConsole=class(TGameState)
   private
-    FCurLine, FSubLine, FCurCmdHist, FCursor, FCursorShowTime, FGameState, FConsoleState: Cardinal;
+    FCurLine, FSubLine, FCurCmdHist, FCursor, FCursorShowTime, {FPrevState,} FConsoleState: Cardinal;
     FCurCmd: string;
     FNotEnd, FCursorShow: Boolean;
-    FGame: TStateGame;
+    FPrevState: TGameState;
     FList: TStringList;
-    function  GetName: string; override;
     function  LineLength(const Line: string): Integer;
     procedure GetEnd(var CurLine, SubLine: Cardinal);
     procedure SplitLine(const Line: string);
     procedure Adding(Sender: TObject);
+  protected
+    function  GetName: string; override;
   public
     constructor Create;
     destructor Destroy; override;
@@ -34,7 +35,7 @@ type
 
 implementation
 
-uses UCore, VSEInit;
+uses VSECore, VSEInit;
 
 const
   Prompt='>';
@@ -57,7 +58,7 @@ procedure TStateConsole.Draw;
 const
   DefaultColor: TVector4f=(Red: 0; Green: 1; Blue: 0; Alpha: 1);
 var
-  i, CurConLine, CurLine, SubLine, CurCmdFrom, Len: Integer;
+  i, CurConLine, CurLine, SubLine, CurCmdFrom: Integer;
   CurColor: TVector4f;
 
   procedure SetColor(R, G, B: TGLfloat);
@@ -123,7 +124,7 @@ var
   end;
 
 begin
-  FGame.Draw;
+  FPrevState.Draw;
   glDisable(GL_LIGHTING);
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_LINE_SMOOTH);
@@ -195,9 +196,8 @@ end;
 
 function TStateConsole.Activate: Cardinal;
 begin
-  FGameState:=Core.FindState('Game');
+  FPrevState:=Core.GetState(Core.FindState(Core.PrevStateName));
   FConsoleState:=Core.FindState('Console');
-  FGame:=Core.GetState(FGameState) as TStateGame;
   GetEnd(FCurLine, FSubLine);
   FCurCmdHist:=Console.CommandsHistoryCount;
   FCursor:=1;
@@ -290,7 +290,7 @@ begin
                  FCurCmd:=Console.CommandsHistory[FCurCmdHist];
                  FCursor:=Length(FCurCmd)+1;
                end;
-      192: Core.SwitchState(FGameState); // ~
+      192: Core.SwitchState(Core.PrevStateName); // ~
     end;
 end;
 

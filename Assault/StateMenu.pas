@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
-  GameStates, StateLoad, ULog, UGUI, GUIWidgets, UTexMan;
+  VSEGameStates, StateLoad, VSELog, VSEGUI, VSEGUIWidgets, VSETexMan;
 
 type
   TMenuLabel=class;
@@ -73,7 +73,7 @@ type
 
 implementation
 
-uses UCore, UPakMan, States, UConsole;
+uses VSECore, VSEPakMan, States, VSEConsole;
 
 constructor TStateMenu.Create;
 var
@@ -116,6 +116,7 @@ end;
 procedure TStateMenu.Draw;
 begin
   glClear(GL_COLOR_BUFFER_BIT);
+  gleSelectFont('Default');
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
   glBindTexture(GL_TEXTURE_2D, 0);
   glEnable(GL_COLOR_MATERIAL);
@@ -132,7 +133,6 @@ end;
 
 function TStateMenu.Activate: Cardinal;
 begin
-  gleSelectFont('Default');
   glClearColor(0, 0, 0, 0);
   glDisable(GL_LIGHTING);
   glEnable(GL_LINE_SMOOTH);
@@ -162,6 +162,7 @@ end;
 
 procedure TStateMenu.KeyEvent(Button: Integer; Event: TKeyEvent);
 begin
+  if (Button=192) and (Event=keUp) then Core.SwitchState('Console');
   FMenu.KeyEvent(Button, Event);
 end;
 
@@ -195,7 +196,7 @@ end;
 
 procedure TStateMenu.IntroClick(Sender: TObject);
 begin
-  Core.SwitchState(Core.FindState('Intro'));
+  Core.SwitchState('Intro');
 end;
 
 procedure TStateMenu.LoadClick(Sender: TObject);
@@ -209,12 +210,12 @@ end;
 
 procedure TStateMenu.GameClick(Sender: TObject);
 begin
-  Core.SwitchState(Core.FindState('Game'));
+  Core.SwitchState('Game');
 end;
 
 procedure TStateMenu.ConsoleClick(Sender: TObject);
 begin
-  Core.SwitchState(Core.FindState('Console'));
+  Core.SwitchState('Console');
 end;
 
 procedure TStateMenu.RestartClick(Sender: TObject);

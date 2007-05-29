@@ -2,7 +2,7 @@ unit Textures;
 
 interface
 
-uses Windows, AvL, dglOpenGL, J2000Dec, ULog;
+uses Windows, AvL, dglOpenGL, J2000Dec, VSELog, VSEPakMan;
 
 type
   TTexFormat=(tfJ2K, tfTGA, tfBMP, tfFNT);
@@ -29,34 +29,16 @@ implementation
 uses OpenGLExt;
 
 type
-  PByteArray=^TByteArray;
-  TByteArray=array[0..MaxInt-1] of Byte;
-  TBitmapFileHeader=packed record
-    bfType: Word;
-    bfSize: DWORD;
-    bfReserved1: Word;
-    bfReserved2: Word;
-    bfOffBits: DWORD;
+  TRGB=packed record
+    R, G, B: Byte;
   end;
-  TBitmapInfoHeader=packed record
-    biSize: DWORD;
-    biWidth: Longint;
-    biHeight: Longint;
-    biPlanes: Word;
-    biBitCount: Word;
-    biCompression: DWORD;
-    biSizeImage: DWORD;
-    biXPelsPerMeter: Longint;
-    biYPelsPerMeter: Longint;
-    biClrUsed: DWORD;
-    biClrImportant: DWORD;
+  TRGBA=packed record
+    R, G, B, A: Byte;
   end;
-  TRGBQuad=packed record
-    rgbBlue: Byte;
-    rgbGreen: Byte;
-    rgbRed: Byte;
-    rgbReserved: Byte;
-  end;
+  PRGBArray = ^TRGBArray;
+  TRGBArray = packed array[0..$2AAAAAA9] of TRGB;
+  PRGBAArray = ^TRGBAArray;
+  TRGBAArray = packed array[0..$1FFFFFFE] of TRGBA;
 
 var
   J2kLib: hModule;
@@ -67,6 +49,8 @@ var
   CP: PJ2kCP;
   i, j, Depth: Integer;
   D: PByteArray;
+  DRGB: PRGBArray;
+  DRGBA: PRGBAArray;
 begin
   Result:=false;
   if J2kLib=0 then
@@ -101,7 +85,8 @@ begin
     Width:=Img.x1-Img.x0;
     Height:=Img.y1-Img.y0;
     case Img.NumComps of
-      1, 3: begin Depth:=3; Fmt:= GL_RGB; end;
+      1: begin Depth:=1; Fmt:=GL_LUMINANCE; end;
+      3: begin Depth:=3; Fmt:=GL_RGB; end;
       4: begin Depth:=4; Fmt:=GL_RGBA; end;
       else begin
         Log(llError, 'LoadJ2k: invalid NumComps');
@@ -116,24 +101,24 @@ begin
       end;
     GetMem(P, Width*Height*Depth);
     D:=P;
-    for i:=0 to Width-1 do
-      for j:=0 to Height-1 do
+    DRGB:=P;
+    DRGBA:=P;
+    for i:=0 to Height-1 do
+      for j:=0 to Width-1 do
         case Img.NumComps of
           1: begin
-               D[(i*Width+j)*3]:=Img.Comps[0].Data[((Width-i-1)*Width+j)];
-               D[(i*Width+j)*3+1]:=Img.Comps[0].Data[((Width-i-1)*Width+j)];
-               D[(i*Width+j)*3+2]:=Img.Comps[0].Data[((Width-i-1)*Width+j)];
+               D[i*Width+j]:=Img.Comps[0].Data[(Height-i-1)*Width+j];
              end;
           3: begin
-               D[(i*Width+j)*3]:=Img.Comps[0].Data[((Width-i-1)*Width+j)];
-               D[(i*Width+j)*3+1]:=Img.Comps[1].Data[((Width-i-1)*Width+j)];
-               D[(i*Width+j)*3+2]:=Img.Comps[2].Data[((Width-i-1)*Width+j)];
+               DRGB[i*Width+j].R:=Img.Comps[0].Data[(Height-i-1)*Width+j];
+               DRGB[i*Width+j].G:=Img.Comps[1].Data[(Height-i-1)*Width+j];
+               DRGB[i*Width+j].B:=Img.Comps[2].Data[(Height-i-1)*Width+j];
              end;
           4: begin
-               D[(i*Width+j)*4]:=Img.Comps[0].Data[((Width-i-1)*Width+j)];
-               D[(i*Width+j)*4+1]:=Img.Comps[1].Data[((Width-i-1)*Width+j)];
-               D[(i*Width+j)*4+2]:=Img.Comps[2].Data[((Width-i-1)*Width+j)];
-               D[(i*Width+j)*4+3]:=Img.Comps[3].Data[((Width-i-1)*Width+j)];
+               DRGBA[i*Width+j].R:=Img.Comps[0].Data[(Height-i-1)*Width+j];
+               DRGBA[i*Width+j].G:=Img.Comps[1].Data[(Height-i-1)*Width+j];
+               DRGBA[i*Width+j].B:=Img.Comps[2].Data[(Height-i-1)*Width+j];
+               DRGBA[i*Width+j].A:=Img.Comps[3].Data[(Height-i-1)*Width+j];
              end;
         end;
     Result:=true;

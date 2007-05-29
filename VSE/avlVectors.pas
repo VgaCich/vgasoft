@@ -40,7 +40,8 @@ type
 end;
 
 
-function VectorSetValue(Value:Single):TVector3D;
+function VectorSetValue(Value:Single):TVector3D; overload;
+function VectorSetValue(X, Y, Z: Single): TVector3D; overload;
 procedure VectorClear(var Vector:TVector3D);
 procedure VectorInvert(var Vector:TVector3D);
 function VectorSize(const Vector:TVector3D) : Single;
@@ -78,6 +79,13 @@ begin
   Result.X:=Value;
   Result.Y:=Value;
   Result.Z:=Value;
+end;
+
+function VectorSetValue(X, Y, Z: Single): TVector3D;
+begin
+  Result.X:=X;
+  Result.Y:=Y;
+  Result.Z:=Z;
 end;
 
 procedure VectorClear(var Vector:TVector3D);

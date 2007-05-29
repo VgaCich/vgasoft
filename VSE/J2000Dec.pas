@@ -56,14 +56,12 @@ const
   J2K_CCP_QNTSTY_SEQNT=2; }
 
 type
-  PIntegerArr=^TIntegerArr;
-  TIntegerArr=array[0..(MaxInt div SizeOf(Integer))-1] of Integer;
   PJ2kComp=^TJ2kComp;
   TJ2kComp=record
     dx, dy: Integer; //XRsiz, YRsiz
     Prec: Integer; //Precision
     Sgnd: Integer; //Signed
-    Data: PIntegerArr; //Image-component data
+    Data: PIntegerArray; //Image-component data
   end;
   PJ2kCompArr=^TJ2kCompArr;
   TJ2kCompArr=array[0..(MaxInt div SizeOf(TJ2kComp))-1] of TJ2kComp;

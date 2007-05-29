@@ -1,4 +1,4 @@
-unit GameStates;
+unit VSEGameStates;
 
 interface
 
@@ -28,7 +28,7 @@ type
 implementation
 
 uses
-  VSEMain, UCore, ULog;
+  VSECore, VSELog;
 
 procedure TGameState.Deactivate;
 begin
