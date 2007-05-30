@@ -165,6 +165,7 @@ var
 begin
   Log(llInfo, 'ConsoleVariables: Cleanup');
   for i:=0 to High(FVariables) do FVariables[i].Variable.Free;
+  Finalize(FVariables);
   SetLength(FVariables, 8);
   ZeroMemory(@FVariables[0], SizeOf(TConsoleVariableRec)*8);
 end;

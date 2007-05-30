@@ -1255,6 +1255,7 @@ type
    procedure SetCount(const Value: Integer);
    procedure SetCapacity(Value:Integer);
  public
+   destructor Destroy; override;
    function Add(Value: Pointer): Integer;
    procedure Clear;
    procedure Delete(Idx: Integer);
@@ -12655,6 +12656,12 @@ begin
 end;
 
 { TList }
+
+destructor TList.Destroy;
+begin
+  FreeMem(FItems);
+  inherited Destroy;
+end;
 
 {$ifdef asm_ver}
 procedure TList.Insert(Index: Integer; Value: Pointer);

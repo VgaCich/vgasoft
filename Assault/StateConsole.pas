@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
-  VSEGameStates, StateGame, VSEConsole, avlMath;
+  VSEGameStates, VSEConsole, avlMath;
 
 type
   TStateConsole=class(TGameState)
@@ -50,6 +50,7 @@ end;
 
 destructor TStateConsole.Destroy;
 begin
+  Console.OnAdding:=nil;
   FAN(FList);
   inherited Destroy;
 end;

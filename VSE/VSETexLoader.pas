@@ -46,8 +46,11 @@ uses
 
 constructor TTexFormatLoader.Create;
 begin
-  if Assigned(TexLoader)
-    then inherited Create(TexLoader.FTFLRoot)
+  if Assigned(TexLoader) then
+  begin
+    inherited Create(TexLoader.FTFLRoot);
+    if not Assigned(TexLoader.FTFLRoot) then TexLoader.FTFLRoot:=Self;
+  end
     else raise Exception.Create('Cannot register TextureFormatLoader '+ClassName);
 end;
 

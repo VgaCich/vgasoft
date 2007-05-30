@@ -3,44 +3,47 @@ unit Shaders;
 interface
 
 uses
-  Windows, AvL, avlUtils, dglOpenGL;
+  Windows, AvL, avlUtils, avlClasses, dglOpenGL;
 
 type
   TShader=class;
-  TShaderAttrib=class
+  TShaderAttrib=class(TDLCListItem)
   private
     FHandle: Integer;
     FShader: TShader;
+    FName: string;
   public
-    constructor Create(Shader: TShader; const Name: string);
-    destructor Destroy; override;
+    constructor Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
     procedure Value(x: Single); overload;
     procedure Value(x, y: Single); overload;
     procedure Value(x, y, z: Single); overload;
     property Handle: Integer read FHandle;
+    property Name: string read FName;
   end;
-  TShaderUniform=class
+  TShaderUniform=class(TDLCListItem)
   private
     FHandle: Integer;
     FShader: TShader;
+    FName: string;
   public
-    constructor Create(Shader: TShader; const Name: string);
-    destructor Destroy; override;
+    constructor Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
     procedure Value(x: Single); overload;
     procedure Value(x, y: Single); overload;
     procedure Value(x, y, z: Single); overload;
     procedure Value(i: Integer); overload;
     property Handle: Integer read FHandle;
+    property Name: string read FName;
   end;
   TShader=class
   private
     FHandle: Integer;
-    FLinks: TList;
-    FInfoLog: string;
+    FVaries: TDLCListItem;
     function  GetEnabled: Boolean;
     procedure SetEnabled(Value: Boolean);
     function  GetValid: Boolean;
-    function  GetInfoLog(Obj: Integer): string;
+    function  GetInfoLog: string;
+    function  CheckAttrib(Item: TDLCListItem; Data: Integer): Boolean;
+    function  CheckUniform(Item: TDLCListItem; Data: Integer): Boolean;
   protected
     function Compile(const Prog: string; ObjType: Integer): Boolean;
     function Error(Handle: Integer; Param: DWORD): Boolean;
@@ -56,7 +59,7 @@ type
     property Handle: Integer read FHandle;
     property Enabled: Boolean read GetEnabled write SetEnabled;
     property Valid: Boolean read GetValid;
-    property InfoLog: string read FInfoLog;
+    property InfoLog: string read GetInfoLog;
   end;
 
 implementation
@@ -66,17 +69,11 @@ uses
 
 {TShaderAttrib}
 
-constructor TShaderAttrib.Create(Shader: TShader; const Name: string);
+constructor TShaderAttrib.Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
 begin
-  inherited Create;
-  FShader:=Shader;
-  FHandle:=glGetAttribLocationARB(Shader.Handle, PChar(Name));
-end;
-
-destructor TShaderAttrib.Destroy;
-begin
-  FShader.FLinks.Remove(Self);
-  inherited Destroy;
+  inherited Create(PrevItem);
+  FName:=Name;
+  FHandle:=glGetAttribLocationARB(ShaderHandle, PChar(Name));
 end;
 
 procedure TShaderAttrib.Value(x: Single);
@@ -96,17 +93,11 @@ end;
 
 {TShaderUniform}
 
-constructor TShaderUniform.Create(Shader: TShader; const Name: string);
+constructor TShaderUniform.Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
 begin
-  inherited Create;
-  FShader:=Shader;
-  FHandle:=glGetUniformLocationARB(Shader.Handle, PChar(Name));
-end;
-
-destructor TShaderUniform.Destroy;
-begin
-  FShader.FLinks.Remove(Self);
-  inherited Destroy;
+  inherited Create(PrevItem);
+  FName:=Name;
+  FHandle:=glGetUniformLocationARB(ShaderHandle, PChar(Name));
 end;
 
 procedure TShaderUniform.Value(x: Single);
@@ -134,22 +125,19 @@ end;
 
 constructor TShader.Create;
 begin
-  if not GL_ARB_shading_language_100 then Exit;
+  if not GL_ARB_shading_language_100 then raise Exception.Create('Shader.Create: GL_ARB_shading_language_100 not supported');
   inherited Create;
-  FLinks:=TList.Create;
   FHandle:=glCreateProgramObjectARB;
   if FHandle=0
     then Log(llError, 'Shader.Create: cannot create shader');
-  FInfoLog:=GetInfoLog(FHandle);
 end;
 
 destructor TShader.Destroy;
 var
   i: Integer;
 begin
-  for i:=0 to FLinks.Count-1 do
-    if Assigned(FLinks[i]) then TObject(FLinks[i]).Free;
-  FAN(FLinks);
+  if Assigned(FVaries) then FVaries.ClearList;
+  FAN(FVaries);
   glDeleteObjectARB(FHandle);
   inherited Destroy;
 end;
@@ -213,7 +201,6 @@ end;
 function TShader.Link: Boolean;
 begin
   glLinkProgramARB(FHandle);
-  FInfoLog:=GetInfoLog(FHandle);
   Result:=not Error(FHandle, GL_OBJECT_LINK_STATUS_ARB);
   if not Result
     then Log(llError, 'Shader.Link: cannot link shader');
@@ -221,16 +208,32 @@ end;
 
 function TShader.GetAttrib(const Name: string): TShaderAttrib;
 begin
-  Result:=TShaderAttrib.Create(Self, Name);
-  FInfoLog:=GetInfoLog(FHandle);
-  FLinks.Add(Result);
+  if Assigned(FVaries) then
+  begin
+    Result:=TShaderAttrib(FVaries.FindItem(CheckAttrib, Integer(Name)));
+    if Assigned(Result)
+      then Result.AddRef
+      else Result:=TShaderAttrib.Create(FVaries, FHandle, Name);
+  end
+  else begin
+    Result:=TShaderAttrib.Create(FVaries, FHandle, Name);
+    FVaries:=Result;
+  end;
 end;
 
 function TShader.GetUniform(const Name: string): TShaderUniform;
 begin
-  Result:=TShaderUniform.Create(Self, Name);
-  FInfoLog:=GetInfoLog(FHandle);
-  FLinks.Add(Result);
+  if Assigned(FVaries) then
+  begin
+    Result:=TShaderUniform(FVaries.FindItem(CheckUniform, Integer(Name)));
+    if Assigned(Result)
+      then Result.AddRef
+      else Result:=TShaderUniform.Create(FVaries, FHandle, Name);
+  end
+  else begin
+    Result:=TShaderUniform.Create(FVaries, FHandle, Name);
+    FVaries:=Result;
+  end;
 end;
 
 {protected}
@@ -248,7 +251,6 @@ begin
   glCompileShaderARB(ShTemp);
   if Error(ShTemp, GL_OBJECT_COMPILE_STATUS_ARB) then Exit;
   glAttachObjectARB(FHandle, ShTemp);
-  FInfoLog:=GetInfoLog(FHandle);
   glDeleteObjectARB(ShTemp);
   Result:=True;
 end;
@@ -281,16 +283,28 @@ begin
   Result:=not Error(FHandle, GL_OBJECT_VALIDATE_STATUS_ARB);
 end;
 
-function TShader.GetInfoLog(Obj: Integer): string;
+function TShader.GetInfoLog: string;
 var
   LogLen, Written: Integer;
 begin
   Result:='';
-  glGetObjectParameterivARB(Obj, GL_OBJECT_INFO_LOG_LENGTH_ARB, @LogLen);
+  glGetObjectParameterivARB(FHandle, GL_OBJECT_INFO_LOG_LENGTH_ARB, @LogLen);
   if (glGetError<>GL_NO_ERROR) or (LogLen<1) then Exit;
   SetLength(Result, LogLen);
-  glGetInfoLogARB(Obj, LogLen, Written, PChar(Result));
+  glGetInfoLogARB(FHandle, LogLen, Written, PChar(Result));
   SetLength(Result, Written);
+end;
+
+function TShader.CheckAttrib(Item: TDLCListItem; Data: Integer): Boolean;
+begin
+  if Item is TShaderAttrib
+    then Result:=TShaderAttrib(Item).Name=string(Data);
+end;
+
+function TShader.CheckUniform(Item: TDLCListItem; Data: Integer): Boolean;
+begin
+  if Item is TShaderUniform
+    then Result:=TShaderUniform(Item).Name=string(Data);
 end;
 
 end.

@@ -109,7 +109,11 @@ var
 begin
   if FDestroying then Exit;
   for i:=0 to FManagersList.Count-1 do
+  try
     TManager(FManagersList[i]).Init;
+  except
+    LogException('while initializing manager '+TManager(FManagersList[i]).ClassName);
+  end;
 end;
 
 procedure TManagers.CleanupManagers;
@@ -118,7 +122,11 @@ var
 begin
   if FDestroying then Exit;
   for i:=FManagersList.Count-1 downto 0 do
+  try
     TManager(FManagersList[i]).Cleanup;
+  except
+    LogException('while cleanup manager '+TManager(FManagersList[i]).ClassName);
+  end;
 end;
 
 initialization
