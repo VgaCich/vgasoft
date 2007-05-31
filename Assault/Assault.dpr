@@ -3,7 +3,7 @@ program Assault;
 {$R *.res}
 
 uses
-  {FastMM4,} Windows, avlUtils, VSEInit, VSECore, States;
+  LeakDetect, Windows, avlUtils, VSEInit, VSECore, States;
 
 begin
   VSEInit.InitStates:=States.InitStates;

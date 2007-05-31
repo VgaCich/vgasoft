@@ -231,31 +231,35 @@ begin
     BufferIndex:=0;
     ImageSize:=Data.Size-SizeOf(TGAHeader);
     GetMem(CompImage, ImageSize);
-    Data.ReadBuffer(CompImage^, ImageSize);   // load compressed data into memory
-    // Extract pixel information from compressed data
-    repeat
-      Front:=Pointer(Cardinal(CompImage)+BufferIndex);
-      Inc(BufferIndex);
-      if Front^<128 then
-      begin
-        for i:=0 to Front^ do
+    try
+      Data.ReadBuffer(CompImage^, ImageSize);   // load compressed data into memory
+      // Extract pixel information from compressed data
+      repeat
+        Front:=Pointer(Cardinal(CompImage)+BufferIndex);
+        Inc(BufferIndex);
+        if Front^<128 then
         begin
-          CopySwapPixel(Pointer(Cardinal(CompImage)+BufferIndex+i*ColorDepth), Pointer(Cardinal(P)+CurrentByte));
-          CurrentByte:=CurrentByte+ColorDepth;
-          Inc(CurrentPixel);
+          for i:=0 to Front^ do
+          begin
+            CopySwapPixel(Pointer(Cardinal(CompImage)+BufferIndex+i*ColorDepth), Pointer(Cardinal(P)+CurrentByte));
+            CurrentByte:=CurrentByte+ColorDepth;
+            Inc(CurrentPixel);
+          end;
+          BufferIndex:=BufferIndex+(Front^+1)*ColorDepth;
+        end
+        else begin
+          for i:=0 to Front^-128 do
+          begin
+            CopySwapPixel(Pointer(Cardinal(CompImage)+BufferIndex), Pointer(Cardinal(P)+CurrentByte));
+            CurrentByte:=CurrentByte+ColorDepth;
+            Inc(CurrentPixel);
+          end;
+          BufferIndex:=BufferIndex+ColorDepth;
         end;
-        BufferIndex:=BufferIndex+(Front^+1)*ColorDepth;
-      end
-      else begin
-        for i:=0 to Front^-128 do
-        begin
-          CopySwapPixel(Pointer(Cardinal(CompImage)+BufferIndex), Pointer(Cardinal(P)+CurrentByte));
-          CurrentByte:=CurrentByte+ColorDepth;
-          Inc(CurrentPixel);
-        end;
-        BufferIndex:=BufferIndex+ColorDepth;
-      end;
-    until CurrentPixel>=Width*Height;
+      until CurrentPixel>=Width*Height;
+    finally
+      FreeMem(CompImage, ImageSize);
+    end;
     if ColorDepth=3
       then Fmt:=GL_RGB
       else Fmt:=GL_RGBA;
@@ -320,7 +324,7 @@ begin
             Dst[3*i+1]:=Palette[Src[i]].rgbGreen;
             Dst[3*i+2]:=Palette[Src[i]].rgbBlue;
           end;
-      24: for i:=0 to BitmapLength div 3 do       //24-bit BGR
+      24: for i:=0 to (BitmapLength div 3)-1 do       //24-bit BGR
           begin
             Dst[3*i]:=Src[3*i+2];
             Dst[3*i+1]:=Src[3*i+1];
