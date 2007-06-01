@@ -40,7 +40,8 @@ type
 end;
 
 
-function VectorSetValue(Value:Single):TVector3D;
+function VectorSetValue(Value:Single):TVector3D; overload;
+function VectorSetValue(X, Y, Z: Single): TVector3D; overload;
 procedure VectorClear(var Vector:TVector3D);
 procedure VectorInvert(var Vector:TVector3D);
 function VectorSize(const Vector:TVector3D) : Single;
@@ -66,6 +67,7 @@ function VectorIsLess(const Vector1, Vector2:TVector3D):Boolean;
 function VectorIsLessEqual(const Vector1, Vector2:TVector3D):Boolean;
 function ByteColorTo4f(const BytesToWrap:TByteColor):TVector4f;
 function Color4fToByte(const BytesToWrap:TVector4f):TByteColor;
+function TriangleNormal(Vert1, Vert2, Vert3: TVector3D): TVector3D;
 
 implementation
 
@@ -77,6 +79,13 @@ begin
   Result.X:=Value;
   Result.Y:=Value;
   Result.Z:=Value;
+end;
+
+function VectorSetValue(X, Y, Z: Single): TVector3D;
+begin
+  Result.X:=X;
+  Result.Y:=Y;
+  Result.Z:=Z;
 end;
 
 procedure VectorClear(var Vector:TVector3D);
@@ -281,5 +290,12 @@ begin
   Result.Blue:=Trunc(BytesToWrap.Blue * 255);
 end;
 
+function TriangleNormal(Vert1, Vert2, Vert3: TVector3D): TVector3D;
+begin
+  Vert2:=VectorSub(Vert1, Vert2);
+  Vert3:=VectorSub(Vert1, Vert3);
+  Result:=VectorCrossProduct(Vert2, Vert3);
+  VectorNormalize(Result);
+end;
 
 end.

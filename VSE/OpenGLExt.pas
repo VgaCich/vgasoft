@@ -45,7 +45,7 @@ begin
   DM.dmDisplayFrequency:=Refresh;
   DM.dmFields:=DM_BITSPERPEL or DM_PELSWIDTH or DM_PELSHEIGHT;
   if Refresh>0 then DM.dmFields:=DM.dmFields or DM_DISPLAYFREQUENCY;
-  Result:=ChangeDisplaySettings(DM, CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
+  Result:=ChangeDisplaySettings(DM, CDS_TEST or CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
 end;
 
 procedure gleGoBack;

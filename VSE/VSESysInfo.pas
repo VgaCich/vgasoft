@@ -1,4 +1,4 @@
-unit SysInfo;
+unit VSESysInfo;
 
 interface
 

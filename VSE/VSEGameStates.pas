@@ -59,7 +59,7 @@ procedure TGameState.SysNotify(Notify: TSysNotify);
 begin
   case Notify of
     snUpdateOverload: begin
-                        Log(llError, 'Update overload');
+                        Log(llError, 'Update overload in state "'+Name+'"');
                         VSEStopState:=1;
                         Core.StopEngine;
                       end;

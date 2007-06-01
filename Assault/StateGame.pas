@@ -93,7 +93,7 @@ end;
 procedure TStateGame.Draw;
 var
   S: string;
-  i: Integer;
+  i, X, Y: Integer;
 const
   LightPos: array[0..3] of GLfloat=(0, 0, 100, 1.0);
   LightDiffuse: array[0..3] of GLfloat=(0.7, 0.7, 0.7, 1);
@@ -133,6 +133,28 @@ begin
   glColor4d(0, 1, 0, 0.3);
   for i:=0 to 29 do
     gleWrite(5, i*20, FText[i]);
+  glLineWidth(1);
+  for i:=0 to 16 do
+  begin
+    glBegin(GL_LINES);
+      glVertex2d(600+i*12, 400);
+      glVertex2d(600+i*12, 528);
+      glVertex2d(600, 400+i*8);
+      glVertex2d(792, 400+i*8);
+    glEnd;
+  end;
+  for i:=0 to 255 do
+    if Core.KeyPressed[i] then
+    begin
+      X:=i mod 16;
+      Y:=i div 16;
+      glBegin(GL_QUADS);
+        glVertex2d(600+X*12, 400+Y*8);
+        glVertex2d(612+X*12, 400+Y*8);
+        glVertex2d(612+X*12, 408+Y*8);
+        glVertex2d(600+X*12, 408+Y*8);
+      glEnd;
+    end;
   FGUI.Draw;
   FCursor.Draw;
 end;

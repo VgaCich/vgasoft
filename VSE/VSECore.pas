@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, MMSystem, AvL, avlUtils, dglOpenGL, OpenGLExt,
   VSEInit, VSEPakMan, VSEGameStates, VSEConsole, VSEConsoleVariables, VSELog,
-  VSEManagers, {$IFNDEF VSE_NOSOUND}USound, {$ENDIF} SysInfo;
+  VSEManagers, {$IFNDEF VSE_NOSOUND}USound, {$ENDIF} VSESysInfo;
 
 type
   TCore=class
@@ -441,8 +441,7 @@ begin
   end
   else begin
     SetWindowLong(FHandle, GWL_EXSTYLE, WS_EX_APPWINDOW or WS_EX_WINDOWEDGE);
-    SetWindowLong(FHandle, GWL_STYLE,
-      WS_OVERLAPPED or WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX or WS_MAXIMIZEBOX or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
+    SetWindowLong(FHandle, GWL_STYLE, WS_OVERLAPPED or WS_CAPTION or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
     SetWindowPos(FHandle, 0, (Screen.Width-FResX) div 2, (Screen.Height-FResY) div 2, 0, 0, SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE);
   end;
   SetWindowPos(FHandle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or SWP_FRAMECHANGED or SWP_SHOWWINDOW);
@@ -725,7 +724,7 @@ begin
     Exit;
   end;
   Handle:=CreateWindowEx(WS_EX_APPWINDOW or WS_EX_WINDOWEDGE, WndClassName, PChar(Caption),
-    WS_OVERLAPPED or WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX or WS_MAXIMIZEBOX or WS_CLIPCHILDREN or WS_CLIPSIBLINGS,
+    WS_OVERLAPPED or WS_CAPTION or WS_CLIPCHILDREN or WS_CLIPSIBLINGS,
     0, 0, 800, 600, 0, 0, hInstance, nil);
   if Handle=0 then
   begin
