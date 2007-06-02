@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------//
 //                                                                            //
-// UPakMan.pas 1.4.0, 08.05.2007; 3:40                                       //
+// UPakMan.pas 1.4.1, 12.05.2007; 13:40                                       //
 //                                                                            //
 // VSE Package Manager 1.4.0                                                  //
 //                                                                            //
@@ -31,8 +31,8 @@ type
 
 procedure PakInit(BaseDir: PChar; LogCallback: TLogCB); stdcall;
 procedure PakFree; stdcall;
-procedure PakAddMountPoint(MntPoint, Src: PChar); stdcall;
-procedure PakDeleteMountPoint(MntPoint: PChar); stdcall;
+function  PakAddMountPoint(MntPoint, Src: PChar): Boolean; stdcall;
+function  PakDeleteMountPoint(MntPoint: PChar): Boolean; stdcall;
 function  PakOpenFile(Name: PChar; Flags: Cardinal): Cardinal; stdcall;
 function  PakCreateFile(Name: PChar; Flags: Cardinal): Cardinal; stdcall;
 procedure PakCloseFile(F: Cardinal); stdcall;
@@ -364,6 +364,7 @@ begin
   begin
     SetLength(Dirs, Length(Dirs)+1);
     Dirs[High(Dirs)]:=TDirInfo.Create(Name);
+    if Source<>'' then Dirs[High(Dirs)].Source:=Source+Name+'\';
     Result:=High(Dirs);
   end;
 end;
@@ -399,7 +400,6 @@ begin
         if FindDir(SR.Name)<0 then
         begin
           SubDir:=Dirs[AddDir(SR.Name)];
-          if Source<>'' then SubDir.Source:=Source+SR.Name+'\';
           SubDir.ReadDir(Dir+SR.Name+'\');
         end;
       end
@@ -639,18 +639,14 @@ begin
   FindResultBuffer:='';
 end;
 
-procedure PakAddMountPoint(MntPoint, Src: PChar);
+function PakAddMountPoint(MntPoint, Src: PChar): Boolean;
 var
   i, Idx: Integer;
   MountPoint, Source: string;
 begin
+  Result:=false;
   MountPoint:=MntPoint;
   Source:=Src;
-  if Assigned(Index) then
-  begin
-    Log('PakMan: AddMountPoint('+MountPoint+', '+Source+') failed: PakMan is initialized');
-    Exit;
-  end;
   if Pos(Sep, MountPoint)>0 then
   begin
     Log('PakMan: AddMountPoint('+MountPoint+', '+Source+') failed: invalid mount point');
@@ -682,19 +678,16 @@ begin
   MountPoints[Idx].Exist:=true;
   MountPoints[Idx].MountPoint:=MountPoint;
   MountPoints[Idx].Source:=Source;
+  Result:=true;
 end;
 
-procedure PakDeleteMountPoint(MntPoint: PChar);
+function PakDeleteMountPoint(MntPoint: PChar): Boolean;
 var
   i: Integer;
   MountPoint: string;
 begin
+  Result:=false;
   MountPoint:=MntPoint;
-  if Assigned(Index) then
-  begin
-    Log('PakMan: DeleteMountPoint('+MountPoint+') failed: PakMan is initialized');
-    Exit;
-  end;
   MountPoint:=LowerCase(MountPoint);
   for i:=0 to High(MountPoints) do
     if MountPoints[i].Exist and (MountPoints[i].MountPoint=MountPoint) then
@@ -703,6 +696,7 @@ begin
         Exist:=false;
         MountPoint:='';
         Source:='';
+        Result:=true;
         Exit;
       end;
   Log('PakMan: DeleteMountPoint('+MountPoint+') failed: mount point not exist');

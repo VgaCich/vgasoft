@@ -1,17 +1,17 @@
 <HTML><HEAD><META charset=windows-1251><TITLE>PakAddMountPoint</TITLE>
 <script src=head.js></script>
 <div ALIGN="LEFT" style="margin-left: 41px;margin-right: 20px;"><FONT SIZE=1> </FONT>
-<b>procedure</b> PakAddMountPoint(MountPoint, Source: PChar);</FONT></div>
+<b>function</b> PakAddMountPoint(MountPoint, Source: PChar): Boolean;</FONT></div>
 <div ALIGN="LEFT" style="margin-left: 41px;margin-right: 20px;"><FONT SIZE=1> </FONT><hr><br></FONT></div> 
 <div ALIGN="LEFT" style="margin-left: 41px;margin-right: 20px;">
-Создает точку монтирования.<br>
+Добавляет точку монтирования.<br>
 MountPoint - точка монтирования.<br>
 Source - монтируемая директория.<br>
-Точка монтирования будет смонтирована при инициализации менеджера пакетов.<br>
+Возвращает <b>true</b>, если точка монтирования успешно добавлена.
 Подробнее о точках монтирования: <a href="Common.html">Общие сведения</a>.<br><br>
 <i>Примечания:</i>
 <ol>
-  <li>Точки монтирования можно задавать только до инициализации менеджера пакетов.
+  <li>Точка монтирования не монтируется немедленно. Она добавляется в список точек монтирования, которые будут смонтированы при следущей инициализации менеджера пакетов.
   <li>Точки монтирования могут быть только в корневой директории виртуальной файловой системы менеджера пакетов (т.е. точка монтирования не должна содержать слэшей в имени).
   <li>Список точек монтирования не затрагивается функциями PakInit и PakFree.
 </ol>

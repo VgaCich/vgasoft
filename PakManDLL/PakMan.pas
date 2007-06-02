@@ -28,8 +28,8 @@ type
 
 procedure PakInit(BaseDir: PChar; LogCallback: TLogCB); stdcall; external 'PakMan.dll';
 procedure PakFree; stdcall; external 'PakMan.dll';
-procedure PakAddMountPoint(MountPoint, Source: PChar); stdcall; external 'PakMan.dll';
-procedure PakDeleteMountPoint(MountPoint: PChar); stdcall; external 'PakMan.dll';
+function  PakAddMountPoint(MountPoint, Source: PChar): Boolean; stdcall; external 'PakMan.dll';
+function  PakDeleteMountPoint(MountPoint: PChar): Boolean; stdcall; external 'PakMan.dll';
 function  PakOpenFile(Name: PChar; Flags: Cardinal): Cardinal; stdcall; external 'PakMan.dll';
 function  PakCreateFile(Name: PChar; Flags: Cardinal): Cardinal; stdcall; external 'PakMan.dll';
 procedure PakCloseFile(F: Cardinal); stdcall; external 'PakMan.dll';
