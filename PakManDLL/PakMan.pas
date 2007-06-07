@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------//
 //                                                                            //
-// PakMan.pas 1.4.0, 05.08.2007; 3:40                                         //
+// PakMan.pas 1.4.2, 06.06.2007; 9:00                                         //
 //                                                                            //
 // VSE Package Manager 1.4                                                    //
 //                                                                            //
@@ -50,9 +50,14 @@ function  PakExtractFilePath(const FileName: string): string;
 
 const
   InvalidPakFile: Cardinal=$FFFFFFFF;
-  //Open/CreateFile:Flags - accepts FileOpen modes if PakFileSource=fsFile
-  ofNoCreate=$00010000;
-  ofNoCheck=$00020000;
+  pmShareCompat=0;
+  pmShareExclusive=$00000010;
+  pmShareDenyWrite=$00000020;
+  pmShareDenyRead=$00000030;
+  pmShareDenyNone=$00000040;
+  pmNoCreate=$00010000;
+  pmNoCheck=$00020000;
+  pmNoDelete=$00040000;
 
 implementation
 

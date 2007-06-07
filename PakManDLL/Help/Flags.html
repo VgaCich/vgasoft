@@ -4,10 +4,10 @@
 Флаги</FONT></div>
 <div ALIGN="LEFT" style="margin-left: 41px;margin-right: 20px;"><FONT SIZE=1> </FONT><hr><br></FONT></div> 
 <div ALIGN="LEFT" style="margin-left: 41px;margin-right: 20px;">
-Функция PakCreateFile принимает флаги TFileStream: <b>fmCreate, fmOpenRead, fmOpenWrite, fmOpenReadWrite, fmShareCompat, fmShareExclusive, fmShareDenyWrite, fmShareDenyRead, fmShareDenyNone.</b><br>
-Функция PakOpenFile принимает флаги:<br>
-<b>ofNoCreate</b> - не создавать файл, если открываемый файл не существует.<br>
-<b>ofNoCheck</b> - не проверять контрольную сумму файла (не рекомендуется). Не имеет смысла для обычных файлов.<br>
-Также принимает флаги TFileStream, как и PakCreateFile, но только если открывается обычный файл. Для файлов в пакете эти флаги смысла не имеют.
+Функции PakCreateFile и PakOpenFile принимают флаги, аналогичные флагам TFileStream: <b>pmShareCompat, pmShareExclusive, pmShareDenyWrite, pmShareDenyRead, pmShareDenyNone.</b> Для функции PakOpenFile эти флаги имеют смысл, только если открываются обычные файлы.<br>
+Также эти функции принимают флаги:<br>
+<b>pmNoCreate</b> - не создавать файл, если открываемый файл не существует (имеет смысл только для PakOpenFile).<br>
+<b>pmNoCheck</b> - не проверять контрольную сумму файла (не рекомендуется). Не имеет смысла для обычных файлов и PakCreateFile.<br>
+<b>pmNoDelete</b> - не удалять существующий файл (имеет смысл только для PakCreateFile).
 </div>
 <script src=autor.js></script></BODY></HTML>

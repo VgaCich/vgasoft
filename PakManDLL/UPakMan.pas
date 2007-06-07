@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------//
 //                                                                            //
-// UPakMan.pas 1.4.1, 12.05.2007; 13:40                                       //
+// UPakMan.pas 1.4.2, 06.06.2007; 9:40                                       //
 //                                                                            //
 // VSE Package Manager 1.4.0                                                  //
 //                                                                            //
@@ -49,9 +49,9 @@ function  PakFilePosition(F: Cardinal): Longint; stdcall;
 
 const
   InvalidPakFile: Cardinal=$FFFFFFFF;
-  //Open/CreateFile:Flags - accepts FileOpen modes if PakFileSource=fsFile
-  ofNoCreate=$00010000;
-  ofNoCheck=$00020000;
+  pmNoCreate=$00010000;
+  pmNoCheck=$00020000;
+  pmNoDelete=$00040000;
 
 var LogCB: TLogCB;
 
@@ -210,7 +210,7 @@ end;
 
 function InitFile(FI: TFileInfo; Flags: Cardinal): PFileData;
 begin
-  Result:=TFileStream.Create(FI.PakFile+FI.Name, Flags);
+  Result:=TFileStream.Create(FI.PakFile+FI.Name, (Flags and $FFFF) or fmOpenReadWrite);
 end;
 
 procedure NRVUnpackBuffer(Data: PNRVData);
@@ -248,7 +248,7 @@ begin
     InStream.Seek(FI.Offset, soFromBeginning);
     InStream.Read(Adler32, 4);
     InStream.Read(CheckSize, 4);
-    if Flags and ofNoCheck=0 then
+    if Flags and pmNoCheck=0 then
       if Adler32<>StreamAdler32(InStream, CheckSize)
         then raise Exception.Create('Source data is corrupted')
         else InStream.Seek(FI.Offset+8, soFromBeginning);
@@ -275,7 +275,7 @@ begin
     InStream.Seek(FI.Offset, soFromBeginning);
     InStream.Read(Adler32, 4);
     InStream.Read(CheckSize, 4);
-    if Flags and ofNoCheck=0 then
+    if Flags and pmNoCheck=0 then
       if Adler32<>StreamAdler32(InStream, CheckSize)
         then raise Exception.Create('Source data is corrupted')
         else InStream.Seek(FI.Offset+8, soFromBeginning);
@@ -297,7 +297,7 @@ begin
     InStream.Read(Adler32, 4);
     InStream.Read(Size, 4);
     FOffset:=InStream.Position;
-    if Flags and ofNoCheck=0 then
+    if Flags and pmNoCheck=0 then
       if Adler32<>StreamAdler32(InStream, Size)
         then raise Exception.Create('Source data is corrupted')
         else InStream.Seek(FOffset, soFromBeginning);
@@ -720,7 +720,7 @@ begin
       fsPakStore: OpenedFiles[Result].Data:=InitStore(FI^, Flags);
     end;
   end
-    else if Flags and ofNoCreate=0
+    else if Flags and pmNoCreate=0
       then Result:=PakCreateFile(Name, Flags)
       else begin
         Log('PakMan: OpenFile('+Name+') failed: file not exists');
@@ -761,7 +761,13 @@ begin
     Log('PakMan: CreateFile('+Name+') failed: cannot create destination dir');
     Exit;
   end;
-  if FileExists(DestDir+CurTok) then DeleteFile(DestDir+CurTok);
+  if FileExists(DestDir+CurTok) then
+    if Flags and pmNoDelete = 0
+      then DeleteFile(DestDir+CurTok)
+      else begin
+        Log('PakMan: CreateFile('+Name+') failed: file already exists');
+        Exit;
+      end;
   FI.Source:=fsFile;
   FI.PakFile:=DestDir;
   FI.Name:=CurTok;
