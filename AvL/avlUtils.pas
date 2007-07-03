@@ -15,6 +15,8 @@ function StrCat(Dest, Source: PChar): PChar;
 function ChangeFileExt(const FileName, Extension: string): string;
 function FirstDelimiter(const Delimiters, S: String): Integer;
 function PosEx(const SubStr, S: string; Offset: Cardinal = 1): Integer;
+function TryStrToInt(const S: string; out Value: Integer): Boolean;
+function TryStrToFloat(const S: string; out Value: Single): Boolean;
 function StrToCar(const S: string): Cardinal;
 function StrToInt64Def(const S: string; const Default: Int64): Int64;
 function HexToByte(const Hex: string): byte;
@@ -29,6 +31,7 @@ procedure ExcludeTrailingBackslashV(var S: string);
 function AddTrailingBackslash(const S: string): string;
 procedure AddTrailingBackslashV(var S: string);
 function FlSize(const FileName: string): Cardinal;
+function DirSize(Dir: string): Cardinal;
 function FlModifyTime(const FileName: string): TDateTime;
 procedure RemoveVoidStrings(Strings: TStringList);
 procedure FreeMemAndNil(var P: Pointer; Size: integer);
@@ -176,6 +179,22 @@ begin
   end;
 end;
 
+function TryStrToInt(const S: string; out Value: Integer): Boolean;
+var
+  E: Integer;
+begin
+  Val(S, Value, E);
+  Result := E = 0;
+end;
+
+function TryStrToFloat(const S: string; out Value: Single): Boolean;
+var
+  E: Integer;
+begin
+  Val(S, Value, E);
+  Result := E = 0;
+end;
+
 function StrToCar(const S: string): Cardinal;
 var
   E: integer;
@@ -282,6 +301,24 @@ begin
   finally
     FAN(Fl);
   end;
+end;
+
+function DirSize(Dir: string): Cardinal;
+var
+  SR: TSearchRec;
+begin
+  Result := 0;
+  AddTrailingBackslashV(Dir);
+  if FindFirst(Dir+'*', faAnyFile, SR)=0 then
+    repeat
+      if SR.Attr and faDirectory = faDirectory then
+      begin
+        if (SR.Name<>'.') and (SR.Name<>'..')
+          then Inc(Result, DirSize(Dir+SR.Name));
+      end
+        else Inc(Result, SR.Size);
+    until FindNext(SR)<>0;
+  FindClose(SR);
 end;
 
 function FlModifyTime(const FileName: string): TDateTime;
