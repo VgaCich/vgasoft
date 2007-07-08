@@ -3,7 +3,7 @@ unit SynTexFilters;
 interface
 
 uses
-  Windows, AvL, avlUtils, SynTex;
+  Windows, AvL, avlUtils, SynTex, Noise;
 
 type
   TSynTexFilters=class
@@ -30,6 +30,7 @@ type
     function FiltPixels(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
     function FiltBlend(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
     function FiltMakeAlpha(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+    function FiltPerlin(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
   end;
 
 implementation
@@ -45,6 +46,7 @@ begin
   SynTex.AddFilter(FLT_PIXELS, FiltPixels);
   SynTex.AddFilter(FLT_BLEND, FiltBlend);
   SynTex.AddFilter(FLT_MAKEALPHA, FiltMakeAlpha);
+  SynTex.AddFilter(FLT_PERLIN, FiltPerlin);
 end;
 
 function TSynTexFilters.FiltFill(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
@@ -94,19 +96,18 @@ end;
 
 function TSynTexFilters.FiltPixels(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
 var
-  Color1, Color2: TRGBA;
+  Clrs: packed array[0..1] of TRGBA;
   Count: Integer;
   i, j: Integer;
 begin
-  Result:=CheckRemain(Parameters, 2*SizeOf(TRGBA)+SizeOf(Integer){$IFDEF SYNTEX_USELOG}, 'Filter:Pixels'{$ENDIF});
+  Result:=CheckRemain(Parameters, SizeOf(Clrs)+SizeOf(Integer){$IFDEF SYNTEX_USELOG}, 'Filter:Pixels'{$ENDIF});
   if not Result then Exit;
   try
     Parameters.Read(Count, SizeOf(Count));
-    Parameters.Read(Color1, SizeOf(Color1));
-    Parameters.Read(Color2, SizeOf(Color2));
+    Parameters.Read(Clrs[0], SizeOf(Clrs));
     for i:=0 to RegsCount-1 do
       for j:=0 to Count-1 do
-        Regs[i]^[Random(FSynTex.TexSize*FSynTex.TexSize)]:=BlendColors(Color1, Color2, Random(256));
+        Regs[i]^[Random(FSynTex.TexSize*FSynTex.TexSize)]:=BlendColors(Clrs[0], Clrs[1], Random(256));
   except
     Result:=false;
   end;
@@ -131,6 +132,51 @@ begin
   if RegsCount<>2 then Exit;
   for i:=0 to FSynTex.TexSize*FSynTex.TexSize-1 do
     Regs[0]^[i].A:=Regs[1]^[i].R;
+  Result:=true;
+end;
+
+function TSynTexFilters.FiltPerlin(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+var
+  X, Y, i: Integer;
+  PN: array[0..7] of TPerlinNoise;
+  Weights: array[0..7] of Single;
+  WeightsSum, Val: Single;
+  Clrs: packed array[0..1] of TRGBA;
+  Freq, Octaves, Fade: Byte;
+begin
+  Result:=false;
+  if RegsCount<>1 then Exit;
+  if not CheckRemain(Parameters, SizeOf(Clrs)+3*SizeOf(Byte){$IFDEF SYNTEX_USELOG}, 'Filter:Perlin'{$ENDIF}) then Exit;
+  Parameters.Read(Freq, SizeOf(Freq));
+  Parameters.Read(Octaves, SizeOf(Octaves));
+  Parameters.Read(Fade, SizeOf(Fade));
+  Parameters.Read(Clrs[0], SizeOf(Clrs));
+  if (Freq*(1 shl Octaves)>255) or (Octaves>7) then
+  begin
+    {$IFDEF SYNTEX_USELOG}Log('Filter:Perlin: Max octave frequency out of range');{$ENDIF}
+    Exit;
+  end;
+  WeightsSum:=0;
+  for i:=0 to Octaves do
+  begin
+    PN[i]:=TPerlinNoise.Create((1 shl i)*Freq/FSynTex.TexSize, (1 shl i)*Freq);
+    if i>0
+      then Weights[i]:=Weights[i-1]*Fade/255
+      else Weights[i]:=1;
+    WeightsSum:=WeightsSum+Weights[i];
+  end;
+  for i:=0 to Octaves do Weights[i]:=Weights[i]/WeightsSum;
+  try
+    for X:=0 to FSynTex.TexSize-1 do
+      for Y:=0 to FSynTex.TexSize-1 do
+      begin
+        Val:=0;
+        for i:=0 to Octaves do Val:=Val+PN[i].Noise(X, Y)*Weights[i];
+        Regs[0]^[Y*FSynTex.TexSize+X]:=BlendColors(Clrs[0], Clrs[1], Trunc(128+128*Val));
+      end;
+  finally
+    FAN(PN);
+  end;
   Result:=true;
 end;
 

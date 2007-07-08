@@ -17,6 +17,7 @@ type
     function AssemblePixels(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
     function AssembleBlend(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
     function AssembleMakeAlpha(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+    function AssemblePerlin(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
   end;
 
 implementation
@@ -32,6 +33,7 @@ begin
   SynTexAssembler.AddFilterAssembler('PIXELS', FLT_PIXELS, AssemblePixels);
   SynTexAssembler.AddFilterAssembler('BLEND', FLT_BLEND, AssembleBlend);
   SynTexAssembler.AddFilterAssembler('MAKEALPHA', FLT_MAKEALPHA, AssembleMakeAlpha);
+  SynTexAssembler.AddFilterAssembler('PERLIN', FLT_PERLIN, AssemblePerlin);
 end;
 
 function TSynTexFilterAssemblers.AssembleFill(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
@@ -91,7 +93,7 @@ end;
 
 function TSynTexFilterAssemblers.AssemblePixels(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
 var
-  ParamsBuf: array[0..2] of Integer;
+  ParamsBuf: array[0..2] of Integer; //Count, Color0, Color1
   i: Integer;
 begin
   Result:=false;
@@ -138,6 +140,60 @@ begin
     FAssembler.Error('Extra token(s) after filter MAKEALPHA');
     Result:=false;
   end;
+end;
+
+function TSynTexFilterAssemblers.AssemblePerlin(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+var
+  ParamsBuf: array[0..4] of Integer; //Freq, Octaves, Fade, Color0, Color1
+  i: Integer;
+begin
+  Result:=false;
+  if not Assigned(Token) then
+  begin
+    FAssembler.Error('Integer expected');
+    Exit;
+  end;
+  for i:=0 to 4 do
+  begin
+    if Token.TokenType<>stInteger then
+    begin
+      FAssembler.Error('Integer expected, but '+TokenName[Token.TokenType]+' found');
+      Exit;
+    end;
+    if not FAssembler.TokenValueInteger(Token, ParamsBuf[i]) then Exit;
+    if i<4 then
+      if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
+  end;
+  if (ParamsBuf[0]<0) or (ParamsBuf[0]>255) then
+  begin
+    FAssembler.Error('Filter PERLIN parameter FREQ out of bounds [0..255]');
+    Exit;
+  end;
+  if (ParamsBuf[1]<0) or (ParamsBuf[1]>7) then
+  begin
+    FAssembler.Error('Filter PERLIN parameter OCTAVES out of bounds [0..7]');
+    Exit;
+  end;
+  if (ParamsBuf[2]<0) or (ParamsBuf[2]>255) then
+  begin
+    FAssembler.Error('Filter PERLIN parameter FADE out of bounds [0..255]');
+    Exit;
+  end;
+  if ParamsBuf[0]*(1 shl ParamsBuf[1])>255 then
+  begin
+    FAssembler.Error('Filter PERLIN max octave frequency out of range');
+    Exit;
+  end;
+  Params.Write(ParamsBuf[0], 1);
+  Params.Write(ParamsBuf[1], 1);
+  Params.Write(ParamsBuf[2], 1);
+  Params.Write(ParamsBuf[3], SizeOf(Integer)*2);
+  if Assigned(Token.Next) then
+  begin
+    FAssembler.Error('Extra token(s) after filter PERLIN parameters');
+    Exit;
+  end;
+  Result:=true;
 end;
 
 function TSynTexFilterAssemblers.IdentifierToIndex(Identifiers: array of string; Identifier: string): Integer;

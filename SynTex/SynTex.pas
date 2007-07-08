@@ -92,6 +92,8 @@ const
 {$IFDEF SYNTEX_USELOG}
 var
   LogCB: procedure(const S: string)=nil;
+
+procedure Log(const S: string);
 {$ENDIF}
 
 implementation
