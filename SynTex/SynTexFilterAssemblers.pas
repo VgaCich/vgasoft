@@ -144,7 +144,7 @@ end;
 
 function TSynTexFilterAssemblers.AssemblePerlin(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
 var
-  ParamsBuf: array[0..4] of Integer; //Freq, Octaves, Fade, Color0, Color1
+  ParamsBuf: array[0..5] of Integer; //Freq, Octaves, Fade, Amp, Color0, Color1
   i: Integer;
 begin
   Result:=false;
@@ -153,7 +153,7 @@ begin
     FAssembler.Error('Integer expected');
     Exit;
   end;
-  for i:=0 to 4 do
+  for i:=0 to 5 do
   begin
     if Token.TokenType<>stInteger then
     begin
@@ -161,7 +161,7 @@ begin
       Exit;
     end;
     if not FAssembler.TokenValueInteger(Token, ParamsBuf[i]) then Exit;
-    if i<4 then
+    if i<5 then
       if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
   end;
   if (ParamsBuf[0]<0) or (ParamsBuf[0]>255) then
@@ -179,6 +179,11 @@ begin
     FAssembler.Error('Filter PERLIN parameter FADE out of bounds [0..255]');
     Exit;
   end;
+  if (ParamsBuf[3]<0) or (ParamsBuf[3]>255) then
+  begin
+    FAssembler.Error('Filter PERLIN parameter AMP out of bounds [0..255]');
+    Exit;
+  end;
   if ParamsBuf[0]*(1 shl ParamsBuf[1])>255 then
   begin
     FAssembler.Error('Filter PERLIN max octave frequency out of range');
@@ -187,7 +192,8 @@ begin
   Params.Write(ParamsBuf[0], 1);
   Params.Write(ParamsBuf[1], 1);
   Params.Write(ParamsBuf[2], 1);
-  Params.Write(ParamsBuf[3], SizeOf(Integer)*2);
+  Params.Write(ParamsBuf[3], 1);
+  Params.Write(ParamsBuf[4], SizeOf(Integer)*2);
   if Assigned(Token.Next) then
   begin
     FAssembler.Error('Extra token(s) after filter PERLIN parameters');

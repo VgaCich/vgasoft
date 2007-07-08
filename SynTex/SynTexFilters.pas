@@ -142,14 +142,15 @@ var
   Weights: array[0..7] of Single;
   WeightsSum, Val: Single;
   Clrs: packed array[0..1] of TRGBA;
-  Freq, Octaves, Fade: Byte;
+  Freq, Octaves, Fade, Amp: Byte;
 begin
   Result:=false;
   if RegsCount<>1 then Exit;
-  if not CheckRemain(Parameters, SizeOf(Clrs)+3*SizeOf(Byte){$IFDEF SYNTEX_USELOG}, 'Filter:Perlin'{$ENDIF}) then Exit;
+  if not CheckRemain(Parameters, SizeOf(Clrs)+4*SizeOf(Byte){$IFDEF SYNTEX_USELOG}, 'Filter:Perlin'{$ENDIF}) then Exit;
   Parameters.Read(Freq, SizeOf(Freq));
   Parameters.Read(Octaves, SizeOf(Octaves));
   Parameters.Read(Fade, SizeOf(Fade));
+  Parameters.Read(Amp, SizeOf(Amp));
   Parameters.Read(Clrs[0], SizeOf(Clrs));
   if (Freq*(1 shl Octaves)>255) or (Octaves>7) then
   begin
@@ -165,14 +166,14 @@ begin
       else Weights[i]:=1;
     WeightsSum:=WeightsSum+Weights[i];
   end;
-  for i:=0 to Octaves do Weights[i]:=Weights[i]/WeightsSum;
+  for i:=0 to Octaves do Weights[i]:=(Amp/64)*Weights[i]/WeightsSum;
   try
     for X:=0 to FSynTex.TexSize-1 do
       for Y:=0 to FSynTex.TexSize-1 do
       begin
         Val:=0;
         for i:=0 to Octaves do Val:=Val+PN[i].Noise(X, Y)*Weights[i];
-        Regs[0]^[Y*FSynTex.TexSize+X]:=BlendColors(Clrs[0], Clrs[1], Trunc(128+128*Val));
+        Regs[0]^[Y*FSynTex.TexSize+X]:=BlendColors(Clrs[0], Clrs[1], ClampVal(Trunc(128+128*Val), 256));
       end;
   finally
     FAN(PN);
