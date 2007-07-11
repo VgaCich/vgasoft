@@ -157,26 +157,26 @@ begin
     {$IFDEF SYNTEX_USELOG}Log('Filter:Perlin: Max octave frequency out of range');{$ENDIF}
     Exit;
   end;
-  WeightsSum:=0;
-  for i:=0 to Octaves do
-  begin
-    PN[i]:=TPerlinNoise.Create((1 shl i)*Freq/FSynTex.TexSize, (1 shl i)*Freq);
-    if i>0
-      then Weights[i]:=Weights[i-1]*Fade/255
-      else Weights[i]:=1;
-    WeightsSum:=WeightsSum+Weights[i];
-  end;
-  for i:=0 to Octaves do Weights[i]:=(Amp/64)*Weights[i]/WeightsSum;
   try
-    for X:=0 to FSynTex.TexSize-1 do
-      for Y:=0 to FSynTex.TexSize-1 do
-      begin
-        Val:=0;
-        for i:=0 to Octaves do Val:=Val+PN[i].Noise(X, Y)*Weights[i];
-        Regs[0]^[Y*FSynTex.TexSize+X]:=BlendColors(Clrs[0], Clrs[1], ClampVal(Trunc(128+128*Val), 256));
-      end;
+    WeightsSum:=0;
+    for i:=0 to Octaves do
+    begin
+      PN[i]:=TPerlinNoise.Create((1 shl i)*Freq/FSynTex.TexSize, (1 shl i)*Freq);
+      if i>0
+        then Weights[i]:=Weights[i-1]*Fade/255
+        else Weights[i]:=1;
+      WeightsSum:=WeightsSum+Weights[i];
+    end;
+    for i:=0 to Octaves do Weights[i]:=(Amp/64)*Weights[i]/WeightsSum;
+      for X:=0 to FSynTex.TexSize-1 do
+        for Y:=0 to FSynTex.TexSize-1 do
+        begin
+          Val:=0;
+          for i:=0 to Octaves do Val:=Val+PN[i].Noise(X, Y)*Weights[i];
+          Regs[0]^[Y*FSynTex.TexSize+X]:=BlendColors(Clrs[0], Clrs[1], ClampVal(Trunc(128+128*Val), 256));
+        end;
   finally
-    FAN(PN);
+    for i:=0 to Octaves do PN[i].Free;
   end;
   Result:=true;
 end;
