@@ -148,23 +148,26 @@ begin
     AddDebugInfo(Line+1, FCode.Position);
     Token:=ParseLine(FSource[Line]);
     if not Assigned(Token) then Exit;
-    if (Token.TokenType<>stCommand) and (Token.TokenType<>stLabel) then
-    begin
-      Error('Command or label expected, but '+TokenName[Token.TokenType]+' found');
-      Exit;
-    end;
-    if Token.TokenType=stLabel then
-    begin
-      if not AddLabel(Token.Value, FCode.Position) then Exit;
-      if Assigned(Token.Next) then
+    try
+      if (Token.TokenType<>stCommand) and (Token.TokenType<>stLabel) then
       begin
-        Error('Extra token(s) after label');
+        Error('Command or label expected, but '+TokenName[Token.TokenType]+' found');
         Exit;
       end;
+      if Token.TokenType=stLabel then
+      begin
+        if not AddLabel(Token.Value, FCode.Position) then Exit;
+        if Assigned(Token.Next) then
+        begin
+          Error('Extra token(s) after label');
+          Exit;
+        end;
+      end;
+      if Token.TokenType=stCommand then
+        if not AssembleCommand(Token) then Exit;
+    finally
+      FinTokens(Token);
     end;
-    if Token.TokenType=stCommand then
-      if not AssembleCommand(Token) then Exit;
-    FinTokens(Token);
   end;
   FCode.Position:=0;
   Result:=true;
@@ -382,7 +385,6 @@ begin
           if not Result then Exit; 
           Result:=not Assigned(Token.Next);
           if not Result then Error('Extra token(s) after RET');
-          Exit;
         end;
       ccJump: Result:=AssembleLink(Token, Cmd);
       ccCall: Result:=AssembleLink(Token, Cmd);
