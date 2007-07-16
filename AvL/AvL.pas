@@ -14432,6 +14432,11 @@ begin
   raise Exception.Create('Error code: '+IntToStr(ErrorCode)) at ErrorAddr;
 end;
 
+procedure AssertErrorHandler(const Message, FileName: string; LineNumber: Integer; ErrorAddr: Pointer);
+begin
+  raise EAssertionFailed.CreateFmt('Assertion "%s" failed in file "%s" at line %d', [Message, FileName, LineNumber]) at ErrorAddr;
+end;
+
 procedure ExceptHandler(ExceptObject: Exception; ExceptAddr: Pointer); far;
 begin
   ShowMessage('Exception "'+ExceptObject.ClassName+'" at '+IntToHex(Cardinal(ExceptAddr), 8)+' with message "'+ExceptObject.Message+'"');
@@ -18763,11 +18768,12 @@ begin
 end;
 
 initialization
-  ErrorProc      := ErrorHandler;
-  ExceptProc     := @ExceptHandler;
-  ExceptionClass := Exception;
-  ExceptClsProc  := @GetExceptionClass;
-  ExceptObjProc  := @GetExceptionObject;
+  ErrorProc:=ErrorHandler;
+  ExceptProc:=@ExceptHandler;
+  ExceptionClass:=Exception;
+  ExceptClsProc:=@GetExceptionClass;
+  ExceptObjProc:=@GetExceptionObject;
+  AssertErrorProc:=@AssertErrorHandler;
 
 end.
 
