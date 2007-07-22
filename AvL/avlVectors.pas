@@ -14,33 +14,26 @@ uses Windows;
 type
   TVector2D = record
     X, Y:Single;
-end;
-
-
-type
+  end;
   TVector3D = record
     X, Y, Z:Single;
-end;
-
-
-type
+  end;
   TByteColor = record
     Red,
     Green,
     Blue: Byte;
-end;
-
-type
+  end;
   PVector4f = ^TVector4f;
   TVector4f = record
     Red:Single;
     Green:Single;
     Blue:Single;
     Alpha:Single;
-end;
+  end;
+  TMatrix4D=array[0..3, 0..3] of Single;
 
 
-function VectorSetValue(Value:Single):TVector3D; overload;
+function VectorSetValue(Value:Single): TVector3D; overload;
 function VectorSetValue(X, Y, Z: Single): TVector3D; overload;
 procedure VectorClear(var Vector:TVector3D);
 procedure VectorInvert(var Vector:TVector3D);
