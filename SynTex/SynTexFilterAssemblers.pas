@@ -18,6 +18,7 @@ type
     function AssembleBlend(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
     function AssembleMakeAlpha(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
     function AssemblePerlin(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+    function AssembleLight(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
   end;
 
 implementation
@@ -34,6 +35,7 @@ begin
   SynTexAssembler.AddFilterAssembler('BLEND', FLT_BLEND, AssembleBlend);
   SynTexAssembler.AddFilterAssembler('MAKEALPHA', FLT_MAKEALPHA, AssembleMakeAlpha);
   SynTexAssembler.AddFilterAssembler('PERLIN', FLT_PERLIN, AssemblePerlin);
+  SynTexAssembler.AddFilterAssembler('LIGHT', FLT_LIGHT, AssembleLight);
 end;
 
 function TSynTexFilterAssemblers.AssembleFill(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
@@ -197,6 +199,49 @@ begin
   if Assigned(Token.Next) then
   begin
     FAssembler.Error('Extra token(s) after filter PERLIN parameters');
+    Exit;
+  end;
+  Result:=true;
+end;
+
+function TSynTexFilterAssemblers.AssembleLight(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+var
+  ParamsBuf: array[0..3] of Integer; //Theta,Phi, Diffuse, Ambient
+  i: Integer;
+begin
+  Result:=false;
+  if not Assigned(Token) then
+  begin
+    FAssembler.Error('Integer expected');
+    Exit;
+  end;
+  for i:=0 to 3 do
+  begin
+    if Token.TokenType<>stInteger then
+    begin
+      FAssembler.Error('Integer expected, but '+TokenName[Token.TokenType]+' found');
+      Exit;
+    end;
+    if not FAssembler.TokenValueInteger(Token, ParamsBuf[i]) then Exit;
+    if i<3 then
+      if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
+  end;
+  if (ParamsBuf[0]<0) or (ParamsBuf[0]>255) then
+  begin
+    FAssembler.Error('Filter LIGHT parameter THETA out of bounds [0..255]');
+    Exit;
+  end;
+  if (ParamsBuf[1]<0) or (ParamsBuf[1]>255) then
+  begin
+    FAssembler.Error('Filter LIGHT parameter PHI out of bounds [0..255]');
+    Exit;
+  end;
+  Params.Write(ParamsBuf[0], 1);
+  Params.Write(ParamsBuf[1], 1);
+  Params.Write(ParamsBuf[2], SizeOf(Integer)*2);
+  if Assigned(Token.Next) then
+  begin
+    FAssembler.Error('Extra token(s) after filter LIGHT parameters');
     Exit;
   end;
   Result:=true;

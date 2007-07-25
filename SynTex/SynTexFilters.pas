@@ -3,7 +3,7 @@ unit SynTexFilters;
 interface
 
 uses
-  Windows, AvL, avlUtils, SynTex, Noise;
+  Windows, AvL, avlUtils, SynTex, Noise, avlVectors;
 
 type
   TSynTexFilters=class
@@ -31,9 +31,13 @@ type
     function FiltBlend(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
     function FiltMakeAlpha(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
     function FiltPerlin(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+    function FiltLight(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
   end;
 
 implementation
+
+const
+  BDegToRad=pi/128;
 
 {$I SynTexFilters.inc}
 
@@ -47,6 +51,7 @@ begin
   SynTex.AddFilter(FLT_BLEND, FiltBlend);
   SynTex.AddFilter(FLT_MAKEALPHA, FiltMakeAlpha);
   SynTex.AddFilter(FLT_PERLIN, FiltPerlin);
+  SynTex.AddFilter(FLT_LIGHT, FiltLight);
 end;
 
 function TSynTexFilters.FiltFill(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
@@ -181,6 +186,38 @@ begin
   Result:=true;
 end;
 
+function TSynTexFilters.FiltLight(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+var
+  X, Y: Integer;
+  LDir, Normal: TVector3D;
+  Pix: Integer;
+  Dot3: Byte;
+  Colors: packed array[0..1] of TRGBA; //diffuse, ambient
+  LightDir: packed array[0..1] of Byte; //theta, phi
+begin
+  Result:=false;
+  if RegsCount<>2 then Exit;
+  if not CheckRemain(Parameters, SizeOf(Colors)+SizeOf(LightDir){$IFDEF SYNTEX_USELOG}, 'Filter:Light'{$ENDIF}) then Exit;
+  Parameters.Read(LightDir, SizeOf(LightDir));
+  Parameters.Read(Colors, SizeOf(Colors));
+  LDir.X:=cos(LightDir[0]*BDegToRad)*sin(LightDir[1]*BDegToRad);
+  LDir.Y:=sin(LightDir[0]*BDegToRad)*sin(LightDir[1]*BDegToRad);
+  LDir.Z:=cos(LightDir[1]*BDegToRad);
+  //VectorNormalize(LDir);
+  for X:=0 to FSynTex.TexSize-1 do
+    for Y:=0 to FSynTex.TexSize-1 do
+    begin
+      Pix:=X+Y*FSynTex.TexSize;
+      Normal.X:=Regs[1]^[Pix].R/255;
+      Normal.Y:=Regs[1]^[Pix].G/255;
+      Normal.Z:=Regs[1]^[Pix].B/255;
+      VectorNormalize(Normal);
+      Dot3:=ClampVal(Round(VectorDotProduct(Normal, LDir)*256), 256);
+      Regs[0]^[Pix]:=AddClamp(Mul(Regs[0]^[Pix], Colors[1]), Mul(Mul(Regs[0]^[Pix], Colors[0]), Dot3));
+    end;
+  Result:=true;
+end;
+
 function TSynTexFilters.ClampVal(Val, Max: Integer): Integer;
 begin
   if Val<0
@@ -220,8 +257,8 @@ end; }
 
 function TSynTexFilters.BlendColors(Color1, Color2: TRGBA; Blend: Byte): TRGBA;
 begin
-  Color1:=Mul(Color1, Blend);
-  Color2:=Mul(Color2, $FF-Blend);
+  Color1:=Mul(Color1, $FF-Blend);
+  Color2:=Mul(Color2, Blend);
   Result:=AddClamp(Color1, Color2);
 end;
 
@@ -229,8 +266,8 @@ function TSynTexFilters.BlendColors(Color1, Color2: TRGBA; Blend: TRGBA): TRGBA;
 const
   White: TRGBA=(R: $FF; G: $FF; B: $FF; A: $FF);
 begin
-  Color1:=Mul(Color1, Blend);
-  Color2:=Mul(Color2, SubClamp(White, Blend));
+  Color1:=Mul(Color1, SubClamp(White, Blend));
+  Color2:=Mul(Color2, Blend);
   Result:=AddClamp(Color1, Color2);
 end;
 
