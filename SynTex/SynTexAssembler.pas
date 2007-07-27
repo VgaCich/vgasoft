@@ -143,7 +143,7 @@ begin
   PreProcess;
   for Line:=0 to FSource.Count-1 do
   begin
-    FCurLine:=Line;
+    FCurLine:=Line+1;
     if FSource[Line]='' then Continue;
     AddDebugInfo(Line+1, FCode.Position);
     Token:=ParseLine(FSource[Line]);

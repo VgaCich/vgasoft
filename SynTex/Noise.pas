@@ -8,20 +8,21 @@ uses
 type
   TPerlinNoise=class
   private
-    FNormals: array[0..255] of TVector3D;
     FNormIndex: array[0..255, 0..255] of Byte;
     FFreq: Single;
     function Normal(X, Y: Integer): TVector3D;
   public
     constructor Create(Freq: Single; WrapAt: Integer = 256);
-    function Noise(X, Y: Integer): Single;{ overload;
-    function Noise(X, Y: Single): Single; overload;}
+    function Noise(X, Y: Integer): Single;
   end;
 
 implementation
 
 const
   Step=2*pi/256;
+
+var
+  Normals: array[0..255] of TVector3D;
 
 constructor TPerlinNoise.Create(Freq: Single; WrapAt: Integer = 256);
 
@@ -35,18 +36,13 @@ constructor TPerlinNoise.Create(Freq: Single; WrapAt: Integer = 256);
 
 var
   i, j: Integer;
-  Ang: Single;
 begin
   FFreq:=Freq;
   for i:=0 to 255 do
-  begin
-    Ang:=Step*i;
-    FNormals[i]:=VectorSetValue(cos(Ang), sin(Ang), 0);
     for j:=0 to 255 do
       if (i<WrapAt) and (j<WrapAt)
         then FNormIndex[i, j]:=Random(256)
         else FNormIndex[i, j]:=FNormIndex[Wrap(i, WrapAt), Wrap(j, WrapAt)];
-  end;
 end;
 
 function TPerlinNoise.Noise(X, Y: Integer): Single;
@@ -80,14 +76,17 @@ begin
   Result:=AvgX0+(SY*(AvgX1-AvgX0));
 end;
 
-{function TPerlinNoise.Noise(X, Y: Single): Single;
-begin
-
-end;}
-
 function TPerlinNoise.Normal(X, Y: Integer): TVector3D;
 begin
-  Result:=FNormals[FNormIndex[X mod 256, Y mod 256]];
+  Result:=Normals[FNormIndex[X mod 256, Y mod 256]];
 end;
+
+var
+  i: Integer;
+
+initialization
+
+  for i:=0 to 255 do
+    Normals[i]:=VectorSetValue(cos(Step*i), sin(Step*i), 0);
 
 end.

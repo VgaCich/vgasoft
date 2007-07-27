@@ -3,7 +3,7 @@ unit SynTexFilters;
 interface
 
 uses
-  Windows, AvL, avlUtils, SynTex, Noise, avlVectors;
+  Windows, AvL, avlUtils, SynTex, Noise, avlVectors, avlMath;
 
 type
   TSynTexFilters=class
@@ -23,6 +23,7 @@ type
     function  Diff(Color1, Color2: TRGBA): TRGBA;
     function  Mul(Color1, Color2: TRGBA): TRGBA; overload;
     function  Mul(Color: TRGBA; Scale: Byte): TRGBA; overload;
+    function  MulClamp(Color: TRGBA; Scale: Integer): TRGBA;
   public
     constructor Create(SynTex: TSynTex);
     function FiltFill(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
@@ -31,7 +32,8 @@ type
     function FiltBlend(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
     function FiltMakeAlpha(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
     function FiltPerlin(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
-    function FiltLight(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+    function FiltBump(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+    function FiltNormals(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
   end;
 
 implementation
@@ -51,7 +53,8 @@ begin
   SynTex.AddFilter(FLT_BLEND, FiltBlend);
   SynTex.AddFilter(FLT_MAKEALPHA, FiltMakeAlpha);
   SynTex.AddFilter(FLT_PERLIN, FiltPerlin);
-  SynTex.AddFilter(FLT_LIGHT, FiltLight);
+  SynTex.AddFilter(FLT_BUMP, FiltBump);
+  SynTex.AddFilter(FLT_NORMALS, FiltNormals);
 end;
 
 function TSynTexFilters.FiltFill(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
@@ -157,11 +160,6 @@ begin
   Parameters.Read(Fade, SizeOf(Fade));
   Parameters.Read(Amp, SizeOf(Amp));
   Parameters.Read(Clrs[0], SizeOf(Clrs));
-  if (Freq*(1 shl Octaves)>255) or (Octaves>7) then
-  begin
-    {$IFDEF SYNTEX_USELOG}Log('Filter:Perlin: Max octave frequency out of range');{$ENDIF}
-    Exit;
-  end;
   try
     WeightsSum:=0;
     for i:=0 to Octaves do
@@ -173,49 +171,86 @@ begin
       WeightsSum:=WeightsSum+Weights[i];
     end;
     for i:=0 to Octaves do Weights[i]:=(Amp/64)*Weights[i]/WeightsSum;
-      for X:=0 to FSynTex.TexSize-1 do
-        for Y:=0 to FSynTex.TexSize-1 do
-        begin
-          Val:=0;
-          for i:=0 to Octaves do Val:=Val+PN[i].Noise(X, Y)*Weights[i];
-          Regs[0]^[Y*FSynTex.TexSize+X]:=BlendColors(Clrs[0], Clrs[1], ClampVal(Trunc(128+128*Val), 256));
-        end;
+    for X:=0 to FSynTex.TexSize-1 do
+      for Y:=0 to FSynTex.TexSize-1 do
+      begin
+        Val:=0;
+        for i:=0 to Octaves do Val:=Val+PN[i].Noise(X, Y)*Weights[i];
+        Regs[0]^[Y*FSynTex.TexSize+X]:=BlendColors(Clrs[0], Clrs[1], ClampVal(Trunc(128+128*Val), 256));
+      end;
   finally
     for i:=0 to Octaves do PN[i].Free;
   end;
   Result:=true;
 end;
 
-function TSynTexFilters.FiltLight(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+function TSynTexFilters.FiltBump(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+type
+  TParams=(pPhi, pTheta, pAmplify, pDiffAmount, pSpecAmount, pSpecPower);
+const
+  View: TVector3D = (X: 0; Y: 0; Z: 1);
 var
   X, Y: Integer;
-  LDir, Normal: TVector3D;
+  LDir, H, Normal: TVector3D;
   Pix: Integer;
-  Dot3: Byte;
-  Colors: packed array[0..1] of TRGBA; //diffuse, ambient
-  LightDir: packed array[0..1] of Byte; //theta, phi
+  I: Integer;
+  Params: packed array[TParams] of Byte;
 begin
   Result:=false;
   if RegsCount<>2 then Exit;
-  if not CheckRemain(Parameters, SizeOf(Colors)+SizeOf(LightDir){$IFDEF SYNTEX_USELOG}, 'Filter:Light'{$ENDIF}) then Exit;
-  Parameters.Read(LightDir, SizeOf(LightDir));
-  Parameters.Read(Colors, SizeOf(Colors));
-  LDir.X:=cos(LightDir[0]*BDegToRad)*sin(LightDir[1]*BDegToRad);
-  LDir.Y:=sin(LightDir[0]*BDegToRad)*sin(LightDir[1]*BDegToRad);
-  LDir.Z:=cos(LightDir[1]*BDegToRad);
-  //VectorNormalize(LDir);
+  if not CheckRemain(Parameters, SizeOf(Params){$IFDEF SYNTEX_USELOG}, 'Filter:Bump'{$ENDIF}) then Exit;
+  Parameters.Read(Params, SizeOf(Params));
+  LDir.X:=cos(Params[pPhi]*BDegToRad)*sin(Params[pTheta]*BDegToRad/2);
+  LDir.Y:=sin(Params[pPhi]*BDegToRad)*sin(Params[pTheta]*BDegToRad/2);
+  LDir.Z:=cos(Params[pTheta]*BDegToRad/2);
+  H:=VectorAdd(LDir, View);
+  VectorNormalize(H);
   for X:=0 to FSynTex.TexSize-1 do
     for Y:=0 to FSynTex.TexSize-1 do
     begin
       Pix:=X+Y*FSynTex.TexSize;
-      Normal.X:=Regs[1]^[Pix].R/255;
-      Normal.Y:=Regs[1]^[Pix].G/255;
-      Normal.Z:=Regs[1]^[Pix].B/255;
+      Normal.X:=(Regs[1]^[Pix].R-128)/128;
+      Normal.Y:=(Regs[1]^[Pix].G-128)/128;
+      Normal.Z:=(Regs[1]^[Pix].B-128)/128;
       VectorNormalize(Normal);
-      Dot3:=ClampVal(Round(VectorDotProduct(Normal, LDir)*256), 256);
-      Regs[0]^[Pix]:=AddClamp(Mul(Regs[0]^[Pix], Colors[1]), Mul(Mul(Regs[0]^[Pix], Colors[0]), Dot3));
+      I:=Max(Round(VectorDotProduct(Normal, LDir)*Params[pDiffAmount]*8), 0)+
+         Max(Round(Power(VectorDotProduct(Normal, H), Params[pSpecPower])*Params[pDiffAmount]*8), 0);
+      Regs[0]^[Pix]:=MulClamp(MulClamp(Regs[0]^[Pix], I), Params[pAmplify]*32);
     end;
   Result:=true;
+end;
+
+function TSynTexFilters.FiltNormals(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+var
+  Amount: Byte;
+  A: Single;
+  X, Y, Pix: Integer;
+  Normal1, Normal2: TVector3D;
+begin
+  Result:=CheckRemain(Parameters, SizeOf(Amount){$IFDEF SYNTEX_USELOG}, 'Filter:Normals'{$ENDIF}) and (RegsCount=2);
+  if not Result then Exit;
+  try
+    Parameters.Read(Amount, SizeOf(Amount));
+    A:=Amount/512;
+    for X:=0 to FSynTex.TexSize-1 do
+      for Y:=0 to FSynTex.TexSize-1 do
+      begin
+        Pix:=PixelIndex(X, Y, true, true);
+        Normal1.X:=A*(Regs[1]^[Pix].R-Regs[1]^[PixelIndex(X+1, Y, false, false)].R);
+        Normal1.Y:=A*(Regs[1]^[Pix].R-Regs[1]^[PixelIndex(X, Y+1, false, false)].R);
+        Normal1.Z:=1;
+        Normal2.X:=A*(Regs[1]^[PixelIndex(X-1, Y, false, false)].R-Regs[1]^[Pix].R);
+        Normal2.Y:=A*(Regs[1]^[PixelIndex(X, Y-1, false, false)].R-Regs[1]^[Pix].R);
+        Normal2.Z:=1;
+        Normal1:=VectorAdd(Normal1, Normal2);
+        VectorNormalize(Normal1);
+        Regs[0]^[Pix].R:=ClampVal(Round(Normal1.X*128+128), 256);
+        Regs[0]^[Pix].G:=ClampVal(Round(Normal1.Y*128+128), 256);
+        Regs[0]^[Pix].B:=ClampVal(Round(Normal1.Z*128+128), 256);
+      end;
+  except
+    Result:=false;
+  end;
 end;
 
 function TSynTexFilters.ClampVal(Val, Max: Integer): Integer;
@@ -325,6 +360,14 @@ begin
   Result.G:=Word(Color.G*Scale) shr 8;
   Result.B:=Word(Color.B*Scale) shr 8;
   Result.A:=Word(Color.A*Scale) shr 8;
+end;
+
+function TSynTexFilters.MulClamp(Color: TRGBA; Scale: Integer): TRGBA;
+begin
+  Result.R:=ClampVal(Color.R*Scale shr 8, 256);
+  Result.G:=ClampVal(Color.G*Scale shr 8, 256);
+  Result.B:=ClampVal(Color.B*Scale shr 8, 256);
+  Result.A:=ClampVal(Color.A*Scale shr 8, 256);
 end;
 
 end.
