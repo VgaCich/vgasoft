@@ -7,8 +7,10 @@ const
   FLT_PERLIN=5;
   FLT_BUMP=6;
   FLT_NORMALS=7;
-  FltNames: array[FLT_FILL..FLT_NORMALS] of string =
-    ('FILL', 'ADD', 'PIXELS', 'BLEND', 'MAKEALPHA', 'PERLIN', 'BUMP', 'NORMALS'); 
+  FLT_GLOWRECT=8;
+  FltNames: array[FLT_FILL..FLT_GLOWRECT] of string =
+    ('FILL', 'ADD', 'PIXELS', 'BLEND', 'MAKEALPHA', 'PERLIN', 'BUMP', 'NORMALS',
+    'GLOWRECT'); 
 
   ADDMODE_ADDCLAMP=0;
   ADDMODE_ADDWRAP=1;

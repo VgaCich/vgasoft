@@ -20,6 +20,7 @@ type
     function AssemblePerlin(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
     function AssembleBump(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
     function AssembleNormals(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+    function AssembleGlowRect(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
   end;
 
 implementation
@@ -44,6 +45,7 @@ begin
   AddFilterAssembler(FLT_PERLIN, AssemblePerlin);
   AddFilterAssembler(FLT_BUMP, AssembleBump);
   AddFilterAssembler(FLT_NORMALS, AssembleNormals);
+  AddFilterAssembler(FLT_GLOWRECT, AssembleGlowRect);
 end;
 
 function TSynTexFilterAssemblers.AssembleFill(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
@@ -51,6 +53,11 @@ var
   Color: Integer;
 begin
   Result:=false;
+  if RegsCount<1 then
+  begin
+    FAssembler.Error('Filter FILL needs at least 1 register');
+    Exit;
+  end;
   if not Assigned(Token) then
   begin
     FAssembler.Error('Integer expected');
@@ -112,6 +119,11 @@ var
   i: Integer;
 begin
   Result:=false;
+  if RegsCount<1 then
+  begin
+    FAssembler.Error('Filter PIXELS needs at least 1 register');
+    Exit;
+  end;
   if not Assigned(Token) then
   begin
     FAssembler.Error('Integer expected');
@@ -304,6 +316,56 @@ begin
   if Assigned(Token.Next) then
   begin
     FAssembler.Error('Extra token(s) after filter NORMALS color');
+    Exit;
+  end;
+  Result:=true;
+end;
+
+function TSynTexFilterAssemblers.AssembleGlowRect(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+const
+  ParamsNames: array[0..8] of string =
+    ('POSX', 'POSY', 'RADX', 'RADY', 'SIZEX', 'SIZEY', 'BLEND', 'POWER', 'COLOR');
+var
+  ParamsBuf: packed array[0..7] of Word;
+  Color: Integer;
+  i, Val: Integer;
+begin
+  Result:=false;
+  if RegsCount<1 then
+  begin
+    FAssembler.Error('Filter GLOWRECT needs at least 1 register');
+    Exit;
+  end;
+  if not Assigned(Token) then
+  begin
+    FAssembler.Error('Integer expected');
+    Exit;
+  end;
+  for i:=0 to 8 do
+  begin
+    if Token.TokenType<>stInteger then
+    begin
+      FAssembler.Error('Integer expected, but '+TokenName[Token.TokenType]+' found');
+      Exit;
+    end;
+    if not FAssembler.TokenValueInteger(Token, Val) then Exit;
+    if i<8 then
+    begin
+      if (Val<0) or (Val>65535) then
+      begin
+        FAssembler.Error('Filter GLOWRECT parameter '+ParamsNames[i]+' out of bounds [0..65535]');
+        Exit;
+      end;
+      ParamsBuf[i]:=Val;
+      if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
+    end
+      else Color:=Val;
+  end;
+  Params.Write(ParamsBuf[0], SizeOf(ParamsBuf));
+  Params.Write(Color, SizeOf(Color));
+  if Assigned(Token.Next) then
+  begin
+    FAssembler.Error('Extra token(s) after filter GLOWRECT parameters');
     Exit;
   end;
   Result:=true;
