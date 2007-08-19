@@ -72,10 +72,12 @@ type
   public
     constructor Create(SynTex: TSynTex);
     destructor Destroy; override;
+    procedure Execute;
     function  Step: Boolean;
-    function  Execute: Boolean;
+    function  Run: Boolean;
     function  AddBreakPoint(BreakPoint: Integer): Integer;
     procedure RemoveBreakPoint(BreakPoint: Integer);
+    property Synthesizer: TSynTex read FSynTex;
     property Pos: Integer read GetPos write SetPos;
     property Regs[Index: Integer]: PSynTexRegister read GetRegs; default;
     property CallStackCount: Integer read GetCallStackCount;
@@ -338,12 +340,19 @@ begin
   inherited Destroy;
 end;
 
-function TSynTexDebugger.Step: Boolean;
+procedure TSynTexDebugger.Execute;
 begin
-  Result:=FSynTex.Step;
+  FSynTex.FCallStack.Clear;
 end;
 
-function TSynTexDebugger.Execute: Boolean;
+function TSynTexDebugger.Step: Boolean;
+begin
+  if Assigned(FSynTex.FCode) and (FSynTex.FCode.Position<FSynTex.FCode.Size)
+    then Result:=FSynTex.Step
+    else Result:=false;
+end;
+
+function TSynTexDebugger.Run: Boolean;
 begin
   Result:=false;
   if not Assigned(FSynTex.FCode) then Exit;
@@ -389,7 +398,7 @@ end;
 function TSynTexDebugger.GetRegs(Index: Integer): PSynTexRegister;
 begin
   Result:=nil;
-  if (Index<0) or (Index>15) then Exit;
+  if (Index<0) or (Index>SynTexRegsCount-1) then Exit;
   Result:=@FSynTex.FRegisters[Index];
 end;
 
