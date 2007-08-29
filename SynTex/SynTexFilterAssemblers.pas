@@ -495,10 +495,10 @@ begin
     FAssembler.Error('Filter BLUR needs 2 registers');
     Exit;
   end;
-  if not GetInteger(Token, 1, 255, 'BLUR', 'SIZEX', I) then Exit;
+  if not GetInteger(Token, 0, 255, 'BLUR', 'SIZEX', I) then Exit;
   P.SizeX:=I;
   if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
-  if not GetInteger(Token, 1, 255, 'BLUR', 'SIZEY', I) then Exit;
+  if not GetInteger(Token, 0, 255, 'BLUR', 'SIZEY', I) then Exit;
   P.SizeY:=I;
   if not FAssembler.NextToken(Token, 'Identifier expected') then Exit;
   if Token.TokenType<>stIdentifier then

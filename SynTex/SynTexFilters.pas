@@ -400,13 +400,17 @@ type
     WeightsSum: Single;
   begin
     WeightsSum:=0;
-    for i:=0 to Size do
-    begin
-      Kernel[i]:=Filter(i/Size);
-      WeightsSum:=WeightsSum+Kernel[i];
-      if i>0 then WeightsSum:=WeightsSum+Kernel[i];
+    if Size=0
+      then Kernel[0]:=1
+    else begin
+      for i:=0 to Size do
+      begin
+        Kernel[i]:=Filter(i/Size);
+        WeightsSum:=WeightsSum+Kernel[i];
+        if i>0 then WeightsSum:=WeightsSum+Kernel[i];
+      end;
+      for i:=0 to Size do Kernel[i]:=Kernel[i]/WeightsSum;
     end;
-    for i:=0 to Size do Kernel[i]:=Kernel[i]/WeightsSum;
   end;
 
 var
