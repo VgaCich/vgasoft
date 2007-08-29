@@ -9,6 +9,7 @@ type
   TSynTexFilterAssemblers=class
   protected
     FAssembler: TSynTexAssembler;
+    function GetInteger(Token: PSynTexToken; MinValue, MaxValue: Integer; FilterName, ParamName: string; var Value: Integer): Boolean;
     function IdentifierToIndex(Identifiers: array of string; Identifier: string): Integer;
   public
     constructor Create(SynTexAssembler: TSynTexAssembler);
@@ -21,6 +22,11 @@ type
     function AssembleBump(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
     function AssembleNormals(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
     function AssembleGlowRect(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+    function AssembleDistort(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+    function AssembleTransform(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+    function AssembleBlur(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+    function AssembleColorRange(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+    function AssembleAdjust(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
   end;
 
 implementation
@@ -46,6 +52,11 @@ begin
   AddFilterAssembler(FLT_BUMP, AssembleBump);
   AddFilterAssembler(FLT_NORMALS, AssembleNormals);
   AddFilterAssembler(FLT_GLOWRECT, AssembleGlowRect);
+  AddFilterAssembler(FLT_DISTORT, AssembleDistort);
+  AddFilterAssembler(FLT_TRANSFORM, AssembleTransform);
+  AddFilterAssembler(FLT_BLUR, AssembleBlur);
+  AddFilterAssembler(FLT_COLORRANGE, AssembleColorRange);
+  AddFilterAssembler(FLT_ADJUST, AssembleAdjust);
 end;
 
 function TSynTexFilterAssemblers.AssembleFill(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
@@ -244,7 +255,7 @@ end;
 function TSynTexFilterAssemblers.AssembleBump(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
 const
   ParamsNames: array[0..5] of string =
-    ('THETA', 'PHI', 'AMPLIFY', 'DIFFAMOUNT', 'SPECAMOUNT', 'SPECPOWER'); 
+    ('THETA', 'PHI', 'AMPLIFY', 'DIFFAMOUNT', 'SPECAMOUNT', 'SPECPOWER');
 var
   ParamsBuf: packed array[0..5] of Byte; //Theta, Phi, Amplify, Diffuse amount, Specular amount, Specular power
   i, Val: Integer;
@@ -368,6 +379,229 @@ begin
     FAssembler.Error('Extra token(s) after filter GLOWRECT parameters');
     Exit;
   end;
+  Result:=true;
+end;
+
+function TSynTexFilterAssemblers.AssembleDistort(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+const
+  ParamsNames: array[0..1] of string =
+    ('AMOUNT', 'FLAGS');
+var
+  ParamsBuf: packed array[0..1] of Byte;
+  i, Val: Integer;
+begin
+  Result:=false;
+  if RegsCount<>3 then
+  begin
+    FAssembler.Error('Filter DISTORT needs 3 registers');
+    Exit;
+  end;
+  if not Assigned(Token) then
+  begin
+    FAssembler.Error('Integer expected');
+    Exit;
+  end;
+  for i:=0 to 1 do
+  begin
+    if Token.TokenType<>stInteger then
+    begin
+      FAssembler.Error('Integer expected, but '+TokenName[Token.TokenType]+' found');
+      Exit;
+    end;
+    if not FAssembler.TokenValueInteger(Token, Val) then Exit;
+    if (Val<0) or (Val>255) then
+    begin
+      FAssembler.Error('Filter DISTORT parameter '+ParamsNames[i]+' out of bounds [0..255]');
+      Exit;
+    end;
+    ParamsBuf[i]:=Val;
+    if i<1 then
+      if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
+  end;
+  Params.Write(ParamsBuf[0], SizeOf(ParamsBuf));
+  if Assigned(Token.Next) then
+  begin
+    FAssembler.Error('Extra token(s) after filter DISTORT parameters');
+    Exit;
+  end;
+  Result:=true;
+end;
+
+function TSynTexFilterAssemblers.AssembleTransform(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+const
+  ParamsNames: array[0..5] of string =
+    ('ANGLE', 'ZOOMX', 'ZOOMY', 'SCROLLX', 'SCROLLY', 'FLAGS');
+  Bytes=[0, 5];
+var
+  ParamsBuf: packed array[0..5] of Word;
+  i, Val: Integer;
+begin
+  Result:=false;
+  if RegsCount<>2 then
+  begin
+    FAssembler.Error('Filter TRANSFORM needs 2 registers');
+    Exit;
+  end;
+  if not Assigned(Token) then
+  begin
+    FAssembler.Error('Integer expected');
+    Exit;
+  end;
+  for i:=0 to 5 do
+  begin
+    if Token.TokenType<>stInteger then
+    begin
+      FAssembler.Error('Integer expected, but '+TokenName[Token.TokenType]+' found');
+      Exit;
+    end;
+    if not FAssembler.TokenValueInteger(Token, Val) then Exit;
+    if ((Val<0) or (Val>65535)) and not (i in Bytes) then
+    begin
+      FAssembler.Error('Filter TRANSFORM parameter '+ParamsNames[i]+' out of bounds [0..65545]');
+      Exit;
+    end;
+    if ((Val<0) or (Val>255)) and (i in Bytes) then
+    begin
+      FAssembler.Error('Filter TRANSFORM parameter '+ParamsNames[i]+' out of bounds [0..255]');
+      Exit;
+    end;
+    ParamsBuf[i]:=Val;
+    if i<5 then
+      if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
+  end;
+  Params.Write(ParamsBuf[0], SizeOf(Byte));
+  Params.Write(ParamsBuf[1], SizeOf(Word)*4);
+  Params.Write(ParamsBuf[5], SizeOf(Byte));
+  if Assigned(Token.Next) then
+  begin
+    FAssembler.Error('Extra token(s) after filter TRANSFORM parameters');
+    Exit;
+  end;
+  Result:=true;
+end;
+
+function TSynTexFilterAssemblers.AssembleBlur(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+type
+  TParams=packed record
+    SizeX, SizeY, Filter, Amp, Flags: Byte;
+  end;
+var
+  P: TParams;
+  I: Integer;
+begin
+  Result:=false;
+  if RegsCount<>2 then
+  begin
+    FAssembler.Error('Filter BLUR needs 2 registers');
+    Exit;
+  end;
+  if not GetInteger(Token, 1, 255, 'BLUR', 'SIZEX', I) then Exit;
+  P.SizeX:=I;
+  if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
+  if not GetInteger(Token, 1, 255, 'BLUR', 'SIZEY', I) then Exit;
+  P.SizeY:=I;
+  if not FAssembler.NextToken(Token, 'Identifier expected') then Exit;
+  if Token.TokenType<>stIdentifier then
+  begin
+    FAssembler.Error('Identifier expected, but '+TokenName[Token.TokenType]+' found');
+    Exit;
+  end;
+  P.Filter:=IdentifierToIndex(BlurFilters, Token.Value);
+  if P.Filter=$FF then
+  begin
+    FAssembler.Error('Unknown filter BLUR filter');
+    Exit;
+  end;
+  if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
+  if not GetInteger(Token, 0, 255, 'BLUR', 'AMP', I) then Exit;
+  P.Amp:=I;
+  if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
+  if not GetInteger(Token, 0, 255, 'BLUR', 'FLAGS', I) then Exit;
+  P.Flags:=I;
+  Params.Write(P, SizeOf(P));
+  if Assigned(Token.Next) then
+  begin
+    FAssembler.Error('Extra token(s) after filter BLUR mode');
+    Exit;
+  end;
+  Result:=true;
+end;
+
+function TSynTexFilterAssemblers.AssembleColorRange(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+var
+  ParamsBuf: array[0..1] of Integer;
+  i: Integer;
+begin
+  Result:=false;
+  if RegsCount<>2 then
+  begin
+    FAssembler.Error('Filter COLORRANGE needs 2 registers');
+    Exit;
+  end;
+  for i:=0 to 1 do
+  begin
+    if not GetInteger(Token, -MaxInt-1, MaxInt, 'COLORRANGE', 'COLOR'+IntToStr(i), ParamsBuf[i]) then Exit;
+    if i<1 then
+      if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
+  end;
+  Params.Write(ParamsBuf, SizeOf(ParamsBuf));
+  if Assigned(Token.Next) then
+  begin
+    FAssembler.Error('Extra token(s) after filter COLORRANGE parameters');
+    Exit;
+  end;
+  Result:=true;
+end;
+
+function TSynTexFilterAssemblers.AssembleAdjust(Token: PSynTexToken; Params: TStream; RegsCount: Integer): Boolean;
+const
+  ParamNames: array[0..2] of string = ('BRIGHTNESS', 'CONTRAST', 'GAMMA');
+var
+  ParamsBuf: array[0..2] of Byte;
+  i, Int: Integer;
+begin
+  Result:=false;
+  if RegsCount<>2 then
+  begin
+    FAssembler.Error('Filter ADJUST needs 2 registers');
+    Exit;
+  end;
+  for i:=0 to 2 do
+  begin
+    if not GetInteger(Token, 0, 255, 'ADJUST', ParamNames[i], Int) then Exit;
+    ParamsBuf[i]:=Int;
+    if i<2 then
+      if not FAssembler.NextToken(Token, 'Integer expected') then Exit;
+  end;
+  Params.Write(ParamsBuf, SizeOf(ParamsBuf));
+  if Assigned(Token.Next) then
+  begin
+    FAssembler.Error('Extra token(s) after filter ADJUST parameters');
+    Exit;
+  end;
+  Result:=true;
+end;
+
+function TSynTexFilterAssemblers.GetInteger(Token: PSynTexToken; MinValue, MaxValue: Integer; FilterName, ParamName: string; var Value: Integer): Boolean;
+begin
+  Result:=false;
+  if not Assigned(Token) then
+  begin
+    FAssembler.Error('Integer expected');
+    Exit;
+  end;
+  if Token.TokenType<>stInteger then
+  begin
+    FAssembler.Error('Integer expected, but '+TokenName[Token.TokenType]+' found');
+    Exit;
+  end;
+  if not FAssembler.TokenValueInteger(Token, Value) then Exit;
+  if (Value<MinValue) or (Value>MaxValue) then
+  begin
+    FAssembler.Error(Format('Filter %s parameter %s out of bounds [%d..%d]', [FilterName, ParamName, MinValue, MaxValue]));
+    Exit;
+  end;
+  Token:=Token.Next;
   Result:=true;
 end;
 

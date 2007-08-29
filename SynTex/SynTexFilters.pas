@@ -6,11 +6,13 @@ uses
   Windows, AvL, avlUtils, SynTex, Noise, avlVectors, avlMath;
 
 type
+  TTransformFunc=function(X, Y: Integer): Integer; //returns 1D coordinate in register
   TSynTexFilters=class
   protected
     FSynTex: TSynTex;
     function  WrapVal(Val, Max: Integer; Clamp: Boolean): Integer;
     function  PixelIndex(X, Y: Integer; ClampX, ClampY: Boolean): Integer;
+    function  GetPixel(Reg: PSynTexRegister; X, Y: Single; ClampX, ClampY, LERP: Boolean): TRGBA;
     function  BlendColors(Color1, Color2: TRGBA; Blend: Byte): TRGBA; overload;
     function  BlendColors(Color1, Color2: TRGBA; Blend: TRGBA): TRGBA; overload;
     function  Add(Color1, Color2: TRGBA; Clamp: Boolean): TRGBA;
@@ -19,6 +21,10 @@ type
     function  Mul(Color1, Color2: TRGBA): TRGBA; overload;
     function  Mul(Color: TRGBA; Scale: Byte): TRGBA; overload;
     function  Mul(Color: TRGBA; Scale: Integer; Clamp: Boolean): TRGBA; overload;
+    procedure Convolution1D(Dst, Src: PSynTexRegister; Kernel: array of Single; Amp: Single; Horz, ClampX, ClampY: Boolean);
+    function  BlurFilterFlat(D: Single): Single;
+    function  BlurFilterLinear(D: Single): Single;
+    function  BlurFilterGauss(D: Single): Single;
   public
     constructor Create(SynTex: TSynTex);
     function FiltFill(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
@@ -30,6 +36,11 @@ type
     function FiltBump(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
     function FiltNormals(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
     function FiltGlowRect(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+    function FiltDistort(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+    function FiltTransform(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+    function FiltBlur(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+    function FiltColorRange(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+    function FiltAdjust(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
   end;
 
 implementation
@@ -52,6 +63,11 @@ begin
   SynTex.AddFilter(FLT_BUMP, FiltBump);
   SynTex.AddFilter(FLT_NORMALS, FiltNormals);
   SynTex.AddFilter(FLT_GLOWRECT, FiltGlowRect);
+  SynTex.AddFilter(FLT_DISTORT, FiltDistort);
+  SynTex.AddFilter(FLT_TRANSFORM, FiltTransform);
+  SynTex.AddFilter(FLT_BLUR, FiltBlur);
+  SynTex.AddFilter(FLT_COLORRANGE, FiltColorRange);
+  SynTex.AddFilter(FLT_ADJUST, FiltAdjust);
 end;
 
 function TSynTexFilters.FiltFill(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
@@ -183,7 +199,9 @@ end;
 
 function TSynTexFilters.FiltBump(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
 type
-  TParams=(pPhi, pTheta, pAmplify, pDiffAmount, pSpecAmount, pSpecPower);
+  TParams=packed record
+    Phi, Theta, Amplify, DiffAmount, SpecAmount, SpecPower: Byte;
+  end;
 const
   View: TVector3D = (X: 0; Y: 0; Z: 1);
 var
@@ -191,15 +209,18 @@ var
   LDir, H, Normal: TVector3D;
   Pix: Integer;
   I: Integer;
-  Params: packed array[TParams] of Byte;
+  Params: TParams;
 begin
   Result:=false;
   if RegsCount<>2 then Exit;
   if not CheckRemain(Parameters, SizeOf(Params){$IFDEF SYNTEX_USELOG}, 'Filter:Bump'{$ENDIF}) then Exit;
   Parameters.Read(Params, SizeOf(Params));
-  LDir.X:=cos(Params[pPhi]*BDegToRad)*sin(Params[pTheta]*BDegToRad/2);
-  LDir.Y:=sin(Params[pPhi]*BDegToRad)*sin(Params[pTheta]*BDegToRad/2);
-  LDir.Z:=cos(Params[pTheta]*BDegToRad/2);
+  with Params, LDir do
+  begin
+    X:=cos(Phi*BDegToRad)*sin(Theta*BDegToRad/2);
+    Y:=sin(Phi*BDegToRad)*sin(Theta*BDegToRad/2);
+    Z:=cos(Theta*BDegToRad/2);
+  end;
   H:=VectorAdd(LDir, View);
   VectorNormalize(H);
   for X:=0 to FSynTex.TexSize-1 do
@@ -210,9 +231,9 @@ begin
       Normal.Y:=(Regs[1]^[Pix].G-128)/128;
       Normal.Z:=(Regs[1]^[Pix].B-128)/128;
       VectorNormalize(Normal);
-      I:=Max(Round(VectorDotProduct(Normal, LDir)*Params[pDiffAmount]*8), 0)+
-         Max(Round(Power(VectorDotProduct(Normal, H), Params[pSpecPower])*Params[pDiffAmount]*8), 0);
-      Regs[0]^[Pix]:=Mul(Mul(Regs[0]^[Pix], I, true), Params[pAmplify]*32, true);
+      I:=Max(Round(VectorDotProduct(Normal, LDir)*Params.DiffAmount*8), 0)+
+         Max(Round(Power(VectorDotProduct(Normal, H), Params.SpecPower)*Params.DiffAmount*8), 0);
+      Regs[0]^[Pix]:=Mul(Mul(Regs[0]^[Pix], I, true), Params.Amplify*32, true);
     end;
   Result:=true;
 end;
@@ -297,6 +318,176 @@ begin
   Result:=true;
 end;
 
+function TSynTexFilters.FiltDistort(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+type
+  TParams=packed record
+    Amount, Flags: Byte;
+  end;
+var
+  X, Y, Pix: Integer;
+  Scale: Single;
+  Params: TParams;
+  ClampX, ClampY, LERP: Boolean;
+begin
+  Result:=false;
+  if (RegsCount<>3) or not CheckRemain(Parameters, SizeOf(Params){$IFDEF SYNTEX_USELOG}, 'Filter:Distort'{$ENDIF}) then Exit;
+  Parameters.Read(Params, SizeOf(Params));
+  with Params do
+  begin
+    ClampX:=Flags and FlagClampX <> 0;
+    ClampY:=Flags and FlagClampY <> 0;
+    LERP:=Flags and FlagNoLERP = 0;
+    Scale:=Amount/32;
+  end;
+  for X:=0 to FSynTex.TexSize-1 do
+    for Y:=0 to FSynTex.TexSize-1 do
+    begin
+      Pix:=PixelIndex(X, Y, true, true);
+      Regs[0]^[Pix]:=GetPixel(Regs[1], X+Scale*(Regs[2]^[Pix].R-128), Y+Scale*(Regs[2]^[Pix].G-128), ClampX, ClampY, LERP);
+    end;
+  Result:=true;
+end;
+
+function TSynTexFilters.FiltTransform(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+type
+  TParams=packed record
+    Angle: Byte;
+    ZoomX, ZoomY: Word;
+    ScrollX, ScrollY: Word;
+    Flags: Byte;
+  end;
+var
+  X, Y: Integer;
+  Params: TParams;
+  ClampX, ClampY, LERP: Boolean;
+  S, C: Single;
+  ScrX, ScrY, SclX, SclY: Single;
+begin
+  Result:=false;
+  if (RegsCount<>2) or not CheckRemain(Parameters, SizeOf(Params){$IFDEF SYNTEX_USELOG}, 'Filter:Transform'{$ENDIF}) then Exit;
+  Parameters.Read(Params, SizeOf(Params));
+  with Params do
+  begin
+    ClampX:=Flags and FlagClampX <> 0;
+    ClampY:=Flags and FlagClampY <> 0;
+    LERP:=Flags and FlagNoLERP = 0;
+    S:=sin(Angle*BDegToRad);
+    C:=cos(Angle*BDegToRad);
+    ScrX:=(ScrollX-32768)*(FSynTex.TexSize/10000);
+    ScrY:=(ScrollY-32768)*(FSynTex.TexSize/10000);
+    if ZoomX<>32768 then SclX:=1000/(ZoomX-32768) else SclX:=1;
+    if ZoomY<>32768 then SclY:=1000/(ZoomY-32768) else SclY:=1;
+  end;
+  for X:=0 to FSynTex.TexSize-1 do
+    for Y:=0 to FSynTex.TexSize-1 do
+    begin
+      Regs[0]^[PixelIndex(X, Y, true, true)]:=GetPixel(Regs[1],
+        SclX*X*C-SclY*Y*S-ScrX, SclX*X*S+SclY*Y*C-ScrY, ClampX, ClampY, LERP);
+    end;
+  Result:=true;
+end;
+
+function TSynTexFilters.FiltBlur(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+type
+  TParams=packed record
+    SizeX, SizeY, Filter, Amp, Flags: Byte;
+  end;
+  TBlurFilter=function(D: Single): Single of object;
+
+  procedure MakeKernel(var Kernel: array of Single; Size: Integer; Filter: TBlurFilter);
+  var
+    i: Integer;
+    WeightsSum: Single;
+  begin
+    WeightsSum:=0;
+    for i:=0 to Size do
+    begin
+      Kernel[i]:=Filter(i/Size);
+      WeightsSum:=WeightsSum+Kernel[i];
+      if i>0 then WeightsSum:=WeightsSum+Kernel[i];
+    end;
+    for i:=0 to Size do Kernel[i]:=Kernel[i]/WeightsSum;
+  end;
+
+var
+  Params: TParams;
+  ClampX, ClampY: Boolean;
+  Temp: TSynTexRegister;
+  KernelX, KernelY: array of Single;
+  BlurFilter: TBlurFilter;
+begin
+  Result:=false;
+  if (RegsCount<>2) or not CheckRemain(Parameters, SizeOf(Params){$IFDEF SYNTEX_USELOG}, 'Filter:Blur'{$ENDIF}) then Exit;
+  Parameters.Read(Params, SizeOf(Params));
+  with Params do
+  begin
+    ClampX:=Flags and FlagClampX <> 0;
+    ClampY:=Flags and FlagClampY <> 0;
+    case Filter of
+      BLURFILTER_FLAT: BlurFilter:=BlurFilterFlat;
+      BLURFILTER_LINEAR: BlurFilter:=BlurFilterLinear;
+      BLURFILTER_GAUSS: BlurFilter:=BlurFilterGauss;
+      else BlurFilter:=BlurFilterGauss;
+    end;
+    try
+      SetLength(KernelX, SizeX+1);
+      MakeKernel(KernelX, SizeX, BlurFilter);
+      SetLength(KernelY, SizeY+1);
+      MakeKernel(KernelY, SizeY, BlurFilter);
+      SetLength(Temp, FSynTex.TexSize*FSynTex.TexSize);
+      Convolution1D(@Temp, Regs[1], KernelX, Params.Amp/8, true, ClampX, ClampY);
+      Convolution1D(Regs[0], @Temp, KernelY, Params.Amp/8, false, ClampX, ClampY);
+    finally
+      Finalize(Temp);
+      Finalize(KernelX);
+      Finalize(KernelY);
+    end;
+  end;
+  Result:=true;
+end;
+
+function TSynTexFilters.FiltColorRange(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+var
+  Clrs: packed array[0..1] of TRGBA;
+  i: Integer;
+begin
+  Result:=(RegsCount=2) and CheckRemain(Parameters, SizeOf(Clrs){$IFDEF SYNTEX_USELOG}, 'Filter:ColorRange'{$ENDIF});
+  if not Result then Exit;
+  try
+    Parameters.Read(Clrs[0], SizeOf(Clrs));
+    for i:=0 to FSynTex.TexSize*FSynTex.TexSize-1 do
+      Regs[0]^[i]:=BlendColors(Clrs[0], Clrs[1], Regs[1]^[i]);
+  except
+    Result:=false;
+  end;
+end;
+
+function TSynTexFilters.FiltAdjust(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean;
+type
+  TParams=packed record
+    Brightness, Contrast, Gamma: Byte;
+  end;
+var
+  Params: TParams;
+  i: Integer;
+begin
+  Result:=(RegsCount=2) and CheckRemain(Parameters, SizeOf(Params){$IFDEF SYNTEX_USELOG}, 'Filter:Adjust'{$ENDIF});
+  if not Result then Exit;
+  try
+    Parameters.Read(Params, SizeOf(Params));
+    for i:=0 to FSynTex.TexSize*FSynTex.TexSize-1 do
+      with Params do
+      begin
+        Regs[0]^[i].R:=WrapVal(Round(Brightness+8*Contrast*(2*Power(Regs[1]^[i].R/255, Gamma/64)-1)), 256, true);
+        Regs[0]^[i].G:=WrapVal(Round(Brightness+8*Contrast*(2*Power(Regs[1]^[i].G/255, Gamma/64)-1)), 256, true);
+        Regs[0]^[i].B:=WrapVal(Round(Brightness+8*Contrast*(2*Power(Regs[1]^[i].B/255, Gamma/64)-1)), 256, true);
+        Regs[0]^[i].A:=WrapVal(Round(Brightness+8*Contrast*(2*Power(Regs[1]^[i].A/255, Gamma/64)-1)), 256, true);
+      end;
+  except
+    Result:=false;
+  end;
+end;
+
 function TSynTexFilters.WrapVal(Val, Max: Integer; Clamp: Boolean): Integer;
 begin
   if Clamp then
@@ -321,15 +512,25 @@ begin
   Result:=Y*FSynTex.TexSize+X;
 end;
 
-{function TSynTexFilters.GetPixel(Reg: PSynTexRegister; X, Y: Integer; ClampX, ClampY: Boolean): TRGBA;
+function TSynTexFilters.GetPixel(Reg: PSynTexRegister; X, Y: Single; ClampX, ClampY, LERP: Boolean): TRGBA;
+var
+  Pix0, Pix1: TRGBA;
+  X0, X1, Y0, Y1: Integer;
+  BlendX: Byte;
 begin
-  Result:=Reg^[PixelIndex(X, Y, ClampX, ClampY)];
+  if LERP then
+  begin
+    X0:=Floor(X);
+    X1:=X0+1;
+    Y0:=Floor(Y);
+    Y1:=Y0+1;
+    BlendX:=WrapVal(Round((X-X0)*255), 256, true);
+    Pix0:=BlendColors(Reg^[PixelIndex(X0, Y0, ClampX, ClampY)], Reg^[PixelIndex(X1, Y0, ClampX, ClampY)], BlendX);
+    Pix1:=BlendColors(Reg^[PixelIndex(X0, Y1, ClampX, ClampY)], Reg^[PixelIndex(X1, Y1, ClampX, ClampY)], BlendX);
+    Result:=BlendColors(Pix0, Pix1, WrapVal(Round((Y-Y0)*255), 256, true));
+  end
+    else Result:=Reg^[PixelIndex(Round(X), Round(Y), ClampX, ClampY)];
 end;
-
-procedure TSynTexFilters.SetPixel(Reg: PSynTexRegister; X, Y: Integer; ClampX, ClampY: Boolean; Pixel: TRGBA);
-begin
-  Reg^[PixelIndex(X, Y, ClampX, ClampY)]:=Pixel;
-end; }
 
 function TSynTexFilters.BlendColors(Color1, Color2: TRGBA; Blend: Byte): TRGBA;
 begin
@@ -393,6 +594,53 @@ begin
   Result.G:=WrapVal(Color.G*Scale shr 8, 256, Clamp);
   Result.B:=WrapVal(Color.B*Scale shr 8, 256, Clamp);
   Result.A:=WrapVal(Color.A*Scale shr 8, 256, Clamp);
+end;
+
+procedure TSynTexFilters.Convolution1D(Dst, Src: PSynTexRegister; Kernel: array of Single; Amp: Single; Horz, ClampX, ClampY: Boolean);
+const
+  DirSel: array[Boolean] of record X, Y: Byte; end = ((X: 0; Y: 1), (X: 1; Y:0));
+  DirSign: array[0..1] of ShortInt = (-1, 1);
+var
+  X, Y, i, j, Pix, SPix: Integer;
+  R, G, B, A: Single;
+begin
+  for X:=0 to FSynTex.TexSize-1 do
+    for Y:=0 to FSynTex.TexSize-1 do
+    begin
+      Pix:=PixelIndex(X, Y, ClampX, ClampY);
+      R:=Kernel[0]*Src^[Pix].R;
+      G:=Kernel[0]*Src^[Pix].G;
+      B:=Kernel[0]*Src^[Pix].B;
+      A:=Kernel[0]*Src^[Pix].A;
+      for i:=1 to High(Kernel) do
+        for j:=0 to 1 do
+        begin
+          SPix:=PixelIndex(X+i*DirSel[Horz].X*DirSign[j], Y+i*DirSel[Horz].Y*DirSign[j], ClampX, ClampY);
+          R:=R+Kernel[i]*Src^[SPix].R;
+          G:=G+Kernel[i]*Src^[SPix].G;
+          B:=B+Kernel[i]*Src^[SPix].B;
+          A:=A+Kernel[i]*Src^[SPix].A;
+        end;
+      Dst^[Pix].R:=WrapVal(Round(R*Amp), 256, true);
+      Dst^[Pix].G:=WrapVal(Round(G*Amp), 256, true);
+      Dst^[Pix].B:=WrapVal(Round(B*Amp), 256, true);
+      Dst^[Pix].A:=WrapVal(Round(A*Amp), 256, true);
+    end;
+end;
+
+function TSynTexFilters.BlurFilterFlat(D: Single): Single;
+begin
+  Result:=1;
+end;
+
+function TSynTexFilters.BlurFilterLinear(D: Single): Single;
+begin
+  Result:=1-D;
+end;
+
+function TSynTexFilters.BlurFilterGauss(D: Single): Single;
+begin
+  Result:=Exp(-3*D*D);
 end;
 
 end.
