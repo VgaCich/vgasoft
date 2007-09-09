@@ -47,6 +47,7 @@ procedure VectorSub(var Vector:TVector3D; Value : Single); overload;
 function VectorDivide(const Vector1, Vector2:TVector3D):TVector3D;overload;
 function VectorDivide(const Vector:TVector3D; Value:Single):TVector3D;overload;
 function VectorMultiply(const Vector1, Vector2:TVector3D):TVector3D; overload;
+function VectorMultiply(const Vector1: TVector3D; Value: Single):TVector3D; overload;
 procedure VectorScale(var Vector:TVector3D; Value:Single);
 function VectorCrossProduct(const Vector1, Vector2:TVector3D):TVector3D;
 function VectorDotProduct(const Vector1, Vector2:TVector3D):Single;
@@ -61,6 +62,7 @@ function VectorIsLessEqual(const Vector1, Vector2:TVector3D):Boolean;
 function ByteColorTo4f(const BytesToWrap:TByteColor):TVector4f;
 function Color4fToByte(const BytesToWrap:TVector4f):TByteColor;
 function TriangleNormal(Vert1, Vert2, Vert3: TVector3D): TVector3D;
+function TriangleAngle(Vert1, Vert2, Vert3: TVector3D): Single;
 
 implementation
 
@@ -185,6 +187,13 @@ begin
   Result.Z := Vector1.Z * Vector2.Z;
 end;
 
+function VectorMultiply(const Vector1: TVector3D; Value: Single):TVector3D;
+begin
+  Result.X := Vector1.X * Value;
+  Result.Y := Vector1.Y * Value;
+  Result.Z := Vector1.Z * Value;
+end;
+
 procedure VectorScale(var Vector:TVector3D; Value:Single);
 begin
   Vector.X := Vector.X * Value;
@@ -289,6 +298,13 @@ begin
   Vert3:=VectorSub(Vert1, Vert3);
   Result:=VectorCrossProduct(Vert2, Vert3);
   VectorNormalize(Result);
+end;
+
+function TriangleAngle(Vert1, Vert2, Vert3: TVector3D): Single;
+begin
+  Vert2:=VectorSub(Vert1, Vert2);
+  Vert3:=VectorSub(Vert1, Vert3);
+  Result:=arccos(VectorDotProduct(Vert2, Vert3)/(VectorSize(Vert2)*VectorSize(Vert3)));
 end;
 
 end.
