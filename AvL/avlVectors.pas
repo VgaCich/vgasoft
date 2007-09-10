@@ -35,7 +35,8 @@ type
 
 function VectorSetValue(Value:Single): TVector3D; overload;
 function VectorSetValue(X, Y, Z: Single): TVector3D; overload;
-procedure VectorClear(var Vector:TVector3D);
+procedure VectorClear(var Vector:TVector3D); overload;
+procedure VectorClear(var Vector:TVector2D); overload;
 procedure VectorInvert(var Vector:TVector3D);
 function VectorSize(const Vector:TVector3D) : Single;
 function VectorNormalize(var Vector:TVector3D) : Single;
@@ -88,6 +89,10 @@ begin
   ZeroMemory(@Vector, SizeOf(TVector3D));
 end;
 
+procedure VectorClear(var Vector:TVector2D);
+begin
+  ZeroMemory(@Vector, SizeOf(TVector2D));
+end;
 
 procedure VectorInvert(var Vector:TVector3D);
 begin

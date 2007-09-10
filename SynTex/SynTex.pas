@@ -3,7 +3,7 @@ unit SynTex;
 interface
 
 uses
-  Windows, AvL, avlUtils, avlClasses, avlMath;
+  Windows, AvL, avlUtils, avlMath;
 
 const
   SynTexRegsCount=16;
