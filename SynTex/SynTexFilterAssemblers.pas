@@ -3,7 +3,7 @@ unit SynTexFilterAssemblers;
 interface
 
 uses
-  Windows, AvL, avlUtils, SynTexAssembler;
+  Windows, AvL, avlUtils, SynTex, SynTexAssembler;
 
 type
   TSynTexFilterAssemblers=class

@@ -34,3 +34,61 @@ const
   FlagClampY=2;
   FlagNoLERP=4;
 
+  BDegToRad=pi/128;
+
+type
+  PFillParams=^TFillParams;
+  TFillParams=packed record
+    Color: TRGBA;
+  end;
+  PAddParams=^TAddParams;
+  TAddParams=packed record
+    Mode: Byte;
+  end;
+  PPixelsParams=^TPixelsParams;
+  TPixelsParams=packed record
+    Count: Integer;
+    Color0, Color1: TRGBA;
+  end;
+  PPerlinParams=^TPerlinParams;
+  TPerlinParams=packed record
+    Freq, Octaves, Fade, Amp: Byte;
+    Color0, Color1: TRGBA;
+  end;
+  PBumpParams=^TBumpParams;
+  TBumpParams=packed record
+    Phi, Theta, Amplify, DiffAmount, SpecAmount, SpecPower: Byte;
+  end;
+  PNormalsParams=^TNormalsParams;
+  TNormalsParams=packed record
+    Amount: Byte;
+  end;
+  PGlowRectParams=^TGlowRectParams;
+  TGlowRectParams=packed record
+    PosX, PosY, RadX, RadY, SizeX, SizeY, Blend, Pow: Word;
+    Color: TRGBA;
+  end;
+  PDistortParams=^TDistortParams;
+  TDistortParams=packed record
+    Amount, Flags: Byte;
+  end;
+  PTransformParams=^TTransformParams;
+  TTransformParams=packed record
+    Angle: Byte;
+    ZoomX, ZoomY: Word;
+    ScrollX, ScrollY: Word;
+    Flags: Byte;
+  end;
+  PBlurParams=^TBlurParams;
+  TBlurParams=packed record
+    SizeX, SizeY, Filter, Amp, Flags: Byte;
+  end;
+  PColorRangeParams=^TColorRangeParams;
+  TColorRangeParams=packed record
+    Color0, Color1: TRGBA;
+  end;
+  PAdjustParams=^TAdjustParams;
+  TAdjustParams=packed record
+    Brightness, Contrast, Gamma: Byte;
+  end;
+

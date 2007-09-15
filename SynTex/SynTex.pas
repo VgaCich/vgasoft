@@ -26,7 +26,7 @@ type
     Params: TStream;
   end;
   TSynTex=class;
-  TSynTexFilter=function(Regs: array of PSynTexRegister; RegsCount: Integer; Parameters: TStream): Boolean of object;
+  TSynTexFilter=function(Regs: array of PSynTexRegister; RegsCount: Integer; Params: Pointer; ParamsSize: Integer): Boolean of object;
   TSynTexFilterRec=record
     ID: Byte;
     Filter: TSynTexFilter;
@@ -187,6 +187,7 @@ var
   Cmd: TSynTexCmd;
   i, CmdPos, DataInt: Integer;
   Filter: TSynTexFilter;
+  P: Pointer;
 
   function ReadStr: string;
   var
@@ -212,22 +213,19 @@ begin
           FCode.Position:=Integer(FCallStack.Last);
           FCallStack.Delete(FCallStack.Count-1);
         end
-          else Exit;
-      ccJump:
-        begin
-          if not Assigned(Cmd.Params) then Exit;
-          if not CheckRemain(Cmd.Params, SizeOf(DataInt){$IFDEF SYNTEX_USELOG}, 'Step:Jump'{$ENDIF}) then Exit;
-          Cmd.Params.Read(DataInt, SizeOf(DataInt));
-          if (DataInt<0) or (DataInt>FCode.Size) then Exit;
-          FCode.Position:=DataInt;
+        else begin
+          Result:=true;
+          Exit;
         end;
-      ccCall:
+      ccJump, ccCall:
         begin
           if not Assigned(Cmd.Params) then Exit;
-          if not CheckRemain(Cmd.Params, SizeOf(DataInt){$IFDEF SYNTEX_USELOG}, 'Step:Call'{$ENDIF}) then Exit;
+          if not CheckRemain(Cmd.Params, SizeOf(DataInt){$IFDEF SYNTEX_USELOG}, 'Step:'+Commands[TCmdCode(Cmd.Fixed.CmdCode)]{$ENDIF})
+            then Exit;
           Cmd.Params.Read(DataInt, SizeOf(DataInt));
           if (DataInt<0) or (DataInt>FCode.Size) then Exit;
-          FCallStack.Add(Pointer(FCode.Position));
+          if TCmdCode(Cmd.Fixed.CmdCode)=ccCall
+            then FCallStack.Add(Pointer(FCode.Position));
           FCode.Position:=DataInt;
         end;
       ccLoad: if Assigned(FOnLoad) then
@@ -248,7 +246,18 @@ begin
             {$IFDEF SYNTEX_USELOG}Log('Step: filter ID='+IntToStr(DataInt)+' not found');{$ENDIF}
             Exit;
           end;
-          if not Filter(Cmd.Regs, Length(Cmd.Regs), Cmd.Params) then Exit;
+          DataInt:=Cmd.Params.Size-1;
+          try
+            if DataInt>0 then
+            begin
+              GetMem(P, DataInt);
+              Cmd.Params.Read(P^, DataInt);
+            end
+              else P:=nil;
+            if not Filter(Cmd.Regs, Length(Cmd.Regs), P, DataInt) then Exit;
+          finally
+            if Assigned(P) then FreeMem(P);
+          end;
         end;
       ccSetRandomSeed:
         begin
