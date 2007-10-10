@@ -403,7 +403,7 @@ begin
   AddTrailingBackslashV(Result);
   SetLength(Result, Length(Result)+8);
   repeat
-    for i:=Length(Result)-8 to Length(Result) do
+    for i:=Length(Result)-7 to Length(Result) do
       Result[i]:=Chr(65+Random(25));
   until not FileExists(Result);
 end;
