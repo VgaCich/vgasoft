@@ -1,0 +1,82 @@
+Перемещение камеры - WSAD
+Ускорение - Shift
+Замедление - Control
+Выход в меню - Escape
+
+Геймплея еще нет, так что и описывать дальше нечего :(
+В будущем это возможно станет игрушкой жанра artillery game
+
+P.S. Обратите внимание, тут не одна страничка :)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- AssaultLite.dpr			48 lines
+- GamePlayer.pas			76 lines
+- GameUnit.pas			105 lines
+- GUI.pas			385 lines
+- MemPak.pas			85 lines
+- MemPakTypes.inc			5 lines
+- oglExtensions.pas			282 lines
+- OpenGLExt.pas			241 lines
+- PrimitiveModel.inc			77 lines
+- PrimitiveModel.pas			838 lines
+- Shaders.pas			337 lines
+- Sky.pas			60 lines
+- StateGame.pas			210 lines
+- StateLoad.pas			232 lines
+- StateMenu.pas			563 lines
+- Noise.pas			92 lines
+- SynTex.pas			448 lines
+- SynTexAssembler.pas			702 lines
+- SynTexFilterAssemblers.pas			616 lines
+- SynTexFilters.inc			94 lines
+- SynTexFilters.pas			668 lines
+- Terrain.pas			190 lines
+- BestCompress.dpr			87 lines
+- MemPak.dpr			87 lines
+- PMBuild.pas			2084 lines
+- devTabs.pas			1433 lines
+- FPSpin.pas			304 lines
+- SDDialog.pas			70 lines
+- cfg.pas			40 lines
+- eXgine.pas			475 lines
+- Vectors.pas			315 lines
+- FormAbout.pas			29 lines
+- FormMain.pas			794 lines
+- FormPrefs.pas			39 lines
+- FrameMaterial.pas			207 lines
+- FrameMesh.pas			226 lines
+- FrameModel.pas			52 lines
+- FrameObject.pas			187 lines
+- FramePriCube.pas			82 lines
+- FramePrimitive.pas			179 lines
+- FramePriSphere.pas			116 lines
+- GlobalVariables.pas			54 lines
+- Import3ds.pas			159 lines
+- PMEdit.dpr			29 lines
+- STAsm.dpr			68 lines
+- UArrayBuffer.pas			121 lines
+- UCamera.pas			44 lines
+- UTexMan.pas			505 lines
+- VertexArrayUtils.pas			51 lines
+- VSECollisionCheck.pas			18 lines
+- VSECore.pas			749 lines
+- VSEGameStates.pas			70 lines
+- VSEInit.pas			68 lines
+- VSELog.pas			77 lines
+- VSESysInfo.pas			113 lines
+Lines : 15286
+Size  : 443816

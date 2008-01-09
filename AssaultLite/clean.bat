@@ -1,0 +1,14 @@
+Tools\Compress\StripReloc AssaultLite.exe
+del MemPak.inc
+del *.~*
+del *.dcu
+del DCU\*.dcu
+del *.cfg
+del *.map
+del *.map.txt
+del *.drc
+del *.exe.bak
+cd Tools
+call Clean
+cd ..\SynTex
+call Clean

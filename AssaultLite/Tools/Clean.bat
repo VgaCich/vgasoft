@@ -1,0 +1,11 @@
+cd Compress
+call Clean
+cd ..\MemPak
+call Clean
+cd ..\STAsm
+call Clean
+cd ..\PMBuild
+call Clean
+cd ..\PMEdit
+call Clean
+cd ..
