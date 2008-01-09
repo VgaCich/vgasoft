@@ -10,5 +10,3 @@ del *.drc
 del *.exe.bak
 cd Tools
 call Clean
-cd ..\SynTex
-call Clean
