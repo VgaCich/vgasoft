@@ -77,6 +77,7 @@ type
     ZoomSpeedLabel: TLabel;
     procedure ElementsTreeChange(Sender: TObject; Node: TTreeNode);
     procedure ElementsTreeChanging(Sender: TObject; Node: TTreeNode; var AllowChange: Boolean);
+    procedure ElementsTreeKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ElementsTreeMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -290,6 +291,11 @@ end;
 procedure TMainForm.ElementsTreeChanging(Sender: TObject; Node: TTreeNode; var AllowChange: Boolean);
 begin
   FrameSave;
+end;
+
+procedure TMainForm.ElementsTreeKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key=VK_DELETE then TreeTBRemoveClick(Sender);
 end;
 
 procedure TMainForm.ElementsTreeMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -699,6 +705,7 @@ procedure TMainForm.TreeTBRemoveClick(Sender: TObject);
 begin
   if not (TObject(ElementsTree.Selected.Data) is TPMBModel) then
   begin
+    if MessageDlg('Really remove?', mtConfirmation, [mbYes, mbNo], 0)=mrNo then Exit;
     FrameClear;
     TObject(ElementsTree.Selected.Data).Free;
     ElementsTree.Selected.Delete;

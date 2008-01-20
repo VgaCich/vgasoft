@@ -99,9 +99,11 @@ type
     FDrawVerts: packed array of TVertex;
     FVerts: packed array of TPMVertex;
     FFaces: packed array of TFace;
+    FSelected: Boolean;
     procedure CreateDrawVerts;
     function  GetVertsCount: Integer;
     function  GetVertex(Index: Byte): TPMVertex;
+    procedure SetSelected(Value: Boolean);
     procedure SetVertex(Index: Byte; Vertex: TPMVertex);
   protected
     function  WriteChunk(Data: TStream): Boolean;
@@ -121,8 +123,12 @@ type
     property VertsCount: Integer read GetVertsCount;
     property Verts[Index: Byte]: TPMVertex read GetVertex write SetVertex;
     property HighlightVert: Integer read FHighlightVert write FHighlightVert;
+    property Selected: Boolean read FSelected write SetSelected;
   end;
   TPMBPrimitive=class
+  private
+    FSelected: Boolean;
+    procedure SetSelected(Value: Boolean);
   protected
     FObj: TPMBObject;
     FType, FFlags: Byte;
@@ -149,6 +155,7 @@ type
     property DrawNormals: Boolean read FDrawNormals write FDrawNormals;
     property TexGenUV: Boolean read FTexGenUV write FTexGenUV;
     property InvertNormals: Boolean read FInvertNormals write FInvertNormals;
+    property Selected: Boolean read FSelected write SetSelected;
   end;
   TPMBPrimitiveCube=class(TPMBPrimitive)
   private
@@ -245,6 +252,7 @@ type
     FMaterial: TPMBMaterial;
     FTransform: TPMBTransform;
     FMesh: TPMBMesh;
+    FSelected: Boolean;
     function  GetID: string;
     procedure SetID(const ID: string);
     procedure SetIID(IID: Cardinal);
@@ -253,6 +261,7 @@ type
     procedure SetMesh(Mesh: TPMBMesh);
     function  GetPrimitivesCount: Integer;
     function  GetPrimitive(Index: Integer): TPMBPrimitive;
+    procedure SetSelected(Value: Boolean);
   protected
     function  AddObject(Obj: TPMBObject): Integer;
     procedure DeleteObject(Obj: TPMBObject);
@@ -264,6 +273,7 @@ type
   public
     constructor Create(Model: TPMBModel; Parent: TPMBObject);
     destructor Destroy; override;
+    procedure DeselectAll;
     procedure Draw;
     procedure DrawUV;
     procedure SetVisibility(Visibility: Boolean);
@@ -279,6 +289,7 @@ type
     property Mesh: TPMBMesh read FMesh write SetMesh;
     property PrimitivesCount: Integer read GetPrimitivesCount;
     property Primitives[Index: Integer]: TPMBPrimitive read GetPrimitive;
+    property Selected: Boolean read FSelected write SetSelected;
   end;
   TPMBModel=class
   private
@@ -302,6 +313,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    procedure DeselectAll;
     procedure Draw;
     procedure SetVisibility(Visibility: Boolean);
     procedure LoadFromFile(const FileName: string);
@@ -770,6 +782,12 @@ var
 begin
   if not FVisible then Exit;
   CreateDrawVerts;
+  if FSelected then
+  begin
+    glPushAttrib(GL_LIGHTING_BIT or GL_CURRENT_BIT);
+    glColor(0.5, 0.5, 1.0);
+    glEnable(GL_COLOR_MATERIAL);
+  end;
   glBegin(GL_TRIANGLES);
     for i:=0 to High(FFaces) do
     begin
@@ -784,7 +802,8 @@ begin
       glVertex3fv(@FDrawVerts[FFaces[i].Vert3].Vertex);
     end;
   glEnd;
-  glPushAttrib(GL_ENABLE_BIT or GL_LIGHTING_BIT);
+  if FSelected then glPopAttrib;
+  glPushAttrib(GL_ENABLE_BIT or GL_LIGHTING_BIT or GL_CURRENT_BIT);
   glEnable(GL_COLOR_MATERIAL);
   glDisable(GL_TEXTURE_2D);
   glDisable(GL_LIGHTING);
@@ -1025,6 +1044,12 @@ begin
   if Index<VertsCount then Result:=FVerts[Index];
 end;
 
+procedure TPMBMesh.SetSelected(Value: Boolean);
+begin
+  if Value then FObj.Model.DeselectAll;
+  FSelected:=Value;
+end;
+
 procedure TPMBMesh.SetVertex(Index: Byte; Vertex: TPMVertex);
 begin
   if Index<VertsCount then FVerts[Index]:=Vertex;
@@ -1059,6 +1084,12 @@ begin
   if FInvertNormals then
     for i:=0 to High(FVerts) do
       VectorScale(FVerts[i].Normal, -1);
+  if FSelected then
+  begin
+    glPushAttrib(GL_LIGHTING_BIT or GL_CURRENT_BIT);
+    glColor(0.5, 0.5, 1.0);
+    glEnable(GL_COLOR_MATERIAL);
+  end;
   glBegin(GL_TRIANGLES);
     for i:=0 to High(FFaces) do
     begin
@@ -1073,9 +1104,10 @@ begin
       glVertex3fv(@FVerts[FFaces[i].Vert3].Vertex);
     end;
   glEnd;
+  if FSelected then glPopAttrib;
   if FDrawNormals then
   begin
-    glPushAttrib(GL_ENABLE_BIT or GL_LIGHTING_BIT);
+    glPushAttrib(GL_ENABLE_BIT or GL_LIGHTING_BIT or GL_CURRENT_BIT);
     glEnable(GL_COLOR_MATERIAL);
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_LIGHTING);
@@ -1183,6 +1215,12 @@ begin
     DoReadChunk(Data, ChunkEnd-Data.Position);
   end;
   if Data.Position<>ChunkEnd then raise Exception.Create(SCannotLoadModelChunkSizeMismatch);
+end;
+
+procedure TPMBPrimitive.SetSelected(Value: Boolean);
+begin
+  if Value then FObj.Model.DeselectAll;
+  FSelected:=Value;
 end;
 
 {TPMBPrimitiveCube}
@@ -1643,9 +1681,16 @@ begin
   glEnable(GL_NORMALIZE);
   FTransform.Apply;
   if Assigned(FMaterial) then FMaterial.Apply;
+  if FSelected then
+  begin
+    glPushAttrib(GL_LIGHTING_BIT or GL_CURRENT_BIT);
+    glColor(0.5, 0.5, 1.0);
+    glEnable(GL_COLOR_MATERIAL);
+  end;
   if Assigned(FMesh) then FMesh.Draw;
   for i:=0 to PrimitivesCount-1 do Primitives[i].Draw;
   for i:=0 to ObjectsCount-1 do Objects[i].Draw;
+  if FSelected then glPopAttrib;
   glPopMatrix;
 end;
 
@@ -1752,6 +1797,18 @@ begin
   FPrimitives.Remove(Primitive);
 end;
 
+procedure TPMBObject.DeselectAll;
+var
+  i: Integer;
+begin
+  FSelected:=false;
+  if Assigned(FMesh) then FMesh.FSelected:=false;
+  for i:=0 to PrimitivesCount-1 do
+    Primitives[i].FSelected:=false;
+  for i:=0 to ObjectsCOunt-1 do
+    Objects[i].DeselectAll;
+end;
+
 function TPMBObject.WriteChunk(Data: TStream): Boolean;
 var
   ChunkType, MatID: Byte;
@@ -1818,6 +1875,12 @@ begin
   end;
   while ChunkEnd>Data.Position do ReadChunk(Data);
   if ChunkEnd<>Data.Position then raise Exception.Create(SCannotLoadModelChunkSizeMismatch);
+end;
+
+procedure TPMBObject.SetSelected(Value: Boolean);
+begin
+  if Value then FModel.DeselectAll;
+  FSelected:=Value;
 end;
 
 {TPMBModel}
@@ -2047,6 +2110,14 @@ end;
 procedure TPMBModel.BindTexture(ID: Cardinal);
 begin
   if Assigned(FOnBindTex) then FOnBindTex(ID);
+end;
+
+procedure TPMBModel.DeselectAll;
+var
+  i: Integer;
+begin
+  for i:=0 to ObjectsCount-1 do
+    Objects[i].DeselectAll;
 end;
 
 procedure TPMBModel.ReadChunk(Data: TStream);

@@ -65,6 +65,7 @@ begin
   if Result then
   begin
     FObject:=Obj as TPMBObject;
+    FObject.Selected:=true;
     MaterialCombo.Items.Clear;
     for i:=0 to MainForm.Model.MaterialsCount-1 do
     begin

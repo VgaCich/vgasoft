@@ -116,6 +116,7 @@ object MainForm: TMainForm
         TabOrder = 0
         OnChange = ElementsTreeChange
         OnChanging = ElementsTreeChanging
+        OnKeyUp = ElementsTreeKeyUp
         OnMouseDown = ElementsTreeMouseDown
       end
       object TreeToolBar: TToolBar

@@ -28,8 +28,11 @@ implementation
 function TModelFrame.Fill(Obj: TObject): Boolean;
 begin
   Result:=Obj is TPMBModel;
-  if Result
-    then FModel:=Obj as TPMBModel
+  if Result then
+  begin
+    FModel:=Obj as TPMBModel;
+    FModel.DeselectAll;
+  end
     else FModel:=nil;
 end;
 

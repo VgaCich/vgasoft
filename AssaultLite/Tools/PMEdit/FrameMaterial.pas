@@ -74,6 +74,7 @@ begin
   if Result then
   begin
     FMaterial:=Obj as TPMBMaterial;
+    FMaterial.Model.DeselectAll;
     RefreshColor(FMaterial.Ambient, AmbientPaint, AmbientAlpha);
     RefreshColor(FMaterial.Diffuse, DiffusePaint, DiffuseAlpha);
     RefreshColor(FMaterial.Emission, EmissionPaint, EmissionAlpha);

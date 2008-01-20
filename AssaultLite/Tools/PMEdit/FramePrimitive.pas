@@ -61,6 +61,7 @@ begin
   if Result then
   begin
     FPri:=Obj as TPMBPrimitive;
+    FPri.Selected:=true;
     VisibleCheck.Checked:=FPri.Visible;
     DrawNormalsCheck.Checked:=FPri.DrawNormals;
     GenUVCheck.Checked:=FPri.TexGenUV;

@@ -71,6 +71,7 @@ begin
   if Result then
   begin
     FMesh:=Obj as TPMBMesh;
+    FMesh.Selected:=true;
     Refresh;
   end
     else FMesh:=nil;
@@ -78,6 +79,7 @@ end;
 
 procedure TMeshFrame.Clear;
 begin
+  FMesh.HighlightVert:=-1;
   FMesh:=nil;
   Vertices.Items.Clear;
 end;
