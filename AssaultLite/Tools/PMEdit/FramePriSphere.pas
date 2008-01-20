@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, 
-  Dialogs, StdCtrls, Spin, PMBuild, ComCtrls;
+  Dialogs, StdCtrls, Spin, ComCtrls, PMBuild;
 
 type
   TPriSphereFrame = class(TFrame)

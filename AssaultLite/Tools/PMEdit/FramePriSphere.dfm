@@ -23,29 +23,29 @@ object PriSphereFrame: TPriSphereFrame
       object GeomPage: TTabSheet
         Caption = 'Geometry'
         object Label1: TLabel
-          Left = 40
-          Top = 0
+          Left = 0
+          Top = 16
           Width = 30
           Height = 13
           Caption = 'Slices:'
         end
         object Label2: TLabel
-          Left = 112
-          Top = 0
+          Left = 0
+          Top = 48
           Width = 35
           Height = 13
           Caption = 'Stacks:'
         end
         object Label3: TLabel
-          Left = 0
-          Top = 16
+          Left = 40
+          Top = 0
           Width = 33
           Height = 13
           Caption = 'Count:'
         end
         object Label4: TLabel
-          Left = 0
-          Top = 48
+          Left = 112
+          Top = 0
           Width = 35
           Height = 13
           Caption = 'Sector:'
@@ -71,8 +71,8 @@ object PriSphereFrame: TPriSphereFrame
           OnClick = SmoothCheckClick
         end
         object Stacks: TSpinEdit
-          Left = 112
-          Top = 16
+          Left = 40
+          Top = 48
           Width = 65
           Height = 22
           MaxValue = 255
@@ -82,8 +82,8 @@ object PriSphereFrame: TPriSphereFrame
           OnChange = StacksChange
         end
         object SlicesSector: TSpinEdit
-          Left = 40
-          Top = 48
+          Left = 112
+          Top = 16
           Width = 65
           Height = 22
           MaxValue = 255

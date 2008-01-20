@@ -1,7 +1,6 @@
 program PMEdit;
 
 uses
-//  FastMM4,
   SysUtils,
   Forms,
   GlobalVariables in 'GlobalVariables.pas',
@@ -14,7 +13,8 @@ uses
   FormAbout in 'FormAbout.pas' {AboutForm},
   FormPrefs in 'FormPrefs.pas' {PrefsForm},
   FramePriCube in 'FramePriCube.pas' {PriCubeFrame: TFrame},
-  FramePriSphere in 'FramePriSphere.pas' {PriSphereFrame: TFrame};
+  FramePriSphere in 'FramePriSphere.pas' {PriSphereFrame: TFrame},
+  FramePriCone in 'FramePriCone.pas' {PriConeFrame: TFrame};
 
 {$R *.res}
 

@@ -166,6 +166,7 @@ const
     (PanX: 0; PanY: 0; PanZ: 0; Yaw: 0; Pitch: 0; Roll: 0; Scale: 1));
 
 resourcestring
+  RSReallyRemove = 'Really remove?';
   RSModelCleared = 'Model cleared';
   RSTreeMaterial = 'Material: %d';
   RSTreeMesh = 'Mesh';
@@ -446,6 +447,7 @@ begin
   finally
     ElementsTree.Items.EndUpdate;
     ElementsTree.FullExpand;
+    ElementsTree.Selected:=ElementsTree.Items[0];
   end;
 end;
 
@@ -705,7 +707,7 @@ procedure TMainForm.TreeTBRemoveClick(Sender: TObject);
 begin
   if not (TObject(ElementsTree.Selected.Data) is TPMBModel) then
   begin
-    if MessageDlg('Really remove?', mtConfirmation, [mbYes, mbNo], 0)=mrNo then Exit;
+    if MessageDlg(RSReallyRemove, mtConfirmation, [mbYes, mbNo], 0)=mrNo then Exit;
     FrameClear;
     TObject(ElementsTree.Selected.Data).Free;
     ElementsTree.Selected.Delete;

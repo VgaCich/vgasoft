@@ -206,6 +206,36 @@ object PrimitiveFrame: TPrimitiveFrame
           end
         end
       end
+      inline PriConeFrame: TPriConeFrame
+        Left = 0
+        Top = 0
+        Width = 221
+        Height = 66
+        Align = alClient
+        TabOrder = 2
+        inherited ConeGroup: TGroupBox
+          Width = 221
+          Height = 66
+          inherited PageControl1: TPageControl
+            Width = 217
+            Height = 49
+            inherited TexCoordsSidePage: TTabSheet
+              inherited SizeV: TSpinEdit
+                OnChange = nil
+              end
+              inherited SizeU: TSpinEdit
+                OnChange = nil
+              end
+              inherited OrigV: TSpinEdit
+                OnChange = nil
+              end
+              inherited OrigU: TSpinEdit
+                OnChange = nil
+              end
+            end
+          end
+        end
+      end
     end
     object GenUVCheck: TCheckBox
       Left = 8

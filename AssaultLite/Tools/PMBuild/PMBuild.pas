@@ -376,7 +376,6 @@ begin
       if VectorIsEqual(VA[Vert1].Vertex, VA[Vert2].Vertex) or
          VectorIsEqual(VA[Vert1].Vertex, VA[Vert3].Vertex) or
          VectorIsEqual(VA[Vert2].Vertex, VA[Vert3].Vertex) then Continue;
-      Assert((Vert1>=0) and (Vert2>=0) and (Vert3>=0), Format('ComputeNormals: negative index %d: %d, %d, %d', [i, Vert1, Vert2, Vert3]));
       Assert((Vert1<Length(VA)) and (Vert2<Length(VA)) and (Vert3<Length(VA)), Format('ComputeNormals: too large index %d: %d, %d, %d', [i, Vert1, Vert2, Vert3]));
       Normal:=TriangleNormal(VA[Vert1].Vertex, VA[Vert2].Vertex, VA[Vert3].Vertex);
       VA[Vert1].Normal:=VectorAdd(VA[Vert1].Normal, VectorMultiply(Normal,
@@ -1197,6 +1196,7 @@ var
   ChunkEnd: Integer;
   PriType: Byte;
 begin
+  Result:=nil;
   ChunkEnd:=Data.Position+ChunkSize;
   Data.Read(PriType, SizeOf(PriType));
   case PriType of
@@ -1205,6 +1205,7 @@ begin
     PrimitiveCone: Result:=TPMBPrimitiveCone.Create(Obj);
     PrimitiveTorus: Result:=TPMBPrimitiveTorus.Create(Obj);
     PrimitiveTube: Result:=TPMBPrimitiveTube.Create(Obj);
+    else Exit;
   end;
   with Result do
   begin
@@ -1243,7 +1244,7 @@ end;
 
 function TPMBPrimitiveCube.GetSplitSides(Index: Byte): Boolean;
 begin
-  if Index<3 then Result:=FTexMergeSides[Index];
+  if Index<3 then Result:=FTexMergeSides[Index] else Result:=false;
 end;
 
 procedure TPMBPrimitiveCube.SetSplitSides(Index: Byte; Value: Boolean);
@@ -1452,8 +1453,8 @@ begin
   FType:=PrimitiveCone;
   FSmooth:=true;
   FSlices:=16;
-  FSlicesSector:=128;
-  FRadiusT:=255;
+  FSlicesSector:=255;
+  FRadiusT:=128;
   FRadiusB:=255;
 end;
 
@@ -1676,21 +1677,23 @@ procedure TPMBObject.Draw;
 var
   i: Integer;
 begin
-  if not FVisible then Exit;
   glPushMatrix;
-  glEnable(GL_NORMALIZE);
   FTransform.Apply;
-  if Assigned(FMaterial) then FMaterial.Apply;
-  if FSelected then
+  if FVisible then
   begin
-    glPushAttrib(GL_LIGHTING_BIT or GL_CURRENT_BIT);
-    glColor(0.5, 0.5, 1.0);
-    glEnable(GL_COLOR_MATERIAL);
+    glEnable(GL_NORMALIZE);
+    if Assigned(FMaterial) then FMaterial.Apply;
+    if FSelected then
+    begin
+      glPushAttrib(GL_LIGHTING_BIT or GL_CURRENT_BIT);
+      glColor(0.5, 0.5, 1.0);
+      glEnable(GL_COLOR_MATERIAL);
+    end;
+    if Assigned(FMesh) then FMesh.Draw;
+    for i:=0 to PrimitivesCount-1 do Primitives[i].Draw;
+    if FSelected then glPopAttrib;
   end;
-  if Assigned(FMesh) then FMesh.Draw;
-  for i:=0 to PrimitivesCount-1 do Primitives[i].Draw;
   for i:=0 to ObjectsCount-1 do Objects[i].Draw;
-  if FSelected then glPopAttrib;
   glPopMatrix;
 end;
 

@@ -4,8 +4,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, PMBuild, FPSpin, FramePriCube, ExtCtrls,
-  FramePriSphere;
+  Dialogs, StdCtrls, ExtCtrls, FPSpin, PMBuild, FramePriCube, FramePriSphere,
+  FramePriCone;
 
 type
   TPrimitiveFrame=class(TFrame)
@@ -30,6 +30,7 @@ type
     GenUVCheck: TCheckBox;
     InvNormalsCheck: TCheckBox;
     DrawNormalsCheck: TCheckBox;
+    PriConeFrame: TPriConeFrame;
     function  Fill(Obj: TObject): Boolean;
     procedure Clear;
     procedure DrawNormalsCheckClick(Sender: TObject);
@@ -81,8 +82,8 @@ begin
     case FPri.PriType of
       PrimitiveCube: ShowFrame(PriCubeFrame, FPri);
       PrimitiveSphere: ShowFrame(PriSphereFrame, FPri);
-      {PrimitiveCone: ShowFrame(PriConeFrame, FPri);
-      PrimitiveTorus: ShowFrame(PriTorusFrame, FPri);
+      PrimitiveCone: ShowFrame(PriConeFrame, FPri);
+      {PrimitiveTorus: ShowFrame(PriTorusFrame, FPri);
       PrimitiveTube: ShowFrame(PriTubeFrame, FPri);}
       else ShowFrame(nil, nil);
     end;
