@@ -114,6 +114,7 @@ type
     procedure Draw;
     procedure DrawUV;
     function  Import(MeshData: TStream): Boolean;
+    procedure Relink(Obj: TPMBObject);
     property Obj: TPMBObject read FObj;
     property Transform: TPMBTransform read FTransform;
     property Visible: Boolean read FVisible write FVisible;
@@ -148,6 +149,7 @@ type
     destructor Destroy; override;
     procedure Draw;
     procedure DrawUV;
+    procedure Relink(Obj: TPMBObject);
     property Obj: TPMBObject read FObj;
     property PriType: Byte read FType;
     property Transform: TPMBTransform read FTransform;
@@ -276,6 +278,8 @@ type
     procedure DeselectAll;
     procedure Draw;
     procedure DrawUV;
+    procedure Relink(Obj: TPMBObject); overload;
+    procedure Relink(Model: TPMBModel); overload;
     procedure SetVisibility(Visibility: Boolean);
     property Model: TPMBModel read FModel;
     property Parent: TPMBObject read FParent;
@@ -335,6 +339,7 @@ procedure ComputeNormalsTriangles(var VA: array of TVertex; const IA: array of T
 implementation
 
 const
+  SCannotRelinkObjectToAnotherModel = 'Cannot relink object to another model';
   SCannotSaveModelResultingFileSize = 'Cannot save model: resulting file size is greater than 65535 bytes';
   SCannotLoadModelInvalidFirstChunk = 'Cannot load model: invalid first chunk';
   STooLongTextureName = 'Too long texture name';
@@ -1043,6 +1048,13 @@ begin
   if Index<VertsCount then Result:=FVerts[Index];
 end;
 
+procedure TPMBMesh.Relink(Obj: TPMBObject);
+begin
+  FObj.Mesh:=nil;
+  FObj:=Obj;
+  FObj.Mesh:=Self;
+end;
+
 procedure TPMBMesh.SetSelected(Value: Boolean);
 begin
   if Value then FObj.Model.DeselectAll;
@@ -1216,6 +1228,13 @@ begin
     DoReadChunk(Data, ChunkEnd-Data.Position);
   end;
   if Data.Position<>ChunkEnd then raise Exception.Create(SCannotLoadModelChunkSizeMismatch);
+end;
+
+procedure TPMBPrimitive.Relink(Obj: TPMBObject);
+begin
+  FObj.DeletePrimitive(Self);
+  FObj:=Obj;
+  FObj.AddPrimitive(Self);
 end;
 
 procedure TPMBPrimitive.SetSelected(Value: Boolean);
@@ -1878,6 +1897,25 @@ begin
   end;
   while ChunkEnd>Data.Position do ReadChunk(Data);
   if ChunkEnd<>Data.Position then raise Exception.Create(SCannotLoadModelChunkSizeMismatch);
+end;
+
+procedure TPMBObject.Relink(Obj: TPMBObject);
+begin
+  if Assigned(FParent)
+    then FParent.DeleteObject(Self)
+    else FModel.DeleteObject(Self);
+  FParent:=Obj;
+  FParent.AddObject(Self);
+end;
+
+procedure TPMBObject.Relink(Model: TPMBModel);
+begin
+  if Assigned(FParent)
+    then FParent.DeleteObject(Self)
+    else FModel.DeleteObject(Self);
+  FParent:=nil;
+  if Model<>FModel then raise Exception.Create(SCannotRelinkObjectToAnotherModel);
+  FModel.AddObject(Self);
 end;
 
 procedure TPMBObject.SetSelected(Value: Boolean);

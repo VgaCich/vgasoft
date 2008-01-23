@@ -107,6 +107,7 @@ object MainForm: TMainForm
         Width = 225
         Height = 80
         Align = alClient
+        DragMode = dmAutomatic
         Images = ImageListTree
         Indent = 19
         MultiSelectStyle = []
@@ -116,6 +117,8 @@ object MainForm: TMainForm
         TabOrder = 0
         OnChange = ElementsTreeChange
         OnChanging = ElementsTreeChanging
+        OnDragDrop = ElementsTreeDragDrop
+        OnDragOver = ElementsTreeDragOver
         OnKeyUp = ElementsTreeKeyUp
         OnMouseDown = ElementsTreeMouseDown
       end
@@ -284,6 +287,42 @@ object MainForm: TMainForm
                     end
                     inherited SizeLabel: TLabel
                       Width = 53
+                    end
+                  end
+                end
+              end
+            end
+            inherited PriConeFrame: TPriConeFrame
+              inherited ConeGroup: TGroupBox
+                inherited PageControl1: TPageControl
+                  inherited GeomPage: TTabSheet
+                    inherited Label1: TLabel
+                      Width = 31
+                    end
+                    inherited Label2: TLabel
+                      Width = 31
+                    end
+                    inherited Label3: TLabel
+                      Width = 34
+                    end
+                    inherited Label5: TLabel
+                      Width = 36
+                    end
+                  end
+                  inherited TexCoordsSidePage: TTabSheet
+                    inherited OriginLabel: TLabel
+                      Width = 60
+                    end
+                    inherited SizeLabel: TLabel
+                      Width = 53
+                    end
+                  end
+                  inherited TexCoordsBasePage: TTabSheet
+                    inherited Label7: TLabel
+                      Width = 131
+                    end
+                    inherited Label8: TLabel
+                      Width = 145
                     end
                   end
                 end

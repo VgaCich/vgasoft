@@ -77,6 +77,8 @@ type
     ZoomSpeedLabel: TLabel;
     procedure ElementsTreeChange(Sender: TObject; Node: TTreeNode);
     procedure ElementsTreeChanging(Sender: TObject; Node: TTreeNode; var AllowChange: Boolean);
+    procedure ElementsTreeDragDrop(Sender, Source: TObject; X, Y: Integer);
+    procedure ElementsTreeDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
     procedure ElementsTreeKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ElementsTreeMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure FormCreate(Sender: TObject);
@@ -185,13 +187,6 @@ begin
   MainForm.Render;
 end;
 
-function AddTrailingBackslash(const S: string): string;
-begin
-  if (S<>'') and (S[Length(S)]='\')
-    then Result:=S
-    else Result:=S+'\';
-end;
-
 function FlSize(const FileName: string): Integer;
 var
   F: TFileStream;
@@ -216,7 +211,7 @@ begin
   PanSpeedChange(nil);
   ZoomSpeed.Position:=Config.ReadInteger(Name, 'ZoomSpeed', ZoomSpeed.Position);
   ZoomSpeedChange(nil);
-  FTexturesDir:=AddTrailingBackslash(Config.ReadString(SConfSettings, SConfTexturesDir, ''));
+  FTexturesDir:=IncludeTrailingBackslash(Config.ReadString(SConfSettings, SConfTexturesDir, ''));
   Application.Title:=Caption;
   Application.OnIdle:=UpdateView;
   ClearStatus;
@@ -292,6 +287,50 @@ end;
 procedure TMainForm.ElementsTreeChanging(Sender: TObject; Node: TTreeNode; var AllowChange: Boolean);
 begin
   FrameSave;
+end;
+
+procedure TMainForm.ElementsTreeDragDrop(Sender, Source: TObject; X, Y: Integer);
+var
+  Element, DstElement: TObject;
+begin
+  Element:=TObject(ElementsTree.Selected.Data);
+  DstElement:=TObject(ElementsTree.GetNodeAt(X, Y).Data);
+  if Element is TPMBObject then
+  begin
+    if DstElement is TPMBObject
+      then TPMBObject(Element).Relink(TPMBObject(DstElement));
+    if DstElement is TPMBModel
+      then TPMBObject(Element).Relink(TPMBModel(DstElement));
+  end
+  else if Element is TPMBPrimitive
+    then TPMBPrimitive(Element).Relink(TPMBObject(DstElement))
+  else if Element is TPMBMesh
+    then TPMBMesh(Element).Relink(TPMBObject(DstElement))
+  else Exit;
+  FillTree;
+end;
+
+procedure TMainForm.ElementsTreeDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
+var
+  DstNode: TTreeNode;
+  Element, DstElement: TObject;
+begin
+  Accept:=false;
+  if not ((Sender=ElementsTree) and (Source=ElementsTree)) then Exit;
+  DstNode:=ElementsTree.GetNodeAt(X, Y);
+  if not Assigned(DstNode) then Exit;
+  Element:=TObject(ElementsTree.Selected.Data);
+  DstElement:=TObject(DstNode.Data);
+  if Element is TPMBObject then
+  begin
+    if not ((DstElement is TPMBObject) or (DstElement is TPMBModel)) then Exit;
+  end
+  else if (Element is TPMBMesh) or (Element is TPMBPrimitive) then
+  begin
+    if not (DstElement is TPMBObject) then Exit;
+  end
+  else Exit;
+  Accept:=true;
 end;
 
 procedure TMainForm.ElementsTreeKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -382,7 +421,7 @@ begin
   PrefsForm.EditTexPath.Text:=TexturesDir;
   if PrefsForm.ShowModal=mrOk then
   begin
-    FTexturesDir:=AddTrailingBackslash(PrefsForm.EditTexPath.Text);
+    FTexturesDir:=IncludeTrailingBackslash(PrefsForm.EditTexPath.Text);
   end;
 end;
 

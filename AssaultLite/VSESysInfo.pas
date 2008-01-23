@@ -89,7 +89,7 @@ begin
   except
     Result:='Error while detecting CPU!'
   end;
-  Result:=PChar(Trim(Result));
+  Result:=Trim(Result);
 end;
 
 function GetMemory: Cardinal;
