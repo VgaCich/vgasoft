@@ -12,6 +12,7 @@ type
     FDir, FBaseRoll, FBasePitch: Single;
     FModel: TPriModel;
     FTerrain: TTerrain;
+    FUpdateCount: Cardinal;
     procedure SetPos(Pos: TVector3D);
     procedure SetDir(Dir: Single);
   public
@@ -62,7 +63,13 @@ begin
   FPos.X:=FPos.X+Speed*cos(DegToRad(Dir));
   FPos.Z:=FPos.Z-Speed*sin(DegToRad(Dir));
   Pos:=FPos;
-  Dir:=Dir+0.07*(2*Random-1)+0.15;
+  Dir:=Dir+0.15;
+  Inc(FUpdateCount);
+  if FUpdateCount>10 then
+  begin
+    FUpdateCount:=0;
+    Dir:=Dir+(2*Random-1);
+  end;
 end;
 
 procedure TUnit.SetPos(Pos: TVector3D);

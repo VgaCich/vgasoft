@@ -31,7 +31,7 @@ begin
   for i:=0 to High(FUnits) do
   begin
     FUnits[i]:=TUnit.Create;
-    FUnits[i].Pos:=VectorSetValue(256, 0, 220+i*24);
+    FUnits[i].Pos:=VectorSetValue(280, 0, 268+i*8);
   end;
 end;
 

@@ -14,6 +14,7 @@ type
     FSky: TSky;
     FFont: Cardinal;
     FPlayers: array of TPlayer;
+    FUnits: array of TUnit;
     function GetCanResumeGame: Boolean;
   protected
     function  GetName: string; override;
@@ -98,11 +99,23 @@ end;
 procedure TStateGame.Update;
 const
   CamBorder=64;
+
+  function CalcShift(const V1, V2: TVector3D): TVector3D;
+  var
+    D: Single;
+  begin
+    Result:=VectorSub(V1, V2);
+    Result.Y:=0;
+    D:=VectorSize(Result);
+    VectorNormalize(Result);
+    Result:=VectorMultiply(Result, Max(0, 9-D)/2);
+  end;
+
 var
   Spd: TVector3D;
   Offs: TVector3D;
   C, S: Single;
-  i: Integer;
+  i, j, Pass: Integer;
 begin
   VectorClear(Spd);
   if Core.KeyPressed[Ord('W')] then Spd.Z:=Spd.Z+1;
@@ -126,6 +139,25 @@ begin
   FSky.Update;
   for i:=0 to High(FPlayers) do
     FPlayers[i].Update;
+  for Pass:=0 to 2 do
+  begin
+    for i:=0 to High(FUnits) do
+    begin
+      Offs:=CalcShift(FUnits[i].Pos, Camera.Eye);
+      Camera.Eye:=VectorSub(Camera.Eye, VectorMultiply(Offs, 0.1));
+      for j:=0 to High(FUnits) do
+      begin
+        Offs:=CalcShift(FUnits[i].Pos, FUnits[j].Pos);
+        FUnits[i].Pos:=VectorAdd(FUnits[i].Pos, Offs);
+        FUnits[j].Pos:=VectorSub(FUnits[j].Pos, Offs);
+      end;
+    end;
+  end;
+  if Camera.Eye.X<CamBorder then Camera.Eye.X:=CamBorder;
+  if Camera.Eye.X>FTerrain.Width-CamBorder then Camera.Eye.X:=FTerrain.Width-CamBorder;
+  if Camera.Eye.Z<CamBorder then Camera.Eye.Z:=CamBorder;
+  if Camera.Eye.Z>FTerrain.Height-CamBorder then Camera.Eye.Z:=FTerrain.Height-CamBorder;
+  Camera.Eye.Y:=FTerrain.Altitude(Camera.Eye.X, Camera.Eye.Z)+4;
 end;
 
 function TStateGame.Activate: Cardinal;
@@ -185,11 +217,18 @@ begin
   for i:=0 to High(FPlayers) do
     FPlayers[i].Free;
   Finalize(FPlayers);
+  Finalize(FUnits);
   SetLength(FPlayers, 2);
   for i:=0 to High(FPlayers) do
     FPlayers[i]:=TPlayer.Create(4);
   for i:=0 to FPlayers[0].UnitsCount-1 do
-    FPlayers[0].Units[i].Pos:=VectorAdd(FPlayers[0].Units[i].Pos, VectorSetValue(-24, 0, 0));
+    FPlayers[0].Units[i].Pos:=VectorAdd(FPlayers[0].Units[i].Pos, VectorSetValue(-8, 0, 0));
+  SetLength(FUnits, 8);
+  for i:=0 to 3 do
+  begin
+    FUnits[i]:=FPlayers[0].Units[i];
+    FUnits[4+i]:=FPlayers[1].Units[i];
+  end;
 end;
 
 function TStateGame.GetName: string;
