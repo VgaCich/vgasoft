@@ -447,9 +447,9 @@ begin
         glTexCoord2f(s, 1-t);
         glVertex2f(0, 0);
         glTexCoord2f(s+CS.cx/FontTexSize, 1-t);
-        glVertex2f(Width[i], 0);
+        glVertex2f(CS.cx/k, 0);
         glTexCoord2f(s+CS.cx/FontTexSize, 1-t-CS.cy/FontTexSize);
-        glVertex2f(Width[i], CS.cy/k);
+        glVertex2f(CS.cx/k, CS.cy/k);
         glTexCoord2f(s, 1-t-CS.cy/FontTexSize);
         glVertex2f(0, CS.cy/k);
       glEnd;
