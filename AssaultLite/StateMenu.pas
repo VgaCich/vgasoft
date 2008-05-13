@@ -52,6 +52,7 @@ type
   public
     constructor Create(Parent: TStateMenu; const Caption, TextFile: string);
     destructor Destroy; override;
+    procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
   end;
   TStateMenu=class(TGameState)
   private
@@ -476,6 +477,27 @@ begin
   FAN(FText);
   FParent.FCurFrm:=FParent.FMainMenu;
   inherited Destroy;
+end;
+
+procedure TTextView.KeyEvent(Button: Integer; Event: TKeyEvent);
+var
+  Btn: TBtn;
+begin
+  if Event=keDown then
+    case Button of
+      VK_LEFT:
+        begin
+          Btn.Tag:=-1;
+          ChangePage(@Btn);
+        end;
+      VK_RIGHT:
+        begin
+          Btn.Tag:=1;
+          ChangePage(@Btn);
+        end;
+      VK_ESCAPE: Close(nil);
+      else inherited KeyEvent(Button, Event);
+    end;
 end;
 
 procedure TTextView.DrawForm;
