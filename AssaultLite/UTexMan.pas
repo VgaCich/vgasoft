@@ -3,7 +3,7 @@ unit UTexMan;
 interface
 
 uses
-  Windows, AvL, avlUtils, OpenGL, oglExtensions, OpenGLExt, SynTex, MemPak;
+  Windows, AvL, avlUtils, avlMath, OpenGL, oglExtensions, OpenGLExt, SynTex, MemPak;
 
 type
   TTexture=record
@@ -34,6 +34,7 @@ type
     FTexCache: string;
     FRTTMethod: TRTTMethod;
     {$IFDEF VSE_LOG}FNoLogLostTex: Boolean;{$ENDIF}
+    procedure CreateFontTex(Font: Cardinal);
   public
     constructor Create;
     destructor Destroy; override;
@@ -52,6 +53,7 @@ type
     procedure RTTEnd(RTT: Cardinal);
     {Font engine}
     function  FontCreate(Name: string; Size: Integer; Bold: Boolean=false): Cardinal;
+    procedure RebuildFonts;
     procedure TextOut(Font: Cardinal; X, Y: Single; const Text: string);
     function  TextLen(Font: Cardinal; const Text: string): Integer;
     {properties}
@@ -386,21 +388,87 @@ begin
   glViewport(0, 0, Core.ResX, Core.ResY);
 end;
 
-function TTexMan.FontCreate(Name: string; Size: Integer; Bold: Boolean): Cardinal;
+procedure TTexMan.CreateFontTex(Font: Cardinal);
 const
-  TEX_SIZE=512;
   Weight: array[Boolean] of Integer=(400, 700);
-  BoolStr: array[Boolean] of Char = ('N', 'B');
 var
+  i: Integer;
   FNT: HFONT;
   MDC: HDC;
   BMP: HBITMAP;
   BI: BITMAPINFO;
   Pix: PByteArray;
-  i: Integer;
-  cs: TSize;
-  s, t: Single;
   Data: PByteArray;
+  CS: TSize;
+  k, s, t: Single;
+  CharSize, FontTexSize: Integer;
+begin
+  with FFonts[Font]^ do
+  try
+    k:=Core.ResY/600;
+    FNT:=CreateFont(-MulDiv(Size, Ceil(k*GetDeviceCaps(Core.DC, LOGPIXELSY)), 72), 0, 0,
+      0, Weight[Bold], 0, 0, 0, RUSSIAN_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
+      ANTIALIASED_QUALITY, 0, PChar(Name));
+    FontTexSize:=128;
+    CharSize:=MulDiv(Size, Ceil(k*GetDeviceCaps(Core.DC, LOGPIXELSY)), 72)*16+16;
+    while (FontTexSize<CharSize) and (FontTexSize<=glMaxTextureSize) do FontTexSize:=FontTexSize*2;
+    ZeroMemory(@BI, SizeOf(BI));
+    with BI.bmiHeader do
+    begin
+      biSize:=SizeOf(BITMAPINFOHEADER);
+      biWidth:=FontTexSize;
+      biHeight:=FontTexSize;
+      biPlanes:=1;
+      biBitCount:=24;
+      biSizeImage:=biWidth*biHeight*biBitCount div 8;
+    end;
+    MDC:=CreateCompatibleDC(Core.DC);
+    BMP:=CreateDIBSection(MDC, BI, DIB_RGB_COLORS, Pointer(Pix), 0, 0);
+    ZeroMemory(Pix, FontTexSize*FontTexSize*3);
+    SelectObject(MDC, BMP);
+    SelectObject(MDC, FNT);
+    SetBkMode(MDC, TRANSPARENT);
+    SetTextColor(MDC, $FFFFFF);
+    for i:=0 to 255 do
+      Windows.TextOut(MDC, i mod 16 * (FontTexSize div 16), i div 16 * (FontTexSize div 16), @Char(i), 1);
+    GetMem(Data, FontTexSize*FontTexSize);
+    for i:=0 to FontTexSize*FontTexSize-1 do
+      Data[i]:=Pix[i*3];
+    glBindTexture(GL_TEXTURE_2D, Tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, FontTexSize, FontTexSize, 0, GL_ALPHA, GL_UNSIGNED_BYTE, Data);
+    for i:=0 to 255 do
+    begin
+      glNewList(List+Cardinal(i), GL_COMPILE);
+      s:=(i mod 16)/16;
+      t:=(i div 16)/16;
+      GetTextExtentPoint32(MDC, @Char(i), 1, CS);
+      Width[i]:=Ceil(CS.cx/k);
+      glBegin(GL_QUADS);
+        glTexCoord2f(s, 1-t);
+        glVertex2f(0, 0);
+        glTexCoord2f(s+CS.cx/FontTexSize, 1-t);
+        glVertex2f(Width[i], 0);
+        glTexCoord2f(s+CS.cx/FontTexSize, 1-t-CS.cy/FontTexSize);
+        glVertex2f(Width[i], CS.cy/k);
+        glTexCoord2f(s, 1-t-CS.cy/FontTexSize);
+        glVertex2f(0, CS.cy/k);
+      glEnd;
+      glTranslatef(Width[i], 0, 0);
+      glEndList;
+    end;
+  finally
+    FreeMem(Data);
+    DeleteObject(FNT);
+    DeleteObject(BMP);
+    DeleteDC(MDC);
+  end;
+end;
+
+function TTexMan.FontCreate(Name: string; Size: Integer; Bold: Boolean): Cardinal;
+const
+  BoolStr: array[Boolean] of Char = ('N', 'B');
+var
+  i: Integer;
 begin
   {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: Creating font '+Name+': '+IntToStr(Size)+BoolStr[Bold]);{$ENDIF}
   Name:=UpperCase(Name);
@@ -410,62 +478,22 @@ begin
       Result:=i;
       Exit;
     end;
-  FNT:=CreateFont(-MulDiv(Size, GetDeviceCaps(Core.DC, LOGPIXELSY), 72), 0, 0,
-    0, Weight[Bold], 0, 0, 0, RUSSIAN_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
-    ANTIALIASED_QUALITY, 0, PChar(Name));
-  ZeroMemory(@BI, SizeOf(BI));
-  with BI.bmiHeader do
-  begin
-    biSize:=SizeOf(BITMAPINFOHEADER);
-    biWidth:=TEX_SIZE;
-    biHeight:=TEX_SIZE;
-    biPlanes:=1;
-    biBitCount:=24;
-    biSizeImage:=biWidth*biHeight*biBitCount div 8;
-  end;
-  MDC:=CreateCompatibleDC(Core.DC);
-  BMP:=CreateDIBSection(MDC, BI, DIB_RGB_COLORS, Pointer(Pix), 0, 0);
-  ZeroMemory(Pix, TEX_SIZE*TEX_SIZE*3);
-  SelectObject(MDC, BMP);
-  SelectObject(MDC, FNT);
-  SetBkMode(MDC, TRANSPARENT);
-  SetTextColor(MDC, $FFFFFF);
-  for i:=0 to 255 do
-    Windows.TextOut(MDC, i mod 16 * (TEX_SIZE div 16), i div 16 * (TEX_SIZE div 16), @Char(i), 1);
   Result:=Length(FFonts);
   SetLength(FFonts, Result+1);
   New(FFonts[Result]);
   FFonts[Result]^.Size:=Size;
   FFonts[Result]^.Bold:=Bold;
   FFonts[Result]^.Name:=Name;
-  with FFonts[Result]^ do
-  begin
-    GetMem(Data, TEX_SIZE*TEX_SIZE);
-    for i:=0 to TEX_SIZE*TEX_SIZE-1 do
-      Data[i]:=Pix[i*3];
-    Tex:=AddTexture('__FONT_'+Name+IntToStr(Size)+BoolStr[Bold], Data, TEX_SIZE, TEX_SIZE, GL_ALPHA, GL_ALPHA, true, false);
-    FreeMem(Data);
-    List:=glGenLists(256);
-    for i:=0 to 255 do
-    begin
-      glNewList(List+Cardinal(i), GL_COMPILE);
-      s:=(i mod 16)/16;
-      t:=(i div 16)/16;
-      GetTextExtentPoint32(MDC, @Char(i), 1, cs);
-      Width[i]:=cs.cx;
-      glBegin(GL_QUADS);
-        glTexCoord2f(            s,             1 - t); glVertex2f(    0,     0);
-        glTexCoord2f(s + cs.cx/512,             1 - t); glVertex2f(cs.cx,     0);
-        glTexCoord2f(s + cs.cx/512, 1 - t - cs.cy/512); glVertex2f(cs.cx, cs.cy);
-        glTexCoord2f(            s, 1 - t - cs.cy/512); glVertex2f(    0, cs.cy);
-      glEnd;
-      glTranslatef(cs.cx, 0, 0);
-      glEndList;
-    end;
-  end;
-  DeleteObject(FNT);
-  DeleteObject(BMP);
-  DeleteDC(MDC);
+  FFonts[Result]^.Tex:=AddTexture('__FONT_'+Name+IntToStr(Size)+BoolStr[Bold], nil, 1, 1, GL_ALPHA, GL_ALPHA, true, false);
+  FFonts[Result]^.List:=glGenLists(256);
+  CreateFontTex(Result);
+end;
+
+procedure TTexMan.RebuildFonts;
+var
+  i: Integer;
+begin
+  for i:=0 to High(FFonts) do CreateFontTex(i);
 end;
 
 procedure TTexMan.TextOut(Font: Cardinal; X, Y: Single; const Text: string);

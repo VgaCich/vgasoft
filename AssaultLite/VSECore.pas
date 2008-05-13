@@ -450,6 +450,7 @@ begin
     end;
   end
   else SetWindowPos(FHandle, 0, (Screen.Width-FResX) div 2, (Screen.Height-FResY) div 2, 0, 0, SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE);
+  TexMan.RebuildFonts;
 end;
 
 procedure TCore.MakeScreenshot(const Name: string);
