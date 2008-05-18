@@ -57,6 +57,9 @@ function FindCmdLineSwitch(const Switch: string; SwitchChars: TSysCharSet; Ignor
 procedure CutFirstDirectory(var S: string);
 function MinimizeName(const Filename: string; MaxLen: Integer): string;
 function IncPtr(Ptr: Pointer; N: Integer = 1): Pointer;
+function IntToStrLZ(I, Len: Integer): string;
+function ANSI2OEM(const S: string): string;
+procedure GetPrivilege(const Privilege: string);
 
 implementation
 
@@ -666,6 +669,35 @@ end;
 function IncPtr(Ptr: Pointer; N: Integer = 1): Pointer;
 begin
   Result := Pointer(Cardinal(Ptr) + N);
+end;
+
+function IntToStrLZ(I, Len: Integer): string;
+begin
+  Result:=IntToStr(I);
+  while Length(Result)<Len do Result:='0'+Result;
+end;
+
+function ANSI2OEM(const S: string): string;
+begin
+  SetLength(Result, Length(S));
+  CharToOem(PChar(S), PChar(Result));
+end;
+
+procedure GetPrivilege(const Privilege: string);
+var
+  TokenPriv: TTokenPrivileges;
+  TokenHandle: THandle;
+begin
+  if (Win32Platform = VER_PLATFORM_WIN32_NT) then
+  begin
+    if OpenProcessToken(GetCurrentProcess, TOKEN_ADJUST_PRIVILEGES, TokenHandle) then
+      if LookupPrivilegeValue(nil, Pchar(Privilege), TokenPriv.Privileges[0].LUID) then
+      begin
+        TokenPriv.PrivilegeCount:=1;
+        TokenPriv.Privileges[0].Attributes:=SE_PRIVILEGE_ENABLED;
+        AdjustTokenPrivileges(TokenHandle, false, TokenPriv, 0, TTokenPrivileges(nil^), DWORD(nil^));
+      end;
+  end;
 end;
 
 end.
