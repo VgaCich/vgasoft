@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, Menus, ExtCtrls, ComCtrls, ToolWin, ImgList, GlobalVariables,
   FrameObject, FrameModel, FramePrimitive, FrameMesh, FrameMaterial,
-  devTabs, PMBuild, eXgine, OpenGL, StdCtrls, XPMan;
+  devTabs, PMBuild, eXgine, OpenGL, StdCtrls, XPMan, Registry, ShlObj;
 
 const
   ViewportsCount=8;
@@ -115,7 +115,10 @@ type
     FViews: array[0..ViewportsCount-1] of TViewportView;
     FRotating, FPanning, FZooming: Boolean;
     FLastCursorPos: TPoint;
+    function CheckAssoc: Boolean;
+    function GetAssocCmd: string;
     function  GetMethod(Obj: TObject; const Name: string): TMethod;
+    procedure SetAssoc(Assoc: Boolean);
     procedure SetModelFileName(const Value: string);
   public
     function  LoadTexture(const TexName: string): Cardinal;
@@ -257,6 +260,24 @@ begin
   if ID<>0
     then tex.Enable(ID)
     else tex.Disable;
+end;
+
+function TMainForm.CheckAssoc: Boolean;
+var
+  Reg: TRegistry;
+begin
+  Result:=false;
+  Reg:=TRegistry.Create;
+  try
+    Reg.RootKey:=HKEY_CLASSES_ROOT;
+    if not (Reg.OpenKeyReadOnly('\.vpm') and
+      (Reg.ReadString('')='vpmfile') and
+      Reg.OpenKeyReadOnly('\vpmfile\shell\open\command') and
+      (Reg.ReadString('')=GetAssocCmd)) then Exit;
+    Result:=true;
+  finally
+    FreeAndNil(Reg);
+  end;
 end;
 
 procedure TMainForm.ShowStatus(AStatus: string);
@@ -417,11 +438,16 @@ begin
 end;
 
 procedure TMainForm.MMPreferencesClick(Sender: TObject);
+var
+  Assoc: Boolean;
 begin
+  Assoc:=CheckAssoc;
+  PrefsForm.CheckAssoc.Checked:=Assoc;
   PrefsForm.EditTexPath.Text:=TexturesDir;
   if PrefsForm.ShowModal=mrOk then
   begin
     FTexturesDir:=IncludeTrailingBackslash(PrefsForm.EditTexPath.Text);
+    if PrefsForm.CheckAssoc.Checked<>Assoc then SetAssoc(not Assoc);
   end;
 end;
 
@@ -488,6 +514,11 @@ begin
     ElementsTree.FullExpand;
     ElementsTree.Selected:=ElementsTree.Items[0];
   end;
+end;
+
+function TMainForm.GetAssocCmd: string;
+begin
+  Result:='"'+ExpandFileName(Application.ExeName)+'" "%L"';
 end;
 
 procedure TMainForm.MenuNewPopup(Sender: TObject);
@@ -767,6 +798,34 @@ end;
 procedure TMainForm.PanSpeedChange(Sender: TObject);
 begin
   PanSpeedLabel.Caption:=IntToStr(PanSpeed.Position);
+end;
+
+procedure TMainForm.SetAssoc(Assoc: Boolean);
+var
+  Reg: TRegistry;
+begin
+  Reg:=TRegistry.Create;
+  try
+    Reg.RootKey:=HKEY_CLASSES_ROOT;
+    if Assoc then
+    begin
+      Reg.OpenKey('\.vpm', true);
+      Reg.WriteString('', 'vpmfile');
+      Reg.OpenKey('\vpmfile', true);
+      Reg.WriteString('', 'PrimitiveModel file');
+      Reg.OpenKey('DefaultIcon', true);
+      Reg.WriteString('', ExpandFileName(Application.ExeName));
+      Reg.OpenKey('\vpmfile\shell\open\command', true);
+      Reg.WriteString('', GetAssocCmd);
+    end
+    else begin
+      Reg.DeleteKey('\.vpm');
+      Reg.DeleteKey('\vpmfile');
+    end;
+    SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nil, nil);
+  finally
+    FreeAndNil(Reg);
+  end;
 end;
 
 procedure TMainForm.SetModelFileName(const Value: string);

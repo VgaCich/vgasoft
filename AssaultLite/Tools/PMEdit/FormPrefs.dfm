@@ -3,7 +3,7 @@ object PrefsForm: TPrefsForm
   Top = 111
   BorderStyle = bsDialog
   Caption = 'Preferences'
-  ClientHeight = 114
+  ClientHeight = 134
   ClientWidth = 377
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -16,12 +16,12 @@ object PrefsForm: TPrefsForm
   Scaled = False
   DesignSize = (
     377
-    114)
+    134)
   PixelsPerInch = 96
   TextHeight = 13
   object OKButton: TButton
     Left = 213
-    Top = 80
+    Top = 100
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -32,7 +32,7 @@ object PrefsForm: TPrefsForm
   end
   object CancelButton: TButton
     Left = 293
-    Top = 80
+    Top = 100
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -78,8 +78,16 @@ object PrefsForm: TPrefsForm
       OnClick = TexPathBrowseClick
     end
   end
+  object CheckAssoc: TCheckBox
+    Left = 8
+    Top = 80
+    Width = 145
+    Height = 17
+    Caption = 'Associate with *.vpm'
+    TabOrder = 3
+  end
   object TexPathSelect: TSDDialog
-    Left = 24
-    Top = 64
+    Left = 272
+    Top = 32
   end
 end

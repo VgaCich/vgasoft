@@ -15,6 +15,7 @@ type
     EditTexPath: TEdit;
     TexPathBrowse: TButton;
     TexPathSelect: TSDDialog;
+    CheckAssoc: TCheckBox;
     procedure TexPathBrowseClick(Sender: TObject);
   private
     { Private declarations }
