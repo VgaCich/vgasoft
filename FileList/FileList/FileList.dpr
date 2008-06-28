@@ -19,7 +19,7 @@ type
 
 const
   ID: Cardinal=1279677270;
-  Capt='VgaSoft FileList 2.3';
+  Capt='VgaSoft FileList 2.4';
 
 var
   MainForm: TMainForm;
@@ -75,7 +75,7 @@ Label
     if FindFirst(Mask, faAnyFile and not faDirectory, Search) = 0 then
     begin
       repeat
-        Files.Add(Search.Name+'|'+IntToStr(Search.Size));
+        Files.Add(Search.Name+'|'+Int64ToStr((Int64(Search.FindData.nFileSizeHigh) shl 32) or Search.FindData.nFileSizeLow));
       until FindNext(Search) <> 0;
     end;
     if FindFirst(Directory + '*.*', faDirectory+faHidden, Search) = 0 then

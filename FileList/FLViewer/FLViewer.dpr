@@ -38,7 +38,8 @@ type
     SplitMoving, Initialized, OpenDelay, FindDelay, FindFiles, FindDirs: Boolean;
     RefreshTimer: TTimer;
     CurFolder, SplitColor, ExtsCount, ExtsCapacity: Integer;
-    SizeMin, SizeMax, SizeMode: Cardinal;
+    SizeMin, SizeMax: Int64;
+    SizeMode: Cardinal;
     Exts: array of TExtR;
   protected
     procedure FormCreate(Sender: TObject);
@@ -85,9 +86,9 @@ type
 
 const
   ID: Cardinal=1279677270;
-  CCapt='VgaSoft FileList Viewer 2.5';
+  CCapt='VgaSoft FileList Viewer 2.6';
   AboutText=CCapt+#13#10 +
-            'Copyright '#169'VgaSoft, 2004-2007';
+            'Copyright '#169'VgaSoft, 2004-2008';
 
   TB_OPEN=0;
   TB_SAVE=1;
@@ -223,7 +224,7 @@ begin
         if S1=S then
         begin
           SB.SetPartText(2, 0, S1+': '+
-            SizeToStr(StrToInt(Copy(Files[i], LastDelimiter('|', Files[i])+1, MaxInt))));
+            SizeToStr(StrToInt64Def(Copy(Files[i], LastDelimiter('|', Files[i])+1, MaxInt), 0)));
           Break;
         end;
       end;
@@ -280,7 +281,7 @@ begin
           end;
         end
         else WriteLn(F, Indent(Level)+'+-'+Copy(Data[i], 1, FirstDelimiter('|', Data[i])-1)+
-                     ': '+SizeToStr(StrToCar(Copy(Data[i], FirstDelimiter('|', Data[i])+1, MaxInt))));
+                     ': '+SizeToStr(StrToInt64Def(Copy(Data[i], FirstDelimiter('|', Data[i])+1, MaxInt), 0)));
       Pr:=Round(100*(i/Data.Count));
       if Pr>OldPr then PBStatus.Position:=Pr;
       OldPr:=Pr;
@@ -389,7 +390,7 @@ procedure TMainForm.Find;
 var
   S: string;
   i, Pr, OldPr: Integer;
-  Sz: Cardinal;
+  Sz: Int64;
   List: TStringList;
   CMask: TMask;
 
@@ -448,7 +449,7 @@ begin
       end;
       if FindFiles and CMask.Matches(Copy(S, 1, LastDelimiter('|', S)-1)) then
       begin
-        Sz:=StrToInt(Copy(S, LastDelimiter('|', S)+1, MaxInt));
+        Sz:=StrToInt64Def(Copy(S, LastDelimiter('|', S)+1, MaxInt), 0);
         case SizeMode of
           SIZE_NONE:;
           SIZE_MIN: if Sz<SizeMin then Continue;
@@ -645,7 +646,7 @@ begin
   Garbage.Add(FD);
   GetFolderFiles(FD.Files);
   for i:=0 to FD.Files.Count-1 do
-    FD.FilesSize:=FD.FilesSize+StrToInt(Copy(FD.Files[i], FirstDelimiter('|', FD.Files[i])+1, MaxInt));
+    FD.FilesSize:=FD.FilesSize+StrToInt64Def(Copy(FD.Files[i], FirstDelimiter('|', FD.Files[i])+1, MaxInt), 0);
   FD.FolderSize:=FD.FilesSize;
   if Node=Integer(TVI_ROOT) then Files:=FD.Files;
   Node:=InsertTreeItem(Node, S, FD);
@@ -832,8 +833,8 @@ begin
   with MainForm do
   begin
     Mask:=EMask.Text;
-    SizeMin:=StrToInt(ESizeMin.Text);
-    SizeMax:=StrToInt(ESizeMax.Text);
+    SizeMin:=StrToInt64Def(ESizeMin.Text, 0);
+    SizeMax:=StrToInt64Def(ESizeMax.Text, 0);
     SizeMode:=CBSize.ItemIndex;
     FindFiles:=CFiles.Checked;
     FindDirs:=CDirs.Checked;
