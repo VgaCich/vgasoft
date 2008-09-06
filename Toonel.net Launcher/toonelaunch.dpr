@@ -121,7 +121,7 @@ begin
   ToonelWnd:=0;
   WinExec('javaw -jar toonel.jar', SW_HIDE);
   repeat
-    ToonelWnd:=FindWindow('guiswing.ClientForm', 'toonel.net');
+    ToonelWnd:=FindWindow(nil, 'toonel.net');
     Sleep(100);
   until ToonelWnd<>0;
   FillChar(WndClass, SizeOf(WndClass), 0);
