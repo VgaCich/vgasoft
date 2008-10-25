@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, avlMath, OpenGL, OpenGLExt, oglExtensions,
-  avlVectors, VSEGameStates, Terrain, Sky, UCamera, MemPak, USound,
+  avlVectors, VSEGameStates, Terrain, QuadTree, Sky, UCamera, MemPak, USound,
   GameUnit, GamePlayer;
 
 type

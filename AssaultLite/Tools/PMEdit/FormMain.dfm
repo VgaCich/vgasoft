@@ -166,9 +166,6 @@ object MainForm: TMainForm
         Align = alClient
         TabOrder = 0
         Visible = False
-        inherited GroupModel: TGroupBox
-          Height = 295
-        end
       end
       inline ObjectFrame: TObjectFrame
         Left = 0
@@ -178,24 +175,6 @@ object MainForm: TMainForm
         Align = alClient
         TabOrder = 1
         Visible = False
-        inherited GroupObject: TGroupBox
-          Height = 295
-          inherited IDLabel: TLabel
-            Width = 14
-          end
-          inherited MaterialLabel: TLabel
-            Width = 40
-          end
-          inherited TransformGroup: TGroupBox
-            Top = 149
-            inherited TranslateLabel: TLabel
-              Width = 89
-            end
-            inherited RotateLabel: TLabel
-              Width = 119
-            end
-          end
-        end
       end
       inline MaterialFrame: TMaterialFrame
         Left = 0
@@ -206,29 +185,6 @@ object MainForm: TMainForm
         Constraints.MinHeight = 295
         TabOrder = 2
         Visible = False
-        inherited GroupMaterial: TGroupBox
-          inherited Label1: TLabel
-            Width = 36
-          end
-          inherited Label2: TLabel
-            Width = 41
-          end
-          inherited Label6: TLabel
-            Width = 39
-          end
-          inherited DiffAlphaLabel: TLabel
-            Width = 31
-          end
-          inherited AmbiAlphaLabel: TLabel
-            Width = 31
-          end
-          inherited SpecAlphaLabel: TLabel
-            Width = 31
-          end
-          inherited EmiAlphaLabel: TLabel
-            Width = 31
-          end
-        end
       end
       inline PrimitiveFrame: TPrimitiveFrame
         Left = 0
@@ -238,98 +194,6 @@ object MainForm: TMainForm
         Align = alClient
         TabOrder = 3
         Visible = False
-        inherited GroupPrimitive: TGroupBox
-          Height = 295
-          inherited TransformGroup: TGroupBox
-            Top = 149
-            inherited TranslateLabel: TLabel
-              Width = 89
-            end
-            inherited RotateLabel: TLabel
-              Width = 119
-            end
-          end
-          inherited VarProps: TPanel
-            inherited PriCubeFrame: TPriCubeFrame
-              inherited CubeGroup: TGroupBox
-                inherited TexCoordsGroup: TGroupBox
-                  inherited SideTabs: TTabControl
-                    inherited SizeLabel: TLabel
-                      Width = 53
-                    end
-                    inherited OriginLabel: TLabel
-                      Width = 60
-                    end
-                  end
-                end
-              end
-            end
-            inherited PriSphereFrame: TPriSphereFrame
-              inherited SphereGroup: TGroupBox
-                inherited SpherePages: TPageControl
-                  inherited GeomPage: TTabSheet
-                    inherited Label1: TLabel
-                      Width = 31
-                    end
-                    inherited Label2: TLabel
-                      Width = 36
-                    end
-                    inherited Label3: TLabel
-                      Width = 31
-                    end
-                    inherited Label4: TLabel
-                      Width = 34
-                    end
-                  end
-                  inherited TexCoordsPage: TTabSheet
-                    inherited OriginLabel: TLabel
-                      Width = 60
-                    end
-                    inherited SizeLabel: TLabel
-                      Width = 53
-                    end
-                  end
-                end
-              end
-            end
-            inherited PriConeFrame: TPriConeFrame
-              inherited ConeGroup: TGroupBox
-                inherited PageControl1: TPageControl
-                  inherited GeomPage: TTabSheet
-                    inherited Label1: TLabel
-                      Width = 31
-                    end
-                    inherited Label2: TLabel
-                      Width = 31
-                    end
-                    inherited Label3: TLabel
-                      Width = 34
-                    end
-                    inherited Label5: TLabel
-                      Width = 36
-                    end
-                  end
-                  inherited TexCoordsSidePage: TTabSheet
-                    inherited OriginLabel: TLabel
-                      Width = 60
-                    end
-                    inherited SizeLabel: TLabel
-                      Width = 53
-                    end
-                  end
-                  inherited TexCoordsBasePage: TTabSheet
-                    inherited Label7: TLabel
-                      Width = 131
-                    end
-                    inherited Label8: TLabel
-                      Width = 145
-                    end
-                  end
-                end
-              end
-            end
-          end
-        end
       end
       inline MeshFrame: TMeshFrame
         Left = 0
@@ -339,34 +203,6 @@ object MainForm: TMainForm
         Align = alClient
         TabOrder = 4
         Visible = False
-        inherited GroupMesh: TGroupBox
-          Height = 295
-          inherited MeshMode: TPageControl
-            Height = 278
-            inherited PageGeneral: TTabSheet
-              inherited TransformGroup: TGroupBox
-                Top = 106
-                inherited TranslateLabel: TLabel
-                  Width = 89
-                end
-                inherited RotateLabel: TLabel
-                  Width = 119
-                end
-              end
-            end
-            inherited PageVertices: TTabSheet
-              inherited Label1: TLabel
-                Width = 78
-              end
-              inherited Label2: TLabel
-                Width = 84
-              end
-              inherited Label3: TLabel
-                Width = 94
-              end
-            end
-          end
-        end
       end
     end
   end

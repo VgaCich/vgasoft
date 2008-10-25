@@ -7,12 +7,26 @@ uses
 
 procedure LogSysInfo;
 function GetCPU: string;
-function GetMemory: Cardinal;
-function GetMemoryFree: Cardinal;
+function GetMemory: Int64;
+function GetMemoryFree: Int64;
 
 implementation
 
 uses VSECore;
+
+type
+  TMemoryStatusEx=record
+    dwLength:DWORD;
+    dwMemoryLoad:DWORD;
+    ullTotalPhys:Int64;
+    ullAvailPhys:Int64;
+    ullTotalPageFile:Int64;
+    ullAvailPageFile:Int64;
+    ullTotalVirtual:Int64;
+    ullAvailVirtual:Int64;
+    ullAvailExtendedVirtual:Int64;
+  end;
+procedure GlobalMemoryStatusEx(var lpBuffer:TMemoryStatusEx); stdcall; external kernel32;
 
 procedure LogSysInfo;
 var
@@ -92,22 +106,22 @@ begin
   Result:=Trim(Result);
 end;
 
-function GetMemory: Cardinal;
+function GetMemory: Int64;
 var
-  MemStatus: TMemoryStatus;
+  MemStatus: TMemoryStatusEx;
 begin
   MemStatus.dwLength:=SizeOf(MemStatus);
-  GlobalMemoryStatus(MemStatus);
-  Result:=MemStatus.dwTotalPhys+655360; //With dos base memory
+  GlobalMemoryStatusEx(MemStatus);
+  Result:=MemStatus.ullTotalPhys+655360; //With dos base memory
 end;
 
-function GetMemoryFree: Cardinal;
+function GetMemoryFree: Int64;
 var
-  MemStatus: TMemoryStatus;
+  MemStatus: TMemoryStatusEx;
 begin
   MemStatus.dwLength:=SizeOf(MemStatus);
-  GlobalMemoryStatus(MemStatus);
-  Result:=MemStatus.dwAvailPhys;
+  GlobalMemoryStatusEx(MemStatus);
+  Result:=MemStatus.ullAvailPhys;
 end;
 
 end.

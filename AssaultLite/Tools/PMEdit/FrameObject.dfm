@@ -190,7 +190,7 @@ object ObjectFrame: TObjectFrame
       Top = 16
       Width = 65
       Height = 21
-      Anchors = [akTop, akRight]
+      Anchors = [akLeft, akTop, akRight]
       TabOrder = 2
       OnExit = IDEditExit
       OnKeyPress = IDEditKeyPress
