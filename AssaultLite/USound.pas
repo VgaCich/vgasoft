@@ -16,14 +16,14 @@ type
     FMusicPCM: TWaveFormatEx;
     FMusicBufferDesc: TDSBufferDesc;
   public
-    constructor Create;
-    destructor Destroy; override;
-    procedure PlayMusic(const FileName: string);
-    procedure StopMusic;
+    constructor Create; //internally used
+    destructor Destroy; override; //internally used
+    procedure PlayMusic(const FileName: string); //Play music from file
+    procedure StopMusic; //Stop music
   end;
 
 var
-  Sound: TSound;
+  Sound: TSound;  //Global variable for access to Sound Engine
 
 implementation
 

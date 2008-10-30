@@ -5,25 +5,23 @@ interface
 uses Windows, OpenGL, oglExtensions, AvL, avlVectors{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 type
-  TUpdateMatrixProc=procedure(Width, Height: Integer);
-  TUpdateMatrixMethod=procedure(Width, Height: Integer) of object;
-  TResolution=record
+  TResolution=record //Resolution info
     Width, Height: Cardinal;
     RefreshRates: array of Cardinal;
   end;
   TResolutions=array of TResolution;
 
-function  gleGoFullscreen(Width, Height, Refresh, depth: Integer): Boolean;
-procedure gleGoBack;
-function  gleSetPix(DC: HDC; Depth: Cardinal): HGLRC;
-procedure gleSetGL;
-procedure gleResizeWnd(Width, Height: Integer);
-procedure glePerspectiveMatrix(FOV: Single; Width, Height: Integer);
-procedure gleOrthoMatrix(Width, Height: Integer);
-function  gleError(GLError: Cardinal): string;
-procedure gleColor(Color: TColor);
-function  gleColorTo4f(Color: TColor): TVector4f;
-function  gleGetResolutions: TResolutions;
+function  gleGoFullscreen(Width, Height, Refresh, Depth: Integer): Boolean; //used internally
+procedure gleGoBack; //used internally
+function  gleSetPix(DC: HDC; Depth: Cardinal): HGLRC; //used internally
+procedure gleSetGL; //Set default OpenGL state
+procedure gleResizeWnd(Width, Height: Integer); //used internally
+procedure glePerspectiveMatrix(FOV: Single; Width, Height: Integer); //Set perspective projection; FOV: Field of Vision; Width, Height: Viewport size
+procedure gleOrthoMatrix(Width, Height: Integer); //Set orthogonal projection; Width, Height: projection dimensions
+function  gleError(GLError: Cardinal): string; //Convert OpenGL error code to text
+procedure gleColor(Color: TColor); //Set current OpenGL color
+function  gleColorTo4f(Color: TColor): TVector4f; //Convert GDI color to OpenGL color
+function  gleGetResolutions: TResolutions; //List available screen resolutions
 
 implementation
 

@@ -11,21 +11,21 @@ type
 const
   VSECaptVer='VgaSoft Engine 0.1';
 
-var
-  InitStates: TInitStates;
-  Caption: string='VgaSoft Engine';
-  Version: string='0.1';
-  CaptionVer: string;
-  ResX: Integer=640;
-  ResY: Integer=480;
-  Refresh: Integer=0;
-  Depth: Integer=32;
-  Fullscreen: Boolean=false;
-  VSync: Integer=1;
+var //Start engine settings
+  InitStates: TInitStates; //Init states procedure pointer
+  Caption: string='VgaSoft Engine'; //Engine window caption
+  Version: string='0.1'; //Application version
+  CaptionVer: string; //Application name with version; default: Caption+' '+Version
+  ResX: Integer=640; //Horizontal resolution
+  ResY: Integer=480; //Vertical resolution
+  Refresh: Integer=0; //Screen refresh rate, fullscreen only
+  Depth: Integer=32; //Color depth
+  Fullscreen: Boolean=false; //Fullscreen mode
+  VSync: Integer=1; //Vertical synchronization
   //SoundDevice: string='default';
 
-procedure LoadINI(const FileName: string);
-procedure SaveINI(const FileName: string);
+procedure LoadINI(const FileName: string); //Load settings from ini file
+procedure SaveINI(const FileName: string); //Save settings to ini file
 
 implementation
 

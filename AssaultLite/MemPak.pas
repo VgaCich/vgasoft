@@ -5,8 +5,8 @@ interface
 uses
   AvL, avlUtils;
 
-function GetFile(FileName: string): TCustomMemoryStream;
-function GetFileText(const FileName: string): TStringList;
+function GetFile(FileName: string): TCustomMemoryStream; //Get file as stream
+function GetFileText(const FileName: string): TStringList; //Get text file as TStringList
 
 implementation
 

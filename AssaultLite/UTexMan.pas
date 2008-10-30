@@ -6,20 +6,20 @@ uses
   Windows, AvL, avlUtils, avlMath, OpenGL, oglExtensions, OpenGLExt, SynTex, MemPak;
 
 type
-  TTexture=record
+  TTexture=record //internally used
     ID: Cardinal;
     Name: string;
   end;
-  PFont=^TFont;
-  TFont=record
+  PFont=^TFont; //internally used
+  TFont=record //internally used
     Tex,  List: Cardinal;
     Width: array [0..255] of ShortInt;
     Size: Integer;
     Bold: Boolean;
     Name: string;
   end;
-  TRTTMethod=(rttCopy, rttFBO);
-  TRTTInfo=record
+  TRTTMethod=(rttCopy, rttFBO); //Render-to-Texture method - CopyTexture (slow), FrameBuffer Object
+  TRTTInfo=record //internally used
     Method: TRTTMethod;
     FBO, RBODepth, Color, Depth: Cardinal;
     RTWidth, RTHeight: Integer;
@@ -36,34 +36,34 @@ type
     {$IFDEF VSE_LOG}FNoLogLostTex: Boolean;{$ENDIF}
     procedure CreateFontTex(Font: Cardinal);
   public
-    constructor Create;
-    destructor Destroy; override;
-    function  LoadCache: Boolean;
-    procedure ClearCache;
-    procedure Store(Sender: TObject; const Reg: TSynTexRegister; TexSize: Integer; const Name: string);
-    function  Load(Sender: TObject; var Reg: TSynTexRegister; TexSize: Integer; const Name: string): Boolean;
-    function  AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal;
-    function  GetTex(Name: string): Cardinal;
-    procedure Bind(ID: Cardinal; Channel: Integer = 0);
-    procedure Unbind(Channel: Integer = 0);
-    {Render to texture}
-    function  InitRTT(Width, Height: Integer): Cardinal;
-    procedure FreeRTT(RTT: Cardinal);
-    function  RTTBegin(RTT: Cardinal; TexColor: Cardinal; TexDepth: Cardinal = 0): Boolean;
-    procedure RTTEnd(RTT: Cardinal);
+    constructor Create; //internally used
+    destructor Destroy; override; //internally used
+    function  LoadCache: Boolean; //Load texture cache
+    procedure ClearCache; //Clear texture cache
+    procedure Store(Sender: TObject; const Reg: TSynTexRegister; TexSize: Integer; const Name: string); //SynTex interacting
+    function  Load(Sender: TObject; var Reg: TSynTexRegister; TexSize: Integer; const Name: string): Boolean; //SynTex interacting
+    function  AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal; //Add texture from memory
+    function  GetTex(Name: string): Cardinal; //Get texture ID by texture name
+    procedure Bind(ID: Cardinal; Channel: Integer = 0); //Set current texture in specified texture channel
+    procedure Unbind(Channel: Integer = 0); //Remove texture from specified texture channel
+    {Render-To-Texture (RTT)}
+    function  InitRTT(Width, Height: Integer): Cardinal; //Init Render-To-Texture target with specified dimencions; returns RTT target ID
+    procedure FreeRTT(RTT: Cardinal); //Remove RTT target
+    function  RTTBegin(RTT: Cardinal; TexColor: Cardinal; TexDepth: Cardinal = 0): Boolean; //Start render to RTT target; TexColor, TexDepth - target textures; returns true if successfully started
+    procedure RTTEnd(RTT: Cardinal); //End render to RTT target
     {Font engine}
-    function  FontCreate(Name: string; Size: Integer; Bold: Boolean=false): Cardinal;
-    procedure RebuildFonts;
-    procedure TextOut(Font: Cardinal; X, Y: Single; const Text: string);
-    function  TextLen(Font: Cardinal; const Text: string): Integer;
+    function  FontCreate(Name: string; Size: Integer; Bold: Boolean=false): Cardinal; //Create font; Name - font name, Size - font size, Bold - normal/bold font; returns font ID
+    procedure RebuildFonts; //Rebuild font textures for current screen resolution
+    procedure TextOut(Font: Cardinal; X, Y: Single; const Text: string); //Draw text; Font - font ID, X, Y - coordinates of left upper corner of text, Text - text for draw
+    function  TextLen(Font: Cardinal; const Text: string): Integer; //Length of space, needed for drawing text
     {properties}
-    property RTTMethod: TRTTMethod read FRTTMethod write FRTTMethod;
+    property RTTMethod: TRTTMethod read FRTTMethod write FRTTMethod; //Method, used for RTT; default: autodetect
   end;
 
 var
-  UseCache: Boolean;
-  CacheDir: string;
-  TexMan: TTexMan;
+  UseCache: Boolean; //Enable texture cache
+  CacheDir: string; //Texture cache path
+  TexMan: TTexMan; //Global variable for accessing to Texture Manager
 
 implementation
 

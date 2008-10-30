@@ -21,14 +21,14 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Load(const Tex: TSynTexRegister; TexSize: Integer; HScale, VScale: Single);
-    procedure Draw;
-    function  Altitude(X, Y: Single): Single;
-    procedure Morph(X, Y, Width, Height: Word; Data: array of SmallInt);
-    property Width: Word read FWidth;
-    property Height: Word read FHeight;
-    property HeightMap[X, Y: Word]: Byte read GetHeightMap;
-    property Texture: Cardinal read FTexture write FTexture;
+    procedure Load(const Tex: TSynTexRegister; TexSize: Integer; HScale, VScale: Single); //Load terrain from SynTex texture; Tex: SynTex texture; TexSize: texture size; HScale: horizontal scale; VScale: vertical scale
+    procedure Draw; //Draw terrain
+    function  Altitude(X, Y: Single): Single; //Terrain altitude at (X, Y)
+    procedure Morph(X, Y, Width, Height: Word; Data: array of SmallInt); //Modify terrain; X, Y: coordinales of modified zone; Width, Height: size of modified zone; Data: height delta array
+    property Width: Word read FWidth; //Terrain width
+    property Height: Word read FHeight; //Terain height
+    property HeightMap[X, Y: Word]: Byte read GetHeightMap; //heightmap data
+    property Texture: Cardinal read FTexture write FTexture; //Terrain texture
   end;
 
 implementation

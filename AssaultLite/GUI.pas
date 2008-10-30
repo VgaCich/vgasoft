@@ -7,27 +7,27 @@ uses
   VSEGameStates, VSECollisionCheck;
 
 type
-  TBtnType=(btPush, btCheck, btRadio);
+  TBtnType=(btPush, btCheck, btRadio); //Button type: push button, check box, radio button
   PBtn=^TBtn;
   TGUIOnClick=procedure(Btn: PBtn) of object;
-  TBtn=record
-    Caption: string;
-    Typ: TBtnType;
-    X, Y, Width, Height, Group, Tag: Integer;
-    OnClick: TGUIOnClick;
-    Checked, Enabled: Boolean;
+  TBtn=record //Button
+    Caption: string; //Button caption
+    Typ: TBtnType; //Button type
+    X, Y, Width, Height, Group, Tag: Integer; //X, Y, Width, Height: button bounds; Group: radio button group; Tag: custom information
+    OnClick: TGUIOnClick; //Button click event handler, don't override if Typ=btCheck or Typ=btRadio
+    Checked, Enabled: Boolean; //Checked: true if check box or radio button checked; Enabled: enable button
   end;
-  TLabelAlign=(laLeft, laCenter, laRight);
+  TLabelAlign=(laLeft, laCenter, laRight); //Label aligning
   PLbl=^TLbl;
-  TLbl=record
-    Caption: string;
-    X, Y, Width: Integer;
-    Align: TLabelAlign;
-    Color: TColor;
+  TLbl=record //Label
+    Caption: string; //Label text
+    X, Y, Width: Integer; //Label bounds (height depends from form font)
+    Align: TLabelAlign; //Text aligning
+    Color: TColor; //Text color
   end;
-  TBtnStates=(bsHilight, bsPushed, bsTabStop);
+  TBtnStates=(bsHilight, bsPushed, bsTabStop); //Button state - highlighted (mouse over), pushed, selected from keyboard
   TBtnState=set of TBtnStates;
-  TGUIForm=class
+  TGUIForm=class //Form
   protected
     FButtons: array of TBtn;
     FRects: array of TRect;
@@ -43,26 +43,26 @@ type
     procedure RadioClick(Btn: PBtn);
     procedure MapCursor(var Cursor: TPoint);
     function  BtnAt(Point: TPoint): Integer;
-    procedure PaintRect(Rect: TRect);
-    procedure FillRect(Rect: TRect);
-    procedure DrawForm; dynamic;
-    procedure DrawButton(Btn: TBtn; State: TBtnState); dynamic;
-    procedure DrawRect(Rect: TRect); dynamic;
-    procedure DrawLabel(Lbl: TLbl); dynamic;
+    procedure PaintRect(Rect: TRect); //Paints rectangle frame
+    procedure FillRect(Rect: TRect); //Paints rectangle
+    procedure DrawForm; dynamic; //Override for custom form drawing
+    procedure DrawButton(Btn: TBtn; State: TBtnState); dynamic; //Override for custom buttons drawing
+    procedure DrawRect(Rect: TRect); dynamic; //Override for custom rectangles drawing
+    procedure DrawLabel(Lbl: TLbl); dynamic; //Override for custom labels drawing
   public
-    constructor Create(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal);
+    constructor Create(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal); //Creates form; VertScr*: virtual screen resolution (all dimensions defined in virtual screen coordinates); X, Y, Width, Height: form bounds; Font: form font
     destructor Destroy; override;
-    function  AddButton(Btn: TBtn): Integer;
-    function  AddLabel(Lbl: TLbl): Integer;
-    procedure AddRect(Rect: TRect);
-    procedure Draw;
-    procedure Update;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); dynamic;
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent); dynamic;
-    procedure CharEvent(C: Char); dynamic;
-    property Button[Index: Integer]: PBtn read GetButton;
-    property Lbl[Index: Integer]: PLbl read GetLabel;
-    property Caption: string read FCaption write FCaption;
+    function  AddButton(Btn: TBtn): Integer; //Add button, returns button index
+    function  AddLabel(Lbl: TLbl): Integer; //Add label, returns label index
+    procedure AddRect(Rect: TRect); //Add rectangle (visual frame)
+    procedure Draw; //Draw form
+    procedure Update; //Update form
+    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); dynamic; //Process mouse event
+    procedure KeyEvent(Button: Integer; Event: TKeyEvent); dynamic; //Process keyboard event
+    procedure CharEvent(C: Char); dynamic; //Process char event
+    property Button[Index: Integer]: PBtn read GetButton; //Buttons array
+    property Lbl[Index: Integer]: PLbl read GetLabel; //Labels array
+    property Caption: string read FCaption write FCaption; //Form caption
   end;
 
 implementation

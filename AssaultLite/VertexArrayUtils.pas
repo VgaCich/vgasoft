@@ -4,8 +4,8 @@ interface
 
 uses AvL, avlUtils, avlVectors, UArrayBuffer;
 
-procedure ComputeNormalsTriangles(var VA: array of TVertex; const IA: array of TFaceW);
-procedure ComputeNormalsTrianglesStrip(var VA: array of TVertex; const IA: array of Integer);
+procedure ComputeNormalsTriangles(var VA: array of TVertex; const IA: array of TFaceW); //Compute normals to triangle list
+procedure ComputeNormalsTrianglesStrip(var VA: array of TVertex; const IA: array of Integer); //Compute normals to triangle strip
 
 implementation
 

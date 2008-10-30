@@ -26,16 +26,16 @@ type
     FData: Pointer;
     FSize: Integer;
   public
-    constructor Create(UseVBO: Boolean = true);
+    constructor Create(UseVBO: Boolean = true); //Create array buffer; UseVBO: use VBO if supported
     destructor Destroy; override;
-    procedure Map(Access: GLenum);
-    function  Unmap: Boolean;
-    procedure Bind(Target: GLenum);
-    procedure Unbind;
-    procedure SetData(Data: Pointer; Size: Integer);
-    function  SetSubData(SubData: Pointer; Offset, Size: Integer): Boolean;
-    property Data: Pointer read FData;
-    property Size: Integer read FSize;
+    procedure Map(Access: GLenum); //Map buffer to system memory
+    function  Unmap: Boolean; //Unmap buffer, returns True if successful
+    procedure Bind(Target: GLenum); //Bind buffer to OpenGL, unmaps buffer
+    procedure Unbind; //Unbind buffer
+    procedure SetData(Data: Pointer; Size: Integer); //Set buffer data; Data: pointer to new buffer data; Size: size of data
+    function  SetSubData(SubData: Pointer; Offset, Size: Integer): Boolean; //Set part of buffer data; SubData: pointer to new data; Offset: offset of data in buffer; Size: size of data
+    property Data: Pointer read FData; //Pointer to buffer data, valid only when buffer mapped
+    property Size: Integer read FSize; //Size of buffer
   end;
 
 implementation

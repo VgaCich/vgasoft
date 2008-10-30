@@ -13,8 +13,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Draw;
-    procedure Update;
+    procedure Draw; //Draw sky
+    procedure Update; //Update sky
   end;
 
 implementation

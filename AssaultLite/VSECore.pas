@@ -38,49 +38,50 @@ type
     procedure KeyEvent(Button: Integer; Event: TKeyEvent);
     procedure CharEvent(C: Char);
   public
-    constructor Create(WndHandle: THandle);
-    destructor Destroy; override;
-    procedure StopEngine;
+    constructor Create(WndHandle: THandle); //internally used
+    destructor Destroy; override; //internally used
+    procedure StopEngine; //Stop engine and quit
+    {State manager}
+    function  AddState(State: TGameState): Cardinal; //Add state object, returns state index
+    function  ReplaceState(OrigState: Cardinal; NewState: TGameState): Boolean; //Replace state at index OrigState with state object NewState; returns true if success
+    procedure DeleteState(State: Cardinal); //Delete state, may change indices of other states
+    procedure SwitchState(NewState: Cardinal); overload; //Switch to state by state index
+    procedure SwitchState(const NewStateName: string); overload; //Switch to state by state name
+    function  StateExists(State: Cardinal): Boolean; //Returns true if exists state with supplied index
+    function  GetState(State: Cardinal): TGameState; //Returns state object by index
+    function  FindState(const Name: string): Cardinal; //Returns state index by state name
+    {Misc.}
+    function  KeyRepeat(Key: Byte; Rate: Integer; var KeyVar: Cardinal): Boolean; //Returns true if Key pressed, but no more often then Rate; KeyVar - counter for rate limiting
+    procedure SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean); //Set resolution ResX*ResY@Refresh; CanReset: return to previous resolution if fail
+    procedure MakeScreenshot(const Name: string); //Make screenshot to file "Name.bmp" in application's folder
     ///
-    function  AddState(State: TGameState): Cardinal;
-    function  ReplaceState(OrigState: Cardinal; NewState: TGameState): Boolean;
-    procedure DeleteState(State: Cardinal);
-    procedure SwitchState(NewState: Cardinal); overload;
-    procedure SwitchState(const NewStateName: string); overload;
-    function  StateExists(State: Cardinal): Boolean;
-    function  GetState(State: Cardinal): TGameState;
-    function  FindState(const Name: string): Cardinal;
-    function  KeyRepeat(Key: Byte; Rate: Integer; var KeyVar: Cardinal): Boolean;
-    procedure SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean);
-    procedure MakeScreenshot(const Name: string);
-    ///
-    property Handle: THandle read FHandle;
-    property DC: HDC read FDC;
-    property RC: HGLRC read FRC;
-    property ResX: Cardinal read FResX;
-    property ResY: Cardinal read FResY;
-    property Refresh: Cardinal read FRefresh;
-    property Depth: Cardinal read FDepth write FDepth;
-    property Fullscreen: Boolean read FFullscreen write SetFullscreen;
-    property VSync: Boolean read GetVSync write SetVSync;
-    property Minimized: Boolean read FMinimized;
-    property KeyPressed[Index: Byte]: Boolean read GetKeyPressed;
-    property MouseCapture: Boolean read FMouseCapture write SetMouseCapture;
-    property Time: Cardinal read GetTime;
-    property State: Cardinal read FState write SetState;
-    property CurState: TGameState read FCurState;
-    property PrevStateName: string read FPrevStateName;
-    property FPS: Cardinal read FFPS;
-    property UpdateInterval: Cardinal read FUpdInt write FUpdInt;
-    property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold;
+    property Handle: THandle read FHandle; //Engine window handle
+    property DC: HDC read FDC; //Engine window GDI device context
+    property RC: HGLRC read FRC; //Engine window OpenGL rendering context
+    property ResX: Cardinal read FResX; //Horizontal resolution of viewport
+    property ResY: Cardinal read FResY; //Vertical resolution of viewport
+    property Refresh: Cardinal read FRefresh; //Screen refresh rate, fullscreen only
+    property Depth: Cardinal read FDepth write FDepth; //Color depth, applied after engine restarting
+    property Fullscreen: Boolean read FFullscreen write SetFullscreen; //Fullscreen mode
+    property VSync: Boolean read GetVSync write SetVSync; //Vertical synchronization
+    property Minimized: Boolean read FMinimized; //Engine window minimized
+    property KeyPressed[Index: Byte]: Boolean read GetKeyPressed; //True if Key pressed
+    property MouseCapture: Boolean read FMouseCapture write SetMouseCapture; //Mouse capture mode
+    property Time: Cardinal read GetTime; //Current time in ms
+    property State: Cardinal read FState write SetState; //Current state index
+    property CurState: TGameState read FCurState; //Current state object
+    property PrevStateName: string read FPrevStateName; //Name of previous state
+    property FPS: Cardinal read FFPS; //Current FPS
+    property UpdateInterval: Cardinal read FUpdInt write FUpdInt; //Current state updates interval
+    property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold; //Update Overload Detection threshold, overloaded update cycles before triggering; 0 for disable
   end;
 
-function VSEStart: Boolean;
-function GetCursorPos(var Cursor: TPoint): Boolean;
+function VSEStart: Boolean; //Start engine, returns true on successful engine stopping
+function GetCursorPos(var Cursor: TPoint): Boolean; //Windows.GetCursorPos override, returns cursor position inside of engine window
 
 var
-  Core: TCore;
-  VSEStopState: Integer=0;
+  Core: TCore; //Global variable for accessing to Engine Core
+  VSEStopState: Integer=0; //0 if engine stopped without errors
 
 implementation
 
@@ -626,12 +627,12 @@ begin
     WM_KEYDOWN: Core.KeyEvent(wParam, keDown);
     WM_CHAR: Core.CharEvent(Chr(wParam));
     WM_MOUSEMOVE: Core.MouseEvent(0, meMove, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_LBUTTONDOWN: Core.MouseEvent(1, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_LBUTTONUP: Core.MouseEvent(1, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_RBUTTONDOWN: Core.MouseEvent(2, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_RBUTTONUP: Core.MouseEvent(2, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_MBUTTONDOWN: Core.MouseEvent(3, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
-    WM_MBUTTONUP: Core.MouseEvent(3, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_LBUTTONDOWN: Core.MouseEvent(mbLeft, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_LBUTTONUP: Core.MouseEvent(mbLeft, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_RBUTTONDOWN: Core.MouseEvent(mbRight, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_RBUTTONUP: Core.MouseEvent(mbRight, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_MBUTTONDOWN: Core.MouseEvent(mbMiddle, meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
+    WM_MBUTTONUP: Core.MouseEvent(mbMiddle, meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
     WM_XBUTTONDOWN: Core.MouseEvent(3+HiWord(wParam), meDown, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
     WM_XBUTTONUP: Core.MouseEvent(3+HiWord(wParam), meUp, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));
     WM_MOUSEWHEEL: Core.MouseEvent(SmallInt(HiWord(wParam)) div 120, meWheel, SmallInt(LoWord(lParam)), SmallInt(HiWord(lParam)));

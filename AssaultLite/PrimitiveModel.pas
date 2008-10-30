@@ -11,22 +11,22 @@ uses
 type
   TVertexArray=array of TVertex;
   TFacesArray=array of TFaceW;
-  TTransform=class
+  TTransform=class //Affine transform
   private
     FDefMatrix, FMatrix: TMatrix4D;
   public
     constructor Create; overload;
-    constructor Create(Transform: TPMTransform); overload;
-    procedure Apply;
-    procedure Reset;
+    constructor Create(Transform: TPMTransform); overload; //internally used
+    procedure Apply; //Apply transform to OpenGL
+    procedure Reset; //Reset to defaul transform
     procedure Translate(X, Y, Z: Single);
     procedure Rotate(Angle, X, Y, Z: Single);
     procedure Scale(X, Y, Z: Single);
-    procedure Mul(Transform: TTransform); overload;
-    procedure Mul(Matrix: TMatrix4D); overload;
+    procedure Mul(Transform: TTransform); overload; //Concatenate with other transform
+    procedure Mul(Matrix: TMatrix4D); overload; //Concatenate with transform matrix
   end;
   TPriModel=class;
-  TPriModelObject=class
+  TPriModelObject=class //Model object
   private
     FID: Cardinal;
     FModel: TPriModel;
@@ -46,34 +46,34 @@ type
     procedure ApplyTransform(var VA: TVertexArray; Transform: TPMTransform);
     function  GetObject(ID: Cardinal): TPriModelObject;
   public
-    constructor Create(Model: TPriModel; Data, VertexBuffer: TStream);
-    destructor Destroy; override;
-    procedure Draw;
-    property ID: Cardinal read FID;
-    property Visible: Boolean read FVisible write FVisible;
-    property MaterialID: Byte read FMaterialID write FMaterialID;
-    property Objects[ID: Cardinal]: TPriModelObject read GetObject; default;
-    property Transform: TTransform read FTransform;
+    constructor Create(Model: TPriModel; Data, VertexBuffer: TStream); //internally used
+    destructor Destroy; override; //internally used
+    procedure Draw; //Draw object
+    property ID: Cardinal read FID; //Object ID
+    property Visible: Boolean read FVisible write FVisible; //Object visibility
+    property MaterialID: Byte read FMaterialID write FMaterialID; //Object material ID
+    property Objects[ID: Cardinal]: TPriModelObject read GetObject; default; //Subobjects
+    property Transform: TTransform read FTransform; //Object transform
   end;
-  TPriModelMaterial=class
+  TPriModelMaterial=class //Model material
   private
     FDiffuse, FSpecular, FAmbient, FEmission: TColor;
     FShininess: Single;
     FTexture: Cardinal;
     FID: Byte;
   public
-    constructor Create(Model: TPriModel; Data: TStream);
+    constructor Create(Model: TPriModel; Data: TStream); //internally used
     //destructor Destroy; override;
-    procedure Apply;
-    property ID: Byte read FID;
-    property Diffuse: TColor read FDiffuse write FDiffuse;
-    property Specular: TColor read FSpecular write FSpecular;
-    property Ambient: TColor read FAmbient write FAmbient;
-    property Emission: TColor read FEmission write FEmission;
-    property Shininess: Single read FShininess write FShininess;
-    property Texture: Cardinal read FTexture write FTexture;
+    procedure Apply; //internally used
+    property ID: Byte read FID; //Material ID
+    property Diffuse: TColor read FDiffuse write FDiffuse; //Diffuse color
+    property Specular: TColor read FSpecular write FSpecular; //Specular color
+    property Ambient: TColor read FAmbient write FAmbient; //Ambient color
+    property Emission: TColor read FEmission write FEmission; //Emission color
+    property Shininess: Single read FShininess write FShininess; //Shininess power
+    property Texture: Cardinal read FTexture write FTexture; //Texture ID
   end;
-  TPriModel=class
+  TPriModel=class //Model
   private
     FVertexBuffer: TArrayBuffer;
     FObjects: array of TPriModelObject;
@@ -83,11 +83,11 @@ type
     function GetObject(ID: Cardinal): TPriModelObject;
     function GetMaterial(ID: Byte): TPriModelMaterial;
   public
-    constructor Create(const FileName: string);
+    constructor Create(const FileName: string); //Create model from file
     destructor Destroy; override;
-    procedure Draw;
-    property Objects[ID: Cardinal]: TPriModelObject read GetObject; default;
-    property Materials[ID: Byte]: TPriModelMaterial read GetMaterial;
+    procedure Draw; //Draw model
+    property Objects[ID: Cardinal]: TPriModelObject read GetObject; default; //Model objects
+    property Materials[ID: Byte]: TPriModelMaterial read GetMaterial; //Model materials
   end;
 
 implementation

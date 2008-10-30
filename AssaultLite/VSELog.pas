@@ -5,13 +5,13 @@ interface
 uses Windows, AvL, avlUtils;
 
 type
-  TLogLevel=(llInfo, llWarning, llError);
+  TLogLevel=(llInfo, llWarning, llError); //Level of log message: informational, warning, error
 
-procedure Log(Level: TLogLevel; const S: string);
-procedure LogF(Level: TLogLevel; const Fmt: string; const Args: array of const);
-procedure LogRaw(const S: string);
-procedure LogAssert(Condition: Boolean; const Msg: string);
-procedure LogException(const Comment: string);
+procedure Log(Level: TLogLevel; const S: string); //Add message to log
+procedure LogF(Level: TLogLevel; const Fmt: string; const Args: array of const); //Add message to log, Format version
+procedure LogRaw(const S: string); //Add string to log without timestamp
+procedure LogAssert(Condition: Boolean; const Msg: string); //Add message if Condition=false
+procedure LogException(const Comment: string); //Write exception information to log and append Comment
 
 implementation
 
