@@ -1,4 +1,4 @@
-unit GameObject;
+unit VSEGameObject;
 
 interface
 

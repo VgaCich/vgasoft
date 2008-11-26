@@ -3,8 +3,8 @@ unit StateStart;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, OpenGL, OpenGLExt, oglExtensions, avlVectors,
-  VSEGameStates, SynTex, SynTexFilters, MemPak, UTexMan;
+  Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions, avlVectors,
+  VSEGameStates, SynTex, SynTexFilters, VSEMemPak, VSETexMan;
 
 type
   TStateStart=class;

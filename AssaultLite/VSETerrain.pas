@@ -1,10 +1,10 @@
-unit Terrain;
+unit VSETerrain;
 
 interface
 
 uses
-  AvL, avlUtils, avlMath, OpenGL, OpenGLExt, oglExtensions, avlVectors,
-  UArrayBuffer, UTexMan, SynTex, VertexArrayUtils;
+  AvL, avlUtils, avlMath, OpenGL, VSEOpenGLExt, oglExtensions, avlVectors,
+  VSEArrayBuffer, VSETexMan, SynTex, VSEVertexArrayUtils;
 
 type
   TTerrain=class(TObject)

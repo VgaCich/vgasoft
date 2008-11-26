@@ -12,7 +12,7 @@ function GetMemoryFree: Int64;
 
 implementation
 
-uses VSECore;
+uses VSECore, VSESound;
 
 type
   TMemoryStatusEx=record
@@ -34,37 +34,40 @@ var
 begin
   GetWinVer;
   LogRaw('');
-  Log(llInfo, 'System:');
-  LogF(llInfo, '%s (%d.%d.%d %s)', [Win32Type, Win32MajorVersion, Win32MinorVersion, Win32BuildNumber, Win32CSDVersion]);
-  Log(llInfo, 'CPU: '+GetCPU);
-  LogF(llInfo, 'Memory: total %s, free %s', [SizeToStr(GetMemory), SizeToStr(GetMemoryFree)]);
-  Log(llInfo, 'GL_VENDOR='+string(glGetString(GL_VENDOR)));
-  Log(llInfo, 'GL_RENDERER='+string(glGetString(GL_RENDERER)));
-  Log(llInfo, 'GL_VERSION='+string(glGetString(GL_VERSION)));
-  Log(llInfo, 'GL_EXTENSIONS='+string(glGetString(GL_EXTENSIONS)));
-  Log(llInfo, 'VSync control support: '+BoolToStr(WGL_EXT_swap_control));
-  Log(llInfo, 'Multitexturing support: '+BoolToStr(GL_ARB_multitexture));
-  Log(llInfo, 'FBO support: '+BoolToStr(GL_EXT_framebuffer_object));
-  Log(llInfo, 'VBO support: '+BoolToStr(GL_ARB_vertex_buffer_object));
-  Log(llInfo, 'GLSL support: '+BoolToStr(GL_ARB_shading_language_100));
-  Log(llInfo, 'Maximum texture units: '+IntToStr(glMaxTextureUnits));
-  Log(llInfo, 'Maximum texture size: '+IntToStr(glMaxTextureSize));
-  Log(llInfo, 'Maximum anisotropy filter: '+IntToStr(glMaxAnisotropy));
-  Log(llInfo, 'Maximum texture image units: '+IntToStr(glMaxTextureImageUnits));
+  LogRaw('System:');
+  LogRaw(Format('%s (%d.%d.%d %s)', [Win32Type, Win32MajorVersion, Win32MinorVersion, Win32BuildNumber, Win32CSDVersion]));
+  LogRaw('CPU: '+GetCPU);
+  LogRaw(Format('Memory: total %s, free %s', [SizeToStr(GetMemory), SizeToStr(GetMemoryFree)]));
+  LogRaw('');
+  LogRaw('OpenGL capabilities:');
+  LogRaw('GL_VENDOR='+string(glGetString(GL_VENDOR)));
+  LogRaw('GL_RENDERER='+string(glGetString(GL_RENDERER)));
+  LogRaw('GL_VERSION='+string(glGetString(GL_VERSION)));
+  LogRaw('GL_EXTENSIONS='+string(glGetString(GL_EXTENSIONS)));
+  LogRaw('VSync control support: '+BoolToStr(WGL_EXT_swap_control));
+  LogRaw('Multitexturing support: '+BoolToStr(GL_ARB_multitexture));
+  LogRaw('FBO support: '+BoolToStr(GL_EXT_framebuffer_object));
+  LogRaw('VBO support: '+BoolToStr(GL_ARB_vertex_buffer_object));
+  LogRaw('GLSL support: '+BoolToStr(GL_ARB_shading_language_100));
+  LogRaw('Maximum texture units: '+IntToStr(glMaxTextureUnits));
+  LogRaw('Maximum texture size: '+IntToStr(glMaxTextureSize));
+  LogRaw('Maximum anisotropy filter: '+IntToStr(glMaxAnisotropy));
+  LogRaw('Maximum texture image units: '+IntToStr(glMaxTextureImageUnits));
   glGetIntegerv(GL_MAX_VERTEX_ATTRIBS_ARB, @Tmp);
-  Log(llInfo, 'Maximum vertex attribs: '+IntToStr(Tmp));
+  LogRaw('Maximum vertex attribs: '+IntToStr(Tmp));
   glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS_ARB, @Tmp);
-  Log(llInfo, 'Maximum vertex uniform components: '+IntToStr(Tmp));
+  LogRaw('Maximum vertex uniform components: '+IntToStr(Tmp));
   glGetIntegerv(GL_MAX_VARYING_FLOATS_ARB, @Tmp);
-  Log(llInfo, 'Maximum varying floats: '+IntToStr(Tmp));
+  LogRaw('Maximum varying floats: '+IntToStr(Tmp));
   glGetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS_ARB, @Tmp);
-  Log(llInfo, 'Maximum vertex texture image units: '+IntToStr(Tmp));
+  LogRaw('Maximum vertex texture image units: '+IntToStr(Tmp));
   glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS_ARB, @Tmp);
-  Log(llInfo, 'Maximum combined texture image units: '+IntToStr(Tmp));
+  LogRaw('Maximum combined texture image units: '+IntToStr(Tmp));
   glGetIntegerv(GL_MAX_TEXTURE_COORDS_ARB, @Tmp);
-  Log(llInfo, 'Maximum texture coords: '+IntToStr(Tmp));
+  LogRaw('Maximum texture coords: '+IntToStr(Tmp));
   glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS_ARB, @Tmp);
-  Log(llInfo, 'Maximum fragment uniform components: '+IntToStr(Tmp));
+  LogRaw('Maximum fragment uniform components: '+IntToStr(Tmp));
+  Sound.LogCaps;
   LogRaw('');
 end;
 

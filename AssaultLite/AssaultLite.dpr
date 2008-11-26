@@ -2,7 +2,7 @@ program AssaultLite;
 
 uses
   {$IFDEF VER_150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
-  AvL, avlUtils, VSEInit, VSECore, UTexMan, StateStart, StateMenu, StateGame,
+  AvL, avlUtils, VSEInit, VSECore, VSETexMan, StateStart, StateMenu, StateGame,
   StateLoad;
 
 procedure InitStates;
@@ -32,7 +32,7 @@ begin
   CacheDir:=ExePath+'Cache\';
   if not FileExists(Ini) then
   begin
-    UTexMan.UseCache:=MessageDlg(SUseCache, Caption, MB_ICONQUESTION or MB_YESNO)=ID_YES;
+    VSETexMan.UseCache:=MessageDlg(SUseCache, Caption, MB_ICONQUESTION or MB_YESNO)=ID_YES;
     Fullscreen:=MessageDlg(SUseFullscreen, Caption, MB_ICONQUESTION or MB_YESNO)=ID_YES;
     if Fullscreen then
     begin
@@ -42,7 +42,7 @@ begin
   end
   else begin
     LoadINI(Ini);
-    UTexMan.UseCache:=DirectoryExists(CacheDir);
+    VSETexMan.UseCache:=DirectoryExists(CacheDir);
   end;
   VSEStart;
   SaveINI(Ini);

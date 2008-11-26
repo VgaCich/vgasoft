@@ -1,4 +1,4 @@
-unit Shaders;
+unit VSEShaders;
 
 interface
 

@@ -3,8 +3,8 @@ unit StateLoad;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, OpenGL, OpenGLExt, oglExtensions, avlVectors,
-  VSEGameStates, SynTex, SynTexFilters, MemPak, UTexMan, StateGame;
+  Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions, avlVectors,
+  VSEGameStates, SynTex, SynTexFilters, VSEMemPak, VSETexMan, StateGame;
 
 type
   TLoadStage=procedure of object;

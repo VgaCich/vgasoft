@@ -1,4 +1,4 @@
-unit UArrayBuffer;
+unit VSEArrayBuffer;
 
 interface
 

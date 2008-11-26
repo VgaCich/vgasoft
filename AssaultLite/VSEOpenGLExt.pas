@@ -1,4 +1,4 @@
-unit OpenGLExt;
+unit VSEOpenGLExt;
 
 interface
 

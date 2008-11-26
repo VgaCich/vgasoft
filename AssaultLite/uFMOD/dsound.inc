@@ -64,7 +64,7 @@ type
 		function CreateSoundBuffer(lpDSBufferDesc: PTDSBufferDesc;
 			out lpIDirectSoundBuffer: IDirectSoundBuffer;
 			pUnkOuter: Pointer): Integer; stdcall;
-		function GetCaps(var lpDSCaps: PTDSCaps): Integer; stdcall;
+		function GetCaps(var DSCaps: TDSCaps): Integer; stdcall;
 		function DuplicateSoundBuffer(lpDsbOriginal: IDirectSoundBuffer;
 			out lpDsbDuplicate: IDirectSoundBuffer): Integer; stdcall;
 		function SetCooperativeLevel(hwnd: Integer; dwLevel: Integer): Integer; stdcall;

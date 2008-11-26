@@ -1,9 +1,9 @@
-unit QuadTree;
+unit VSEQuadTree;
 
 interface
 
 uses
-  AvL, avlUtils, avlClasses, avlMath, avlVectors, GameObject;
+  AvL, avlUtils, avlClasses, avlMath, avlVectors, VSEGameObject;
 
 type
   TQTNode=class;

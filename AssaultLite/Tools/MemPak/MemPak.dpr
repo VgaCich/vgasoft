@@ -5,7 +5,7 @@ program MemPak;
 uses
   Windows, AvL, avlUtils;
 
-{$I MemPakTypes.inc}
+{$I VSEMemPakTypes.inc}
 
 var
   FilesList: TStringList;

@@ -3,8 +3,8 @@ unit StateMenu;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, OpenGL, OpenGLExt, oglExtensions,
-  VSEGameStates, GUI, UTexMan, MemPak, StateGame, StateLoad;
+  Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions,
+  VSEGameStates, VSEGUI, VSETexMan, VSEMemPak, VSEBindMan, StateGame, StateLoad;
 
 type
   TStateMenu=class;
@@ -33,6 +33,7 @@ type
     procedure DepthClick(Btn: PBtn);
     procedure ToggleCache(Btn: PBtn);
     procedure ClearCache(Btn: PBtn);
+    procedure KeyConfig(Btn: PBtn);
     procedure OKClick(Btn: PBtn);
     procedure CancelClick(Btn: PBtn);
   public
@@ -58,9 +59,11 @@ type
   private
     FMainMenu: TMainMenu;
     FOptions: TOptions;
+    FKeyConfig: TBindManCfgForm;
     FCurFrm: TGUIForm;
     FGame: TStateGame;
     FLoad: TStateLoad;
+    procedure KeyConfigClose(Sender: TObject);
   protected
     function GetName: string; override;
   public
@@ -175,7 +178,6 @@ constructor TOptions.Create(Parent: TStateMenu);
 var
   Btn: TBtn;
   Lbl: TLbl;
-  Rect: TRect;
 begin
   inherited Create(800, 600, 200, 130, 400, 350, TexMan.FontCreate('Arial', 12, true));
   FParent:=Parent;
@@ -183,39 +185,7 @@ begin
   FResolutions:=gleGetResolutions;
   with Btn do
   begin
-    Typ:=btPush;
-    Caption:='-';
-    Tag:=-1;
-    X:=10;
-    Y:=60;
-    Width:=20;
-    Height:=20;
     Enabled:=true;
-    OnClick:=ResClick;
-    AddButton(Btn);
-    Y:=110;
-    OnClick:=RefrClick;
-    AddButton(Btn);
-    Y:=160;
-    Tag:=16;
-    OnClick:=DepthClick;
-    AddButton(Btn);
-    Caption:='+';
-    Tag:=1;
-    X:=180;
-    Y:=60;
-    Width:=20;
-    Height:=20;
-    Enabled:=true;
-    OnClick:=ResClick;
-    AddButton(Btn);
-    Y:=110;
-    OnClick:=RefrClick;
-    AddButton(Btn);
-    Y:=160;
-    Tag:=32;
-    OnClick:=DepthClick;
-    AddButton(Btn);
     Tag:=0;
     Typ:=btCheck;
     X:=10;
@@ -238,6 +208,10 @@ begin
     Caption:='Очистить кэш';
     OnClick:=ClearCache;
     FBClearCache:=AddButton(Btn);
+    Y:=150;
+    Caption:='Управление';
+    OnClick:=KeyConfig;
+    AddButton(Btn);
     X:=140;
     Y:=310;
     Width:=120;
@@ -252,16 +226,8 @@ begin
   end;
   with Lbl do
   begin
-    X:=35;
-    Width:=140;
     Align:=laCenter;
-    Y:=61;
     Color:=Integer($FF00B200);
-    FLRes:=AddLabel(Lbl);
-    Y:=111;
-    FLRefr:=AddLabel(Lbl);
-    Y:=161;
-    FLDepth:=AddLabel(Lbl);
     X:=10;
     Y:=40;
     Width:=190;
@@ -280,20 +246,9 @@ begin
     Caption:='';
     FLCacheSize:=AddLabel(Lbl);
   end;
-  with Rect do
-  begin
-    Left:=30;
-    Top:=60;
-    Right:=180;
-    Bottom:=80;
-    AddRect(Rect);
-    Top:=110;
-    Bottom:=130;
-    AddRect(Rect);
-    Top:=160;
-    Bottom:=180;
-    AddRect(Rect);
-  end;
+  FLRes:=CreateSelect(Self, 10, 60, 190, 20, ResClick, '-', '+');
+  FLRefr:=CreateSelect(Self, 10, 110, 190, 20, RefrClick, '-', '+');
+  FLDepth:=CreateSelect(Self, 10, 160, 190, 20, DepthClick, '-', '+');
 end;
 
 destructor TOptions.Destroy;
@@ -365,8 +320,10 @@ begin
 end;
 
 procedure TOptions.DepthClick(Btn: PBtn);
+const
+  Depth: array[-1..1] of Integer = (16, 0, 32);
 begin
-  FDepth:=Btn.Tag;
+  FDepth:=Depth[Btn.Tag];
 end;
 
 procedure TOptions.ToggleCache(Btn: PBtn);
@@ -391,6 +348,11 @@ begin
   Lbl[FLCacheSize].Caption:=SCacheSize+SizeToStr(DirSize(CacheDir));
 end;
 
+procedure TOptions.KeyConfig(Btn: PBtn);
+begin
+  FParent.FCurFrm:=FParent.FKeyConfig;
+end;
+
 procedure TOptions.OKClick(Btn: PBtn);
 begin
   Core.SetResolution(FResolutions[FCurres].Width, FResolutions[FCurres].Height, FResolutions[FCurres].RefreshRates[FCurRefr], true);
@@ -408,14 +370,14 @@ end;
 {TTextView}
 
 const
-  SPage='Страница %d из %d';
+  SPage='%d/%d';
 
 constructor TTextView.Create(Parent: TStateMenu; const Caption, TextFile: string);
 var
   Line: Integer;
   Src, Dst: string;
   Btn: TBtn;
-  Lbl: TLbl;
+  //Lbl: TLbl;
 begin
   inherited Create(800, 600, 80, 60, 640, 480, TexMan.FontCreate('Arial', 12, true));
   FParent:=Parent;
@@ -448,28 +410,9 @@ begin
     Caption:='Закрыть';
     OnClick:=Close;
     AddButton(Btn);
-    if FPages=0 then Exit;
-    X:=5;
-    Width:=30;
-    OnClick:=ChangePage;
-    Tag:=-1;
-    Caption:='<';
-    AddButton(Btn);
-    X:=290;
-    Tag:=1;
-    Caption:='>';
-    AddButton(Btn);
   end;
-  with Lbl do
-  begin
-    X:=35;
-    Y:=450;
-    Width:=255;
-    Align:=laCenter;
-    Color:=Integer($FF00B200);
-    FLPage:=AddLabel(Lbl);
-  end;
-  AddRect(Rect(35, 445, 290, 475));
+  if FPages>0 then
+    FLPage:=CreateSelect(Self, 5, 445, 315, 30, ChangePage, '<', '>');
 end;
 
 destructor TTextView.Destroy;
@@ -539,6 +482,8 @@ begin
   inherited Create;
   FMainMenu:=TMainMenu.Create(Self);
   FOptions:=TOptions.Create(Self);
+  FKeyConfig:=TBindManCfgForm.Create(800, 600, 200, 130, 400, 350, TexMan.FontCreate('Arial', 12, true), 'Закрыть');
+  FKeyConfig.OnClose:=KeyConfigClose;
   FCurFrm:=FMainMenu;
   FGame:=TStateGame(Core.GetState(Core.FindState('Game')));
   FLoad:=TStateLoad(Core.GetState(Core.FindState('Load')));
@@ -548,6 +493,7 @@ destructor TStateMenu.Destroy;
 begin
   FAN(FMainMenu);
   FAN(FOptions);
+  FAN(FKeyConfig);
   inherited Destroy;
 end;
 
@@ -587,6 +533,11 @@ end;
 function TStateMenu.GetName: string;
 begin
   Result:='Menu';
+end;
+
+procedure TStateMenu.KeyConfigClose(Sender: TObject);
+begin
+  FCurFrm:=FOptions;
 end;
 
 end.

@@ -1,9 +1,9 @@
-unit GUI;
+unit VSEGUI;
 
 interface
 
 uses
-  Windows, AvL, avlUtils, OpenGL, OpenGLExt, oglExtensions, UTexMan,
+  Windows, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions, VSETexMan,
   VSEGameStates, VSECollisionCheck;
 
 type
@@ -29,14 +29,14 @@ type
   TBtnState=set of TBtnStates;
   TGUIForm=class //Form
   protected
-    FButtons: array of TBtn;
-    FRects: array of TRect;
-    FLabels: array of TLbl;
-    FVirtScrW, FVirtScrH: Integer;
-    FActive, FLastActive, FLast, FTabStop: Integer;
-    FCaption: string;
-    FX, FY, FWidth, FHeight: Integer;
-    FFont: Cardinal;
+    FButtons: array of TBtn; //internally used
+    FRects: array of TRect; //internally used
+    FLabels: array of TLbl; //internally used
+    FVirtScrW, FVirtScrH: Integer; //Virtual screen resolution
+    FActive, FLastActive, FLast, FTabStop: Integer; //internally used
+    FCaption: string; //Form caption
+    FX, FY, FWidth, FHeight: Integer; //Form position and size
+    FFont: Cardinal; //Form font
     function  GetButton(Index: Integer): PBtn;
     function  GetLabel(Index: Integer): PLbl;
     procedure CheckClick(Btn: PBtn);
@@ -56,7 +56,7 @@ type
     function  AddLabel(Lbl: TLbl): Integer; //Add label, returns label index
     procedure AddRect(Rect: TRect); //Add rectangle (visual frame)
     procedure Draw; //Draw form
-    procedure Update; //Update form
+    procedure Update; //dynamic; //Update form
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); dynamic; //Process mouse event
     procedure KeyEvent(Button: Integer; Event: TKeyEvent); dynamic; //Process keyboard event
     procedure CharEvent(C: Char); dynamic; //Process char event
@@ -64,6 +64,8 @@ type
     property Lbl[Index: Integer]: PLbl read GetLabel; //Labels array
     property Caption: string read FCaption write FCaption; //Form caption
   end;
+
+function CreateSelect(Form: TGUIForm; X_, Y_, W, H: Integer; OnChange: TGUIOnClick; const PrevCapt, NextCapt: string): Integer;
 
 implementation
 
@@ -232,11 +234,11 @@ begin
   glColor3f(0.5, 1, 0.5);
   FillRect(Rect(0, 0, FWidth, FHeight));
   glColor3f(0, 0.9, 0.5);
-  FillRect(Rect(0, 0, FWidth, 25));
+  FillRect(Rect(0, 0, FWidth, TexMan.TextHeight(FFont)+6));
   glColor3f(1, 1, 0);
   PaintRect(Rect(0, 0, FWidth, FHeight));
 //  glColor3d(1, 1, 0);
-  TexMan.TextOut(FFont, FX+5, FY+5, FCaption);
+  TexMan.TextOut(FFont, FX+5, FY+3, FCaption);
 end;
 
 procedure TGUIForm.DrawButton(Btn: TBtn; State: TBtnState);
@@ -262,7 +264,7 @@ begin
         if not Btn.Enabled then glColor3f(0.3, 1, 0.3);
         PaintRect(Rect(Btn.X, Btn.Y, TextX, TextY));
         TextX:=Max((Btn.Width-TexMan.TextLen(FFont, Btn.Caption)) div 2, 0);
-        TextY:=(Btn.Height div 2)-8;
+        TextY:=(Btn.Height-TexMan.TextHeight(FFont)) div 2;
         if bsPushed in State
           then glColor3f(0, 1, 0)
           else glColor3f(0, 0.7, 0);
@@ -282,7 +284,7 @@ begin
         if not Btn.Enabled then glColor3f(0.3, 1, 0.3);
         PaintRect(Rect(Btn.X, Btn.Y, TextX, TextY));
         TextX:=Min(Btn.Height+5, Btn.Width);
-        TextY:=(Btn.Height div 2)-8;
+        TextY:=(Btn.Height-TexMan.TextHeight(FFont)) div 2;
         if bsHilight in State
           then glColor3f(0, 0.8, 0)
           else glColor3f(0, 0.7, 0);
@@ -380,6 +382,40 @@ begin
         Result:=i;
         Exit;
       end;
+end;
+
+function CreateSelect(Form: TGUIForm; X_, Y_, W, H: Integer; OnChange: TGUIOnClick; const PrevCapt, NextCapt: string): Integer; //Creates select constrol, returns select state label index; distinguish prev & next buttons in handler by Btn^.Tag (-1 for prev, 1 for next)
+var
+  Lbl: TLbl;
+  Btn: TBtn;
+begin
+  with Btn do
+  begin
+    Typ:=btPush;
+    Y:=Y_;
+    Width:=H;
+    Height:=H;
+    OnClick:=OnChange;
+    Enabled:=true;
+    X:=X_;
+    Caption:=PrevCapt;
+    Tag:=-1;
+    Form.AddButton(Btn);
+    X:=X+W-H;
+    Caption:=NextCapt;
+    Tag:=1;
+    Form.AddButton(Btn);
+  end;
+  with Lbl do
+  begin
+    X:=X_+H;
+    Y:=Y_+(H-TexMan.TextHeight(Form.FFont)) div 2;
+    Width:=W-2*H;
+    Align:=laCenter;
+    Color:=Integer($FF00B200);
+    Result:=Form.AddLabel(Lbl);
+  end;
+  Form.AddRect(Rect(X_+H, Y_, X_+W-H, Y_+H));
 end;
 
 end.

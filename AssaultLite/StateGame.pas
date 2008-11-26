@@ -3,9 +3,9 @@ unit StateGame;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, avlMath, OpenGL, OpenGLExt, oglExtensions,
-  avlVectors, VSEGameStates, Terrain, QuadTree, Sky, UCamera, MemPak, USound,
-  GameUnit, GamePlayer;
+  Windows, Messages, AvL, avlUtils, avlMath, OpenGL, VSEOpenGLExt, oglExtensions,
+  avlVectors, VSEGameStates, VSETerrain, VSEQuadTree, Sky, VSECamera, VSEMemPak,
+  VSESound, VSEBindMan, GameUnit, GamePlayer;
 
 type
   TStateGame=class(TGameState)
@@ -36,7 +36,7 @@ type
 
 implementation
 
-uses VSECore, UTexMan {$IFDEF VSE_LOG}, VSELog{$ENDIF};
+uses VSECore, VSETexMan {$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 constructor TStateGame.Create;
 begin
@@ -118,13 +118,13 @@ var
   i, j, Pass: Integer;
 begin
   VectorClear(Spd);
-  if Core.KeyPressed[Ord('W')] then Spd.Z:=Spd.Z+1;
-  if Core.KeyPressed[Ord('S')] then Spd.Z:=Spd.Z-1;
-  if Core.KeyPressed[Ord('A')] then Spd.X:=Spd.X+1;
-  if Core.KeyPressed[Ord('D')] then Spd.X:=Spd.X-1;
+  if BindMan.BindActive['Fwd'] then Spd.Z:=Spd.Z+1;
+  if BindMan.BindActive['Bwd'] then Spd.Z:=Spd.Z-1;
+  if BindMan.BindActive['SLeft'] then Spd.X:=Spd.X+1;
+  if BindMan.BindActive['SRight'] then Spd.X:=Spd.X-1;
   VectorNormalize(Spd);
-  if Core.KeyPressed[VK_CONTROL] then VectorScale(Spd, 0.2);
-  if not Core.KeyPressed[VK_SHIFT] then VectorScale(Spd, 0.2);
+  if BindMan.BindActive['SpdDn'] then VectorScale(Spd, 0.2);
+  if not BindMan.BindActive['SpdUp'] then VectorScale(Spd, 0.2);
   C:=Cos(Camera.XAngle*DegToRad);
   S:=Sin(Camera.XAngle*DegToRad);
   Offs.Z:=C*Spd.Z+S*Spd.X;

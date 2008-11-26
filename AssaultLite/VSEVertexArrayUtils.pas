@@ -1,8 +1,8 @@
-unit VertexArrayUtils;
+unit VSEVertexArrayUtils;
 
 interface
 
-uses AvL, avlUtils, avlVectors, UArrayBuffer;
+uses AvL, avlUtils, avlVectors, VSEArrayBuffer;
 
 procedure ComputeNormalsTriangles(var VA: array of TVertex; const IA: array of TFaceW); //Compute normals to triangle list
 procedure ComputeNormalsTrianglesStrip(var VA: array of TVertex; const IA: array of Integer); //Compute normals to triangle strip

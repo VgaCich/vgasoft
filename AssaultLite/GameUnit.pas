@@ -3,7 +3,7 @@ unit GameUnit;
 interface
 
 uses
-  AvL, avlUtils, avlMath, avlVectors, OpenGL, PrimitiveModel, Terrain;
+  AvL, avlUtils, avlMath, avlVectors, OpenGL, VSEPrimitiveModel, VSETerrain;
 
 type
   TUnit=class(TObject)

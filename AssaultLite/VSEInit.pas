@@ -23,25 +23,44 @@ var //Start engine settings
   Fullscreen: Boolean=false; //Fullscreen mode
   VSync: Integer=1; //Vertical synchronization
   //SoundDevice: string='default';
+  Bindings: string='';
 
 procedure LoadINI(const FileName: string); //Load settings from ini file
 procedure SaveINI(const FileName: string); //Save settings to ini file
 
 implementation
 
+const
+  SBind = 'Bind';
+  SSettings = 'Settings';
+
 procedure LoadINI(const FileName: string);
 var
   INI: TIniFile;
+  Bind: TStringList;
+const
+  SSettings = 'Settings';
 begin
+  {$IFDEF VSE_LOG}Log(llInfo, 'Loading INI file '+FileName);{$ENDIF}
   INI:=TIniFile.Create(FileName);
   try
-    ResX:=INI.ReadInteger('Settings', 'ResX', ResX);
-    ResY:=INI.ReadInteger('Settings', 'ResY', ResY);
-    Refresh:=INI.ReadInteger('Settings', 'Refresh', Refresh);
-    Depth:=INI.ReadInteger('Settings', 'Depth', Depth);
-    Fullscreen:=INI.ReadBool('Settings', 'Fullscreen', Fullscreen);
-    VSync:=INI.ReadInteger('Settings', 'VSync', VSync);
-    //SoundDevice:=INI.ReadString('Settings', 'SoundDevice', SoundDevice);
+    ResX:=INI.ReadInteger(SSettings, 'ResX', ResX);
+    ResY:=INI.ReadInteger(SSettings, 'ResY', ResY);
+    Refresh:=INI.ReadInteger(SSettings, 'Refresh', Refresh);
+    Depth:=INI.ReadInteger(SSettings, 'Depth', Depth);
+    Fullscreen:=INI.ReadBool(SSettings, 'Fullscreen', Fullscreen);
+    VSync:=INI.ReadInteger(SSettings, 'VSync', VSync);
+    //SoundDevice:=INI.ReadString(SSettings, 'SoundDevice', SoundDevice);
+    if INI.SectionExists(SBind) then
+    begin
+      Bind:=TStringList.Create;
+      try
+        INI.ReadSectionValues(SBind, Bind);
+        Bindings:=Bind.Text;
+      finally
+        FAN(Bind);
+      end;
+    end;
   finally
     FAN(INI);
   end;
@@ -50,16 +69,34 @@ end;
 procedure SaveINI(const FileName: string);
 var
   INI: TIniFile;
+  Bind: TStringList;
+  i: Integer;
+  Name: string;
 begin
+  {$IFDEF VSE_LOG}Log(llInfo, 'Saving INI file '+FileName);{$ENDIF}
   INI:=TIniFile.Create(FileName);
   try
-    INI.WriteInteger('Settings', 'ResX', ResX);
-    INI.WriteInteger('Settings', 'ResY', ResY);
-    INI.WriteInteger('Settings', 'Refresh', Refresh);
-    INI.WriteInteger('Settings', 'Depth', Depth);
-    INI.WriteBool('Settings', 'Fullscreen', Fullscreen);
-    INI.WriteInteger('Settings', 'VSync', VSync);
-    //INI.WriteString('Settings', 'SoundDevice', SoundDevice);
+    INI.WriteInteger(SSettings, 'ResX', ResX);
+    INI.WriteInteger(SSettings, 'ResY', ResY);
+    INI.WriteInteger(SSettings, 'Refresh', Refresh);
+    INI.WriteInteger(SSettings, 'Depth', Depth);
+    INI.WriteBool(SSettings, 'Fullscreen', Fullscreen);
+    INI.WriteInteger(SSettings, 'VSync', VSync);
+    //INI.WriteString(SSettings, 'SoundDevice', SoundDevice);
+    if Bindings<>'' then
+    begin
+      Bind:=TStringList.Create;
+      try
+        Bind.Text:=Bindings;
+        for i:=0 to Bind.Count-1 do
+        begin
+          Name:=Copy(Bind[i], 1, FirstDelimiter('=', Bind[i])-1);
+          INI.WriteString(SBind, Name, Bind.Values[Name]);
+        end;
+      finally
+        FAN(Bind);
+      end;
+    end;
   finally
     FAN(INI);
   end;

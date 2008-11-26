@@ -1,12 +1,12 @@
-unit PrimitiveModel;
+unit VSEPrimitiveModel;
 
 interface
 
 uses
-  Windows, AvL, avlUtils, avlVectors, OpenGL, oglExtensions, OpenGLExt,
-  UArrayBuffer, VertexArrayUtils, MemPak, avlMath;
+  Windows, AvL, avlUtils, avlMath, avlVectors, OpenGL, oglExtensions,
+  VSEOpenGLExt, VSEArrayBuffer, VSEVertexArrayUtils, VSEMemPak;
 
-{$I PrimitiveModel.inc}
+{$I VSEPrimitiveModel.inc}
 
 type
   TVertexArray=array of TVertex;
@@ -92,7 +92,7 @@ type
 
 implementation
 
-uses UTexMan{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+uses VSETexMan{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
   SPriModelObjectCreateCannotLoadMo = 'PriModelObject.Create: Cannot load model object';

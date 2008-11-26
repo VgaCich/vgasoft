@@ -1,9 +1,9 @@
-unit UTexMan;
+unit VSETexMan;
 
 interface
 
 uses
-  Windows, AvL, avlUtils, avlMath, OpenGL, oglExtensions, OpenGLExt, SynTex, MemPak;
+  Windows, AvL, avlUtils, avlMath, OpenGL, oglExtensions, VSEOpenGLExt, SynTex, VSEMemPak;
 
 type
   TTexture=record //internally used
@@ -14,6 +14,7 @@ type
   TFont=record //internally used
     Tex,  List: Cardinal;
     Width: array [0..255] of ShortInt;
+    Height: ShortInt;
     Size: Integer;
     Bold: Boolean;
     Name: string;
@@ -56,6 +57,7 @@ type
     procedure RebuildFonts; //Rebuild font textures for current screen resolution
     procedure TextOut(Font: Cardinal; X, Y: Single; const Text: string); //Draw text; Font - font ID, X, Y - coordinates of left upper corner of text, Text - text for draw
     function  TextLen(Font: Cardinal; const Text: string): Integer; //Length of space, needed for drawing text
+    function  TextHeight(Font: Cardinal): Integer; //Height of space, needed for drawing text
     {properties}
     property RTTMethod: TRTTMethod read FRTTMethod write FRTTMethod; //Method, used for RTT; default: autodetect
   end;
@@ -436,6 +438,7 @@ begin
       Data[i]:=Pix[i*3];
     glBindTexture(GL_TEXTURE_2D, Tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, FontTexSize, FontTexSize, 0, GL_ALPHA, GL_UNSIGNED_BYTE, Data);
+    Height:=0;
     for i:=0 to 255 do
     begin
       glNewList(List+Cardinal(i), GL_COMPILE);
@@ -443,6 +446,7 @@ begin
       t:=(i div 16)/16;
       GetTextExtentPoint32(MDC, @Char(i), 1, CS);
       Width[i]:=Ceil(CS.cx/k);
+      Height:=Max(Ceil(CS.cy/k), Height);
       glBegin(GL_QUADS);
         glTexCoord2f(s, 1-t);
         glVertex2f(0, 0);
@@ -528,6 +532,13 @@ begin
   if (Font>=Cardinal(Length(FFonts))) or (FFonts[Font]=nil) then Exit;
   for i:=1 to Length(Text) do
     Result:=Result+FFonts[Font]^.Width[Byte(Text[i])];
+end;
+
+function TTexMan.TextHeight(Font: Cardinal): Integer;
+begin
+  Result:=0;
+  if (Font>=Cardinal(Length(FFonts))) or (FFonts[Font]=nil) then Exit;
+  Result:=FFonts[Font]^.Height;
 end;
 
 end.

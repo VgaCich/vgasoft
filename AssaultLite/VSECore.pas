@@ -3,7 +3,7 @@ unit VSECore;
 interface
 
 uses
-  Windows, Messages, MMSystem, AvL, avlUtils, OpenGL, OpenGLExt, oglExtensions,
+  Windows, Messages, MMSystem, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions,
   VSEInit, VSEGameStates{$IFDEF VSE_LOG}, VSELog, VSESysInfo{$ENDIF};
 
 type
@@ -86,7 +86,7 @@ var
 implementation
 
 uses
-  USound, UTexMan;
+  VSESound, VSETexMan, VSEBindMan;
 
 const
   WndClassName: PChar = 'VSENGINE';
@@ -155,6 +155,7 @@ begin
   end;
   FAN(TexMan);
   FAN(Sound);
+  FAN(BindMan);
   wglMakeCurrent(FDC, 0);
   wglDeleteContext(FRC);
   if FDC>0 then ReleaseDC(FHandle, FDC);
@@ -179,9 +180,10 @@ begin
   FDC:=GetDC(FHandle);
   FRC:=gleSetPix(FDC, FDepth);
   if FRC=0 then raise Exception.Create('Unable to set rendering context');
-  {$IFDEF VSE_LOG}LogSysInfo;{$ENDIF}
   Sound:=TSound.Create;
   TexMan:=TTexMan.Create;
+  BindMan:=TBindMan.Create;
+  {$IFDEF VSE_LOG}LogSysInfo;{$ENDIF}
   glShadeModel(GL_SMOOTH);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
@@ -208,6 +210,7 @@ var
   Cur: TPoint;
 begin
   GetKeyboardState(FKeyState);
+  BindMan.Update;
   if FMinimized then Exit;
   if GetForegroundWindow<>FHandle then
   begin
@@ -296,6 +299,7 @@ begin
     else if Event=meUp
       then ReleaseCapture;
   if FMouseCapture and (Event=meMove) then Exit;
+  if Event in [meDown, meUp, meWheel] then BindMan.MouseEvent(Button, Event);
   if FCurState<>nil then
   try
     FCurState.MouseEvent(Button, Event, X, Y);
@@ -319,6 +323,7 @@ begin
     MakeScreenshot('Screen');
     Exit;
   end;
+  BindMan.KeyEvent(Button, Event);
   if FCurState<>nil then
   try
     FCurState.KeyEvent(Button, Event);

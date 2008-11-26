@@ -3,7 +3,7 @@ unit Sky;
 interface
 
 uses
-  AvL, avlUtils, OpenGL, UCamera, PrimitiveModel;
+  AvL, avlUtils, OpenGL, VSECamera, VSEPrimitiveModel;
 
 type
   TSky=class(TObject)
