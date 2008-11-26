@@ -35,7 +35,7 @@ type
     destructor Destroy; override;
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
     procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
-    property  OnClose: TOnEvent read FOnClose write FOnClose;
+    property  OnClose: TOnEvent read FOnClose write FOnClose; //Triggered at click on 'close' button
   end;
   TBindMan=class
   private
@@ -51,8 +51,7 @@ type
     procedure MouseEvent(Button: Integer; Event: TMouseEvent); //internally used
     procedure KeyEvent(Button: Integer; Event: TKeyEvent); //internally used
     procedure Update; //internally used
-//    function  CreateConfigForm(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal): TBindManCfgForm; //Creates key configuration form
-    function  GetBindEvent(const Name: string): TBindEvent;
+    function  GetBindEvent(const Name: string): TBindEvent; //Get oldest event from queue for binding, returns beNone if no events
     property  BindActive[Name: string]: Boolean read GetBindActive; //True if binded key pressed, mouse wheel up/down cannot be pressed, only events
   end;
 

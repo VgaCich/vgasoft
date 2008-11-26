@@ -195,7 +195,7 @@ begin
     Caption:='Полный экран';
     FCFullScr:=AddButton(Btn);
     Y:=230;
-    Caption:='Верт. синхронизация';
+    Caption:='Верт. синхр.';
     FCVSync:=AddButton(Btn);
     Typ:=btPush;
     X:=220;
