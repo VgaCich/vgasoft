@@ -101,17 +101,9 @@ var
   Mutex: Integer=0;
 
 function GetCursorPos(var Cursor: TPoint): Boolean;
-var
-  Rect: TRect;
 begin
-  {TODO: ClientToScreen/ScreenToClient}
   Result:=Windows.GetCursorPos(Cursor);
-  GetWindowRect(Core.Handle, Rect);
-  if not Core.Fullscreen then
-  begin
-    Cursor.X:=Cursor.X-Rect.Left-GetSystemMetrics(SM_CXDLGFRAME);
-    Cursor.Y:=Cursor.Y-Rect.Top-GetSystemMetrics(SM_CYCAPTION)-GetSystemMetrics(SM_CYDLGFRAME);
-  end;
+  ScreenToClient(Handle, Cursor);
 end;
 
 procedure UpdateFPS(uID, uMsg, dwUser, dw1, dw2: Cardinal); stdcall;
@@ -287,13 +279,14 @@ end;
 
 procedure TCore.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 var
-  Rect: TRect;
+  P: TPoint;
 begin
-  GetWindowRect(Handle, Rect);
   if (Event=meWheel) and not Fullscreen then
   begin
-    X:=X-Rect.Left-GetSystemMetrics(SM_CXDLGFRAME);
-    Y:=Y-Rect.Top-GetSystemMetrics(SM_CYCAPTION)-GetSystemMetrics(SM_CYDLGFRAME);
+    P:=Point(X, Y);
+    ScreenToClient(Handle, P);
+    X:=P.X;
+    Y:=P.Y;
   end;
   if Event=meDown
     then SetCapture(FHandle)
@@ -574,8 +567,12 @@ begin
   begin
     SetCursorPos(FResX div 2, FResY div 2);
     SetCapture(FHandle);
+    ShowCursor(false);
   end
-    else ReleaseCapture;
+  else begin
+    ReleaseCapture;
+    ShowCursor(true);
+  end;
 end;
 
 function TCore.GetTime: Cardinal;

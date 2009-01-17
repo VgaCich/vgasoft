@@ -27,13 +27,19 @@ type
   end;
   TBtnStates=(bsHilight, bsPushed, bsTabStop); //Button state - highlighted (mouse over), pushed, selected from keyboard
   TBtnState=set of TBtnStates;
+  TVirtScreenAlign=(vsaLeftTop, vsaCenter, vsaRightBottom);
   TGUIForm=class //Form
-  protected
+  private
+    FVirtScreenAlign: TVirtScreenAlign;
+    FVirtScreenVAlign: TVirtScreenAlign;
+    FVSWider: Boolean; //internally used
+    FVSScale, FVSDelta: Double; //internally used
+    FActive, FLastActive, FLast, FTabStop: Integer; //internally used
     FButtons: array of TBtn; //internally used
     FRects: array of TRect; //internally used
     FLabels: array of TLbl; //internally used
+  protected
     FVirtScrW, FVirtScrH: Integer; //Virtual screen resolution
-    FActive, FLastActive, FLast, FTabStop: Integer; //internally used
     FCaption: string; //Form caption
     FX, FY, FWidth, FHeight: Integer; //Form position and size
     FFont: Cardinal; //Form font
@@ -63,6 +69,8 @@ type
     property Button[Index: Integer]: PBtn read GetButton; //Buttons array
     property Lbl[Index: Integer]: PLbl read GetLabel; //Labels array
     property Caption: string read FCaption write FCaption; //Form caption
+    property VirtScreenAlign: TVirtScreenAlign read FVirtScreenAlign write FVirtScreenAlign; //Virtual screen align
+    property VirtScreenVAlign: TVirtScreenAlign read FVirtScreenVAlign write FVirtScreenVAlign; //Virtual screen vertical align
   end;
 
 function CreateSelect(Form: TGUIForm; X_, Y_, W, H: Integer; OnChange: TGUIOnClick; const PrevCapt, NextCapt: string): Integer;
@@ -72,11 +80,17 @@ implementation
 uses
   VSECore;
 
+const
+  DeltaLeft: array[TVirtScreenAlign] of Double=(0, -1, -2);
+  DeltaRight: array[TVirtScreenAlign] of Double=(2, 1, 0);
+
 constructor TGUIForm.Create(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal);
 begin
   inherited Create;
   FVirtScrW:=VirtScrW;
   FVirtScrH:=VirtScrH;
+  FVirtScreenAlign:=vsaCenter;
+  FVirtScreenVAlign:=vsaCenter;
   FX:=X;
   FY:=Y;
   FWidth:=Width;
@@ -131,7 +145,9 @@ var
 begin
   glPushMatrix;
   glPushAttrib(GL_ENABLE_BIT);
-  gleOrthoMatrix(FVirtScrW, FVirtScrH);
+  if FVSWider
+    then gleOrthoMatrix2(0, DeltaLeft[FVirtScreenVAlign]*FVSDelta, FVirtScrW, FVirtScrH+DeltaRight[FVirtScreenVAlign]*FVSDelta)
+    else gleOrthoMatrix2(DeltaLeft[FVirtScreenAlign]*FVSDelta, 0, FVirtScrW+DeltaRight[FVirtScreenAlign]*FVSDelta, FVirtScrH);
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_LIGHTING);
   DrawForm;
@@ -146,6 +162,16 @@ procedure TGUIForm.Update;
 var
   Cursor: TPoint;
 begin
+  FVSWider:=FVirtScrW/FVirtScrH>Core.ResX/Core.ResY;
+  if FVSWider then
+  begin
+    FVSScale:=Core.ResX/FVirtScrW;
+    FVSDelta:=(Core.ResY/FVSScale-FVirtScrH)/2;
+  end
+  else begin
+    FVSScale:=Core.ResY/FVirtScrH;
+    FVSDelta:=(Core.ResX/FVSScale-FVirtScrW)/2;
+  end;
   GetCursorPos(Cursor);
   MapCursor(Cursor);
   FLastActive:=FActive;
@@ -366,8 +392,15 @@ end;
 
 procedure TGUIForm.MapCursor(var Cursor: TPoint);
 begin
-  Cursor.X:=Round(Cursor.X*FVirtScrW/Core.ResX)-FX;
-  Cursor.Y:=Round(Cursor.Y*FVirtScrH/Core.ResY)-FY;
+  if FVSWider then
+  begin
+    Cursor.X:=Round(Cursor.X/FVSScale)-FX;
+    Cursor.Y:=Round(Cursor.Y/FVSScale+DeltaLeft[FVirtScreenVAlign]*FVSDelta)-FY;
+  end
+  else begin
+    Cursor.X:=Round(Cursor.X/FVSScale+DeltaLeft[FVirtScreenAlign]*FVSDelta)-FX;
+    Cursor.Y:=Round(Cursor.Y/FVSScale)-FY;
+  end;
 end;
 
 function TGUIForm.BtnAt(Point: TPoint): Integer;

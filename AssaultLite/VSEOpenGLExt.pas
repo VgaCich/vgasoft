@@ -18,6 +18,7 @@ procedure gleSetGL; //Set default OpenGL state
 procedure gleResizeWnd(Width, Height: Integer); //used internally
 procedure glePerspectiveMatrix(FOV: Single; Width, Height: Integer); //Set perspective projection; FOV: Field of Vision; Width, Height: Viewport size
 procedure gleOrthoMatrix(Width, Height: Integer); //Set orthogonal projection; Width, Height: projection dimensions
+procedure gleOrthoMatrix2(Left, Top, Right, Bottom: Double); //Set orthogonal projection
 function  gleError(GLError: Cardinal): string; //Convert OpenGL error code to text
 procedure gleColor(Color: TColor); //Set current OpenGL color
 function  gleColorTo4f(Color: TColor): TVector4f; //Convert GDI color to OpenGL color
@@ -134,6 +135,15 @@ begin
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity;
   glOrtho(0, Width, Height, 0, -1, 1);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity;
+end;
+
+procedure gleOrthoMatrix2(Left, Top, Right, Bottom: Double);
+begin
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity;
+  glOrtho(Left, Right, Bottom, Top, -1, 1);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity;
 end;
