@@ -104,6 +104,7 @@ function GetCursorPos(var Cursor: TPoint): Boolean;
 var
   Rect: TRect;
 begin
+  {TODO: ClientToScreen/ScreenToClient}
   Result:=Windows.GetCursorPos(Cursor);
   GetWindowRect(Core.Handle, Rect);
   if not Core.Fullscreen then

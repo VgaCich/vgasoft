@@ -488,7 +488,7 @@ begin
   FFonts[Result]^.Size:=Size;
   FFonts[Result]^.Bold:=Bold;
   FFonts[Result]^.Name:=Name;
-  FFonts[Result]^.Tex:=AddTexture('__FONT_'+Name+IntToStr(Size)+BoolStr[Bold], nil, 1, 1, GL_ALPHA, GL_ALPHA, true, false);
+  FFonts[Result]^.Tex:=AddTexture('__FONT_'+Name+IntToStr(Size)+BoolStr[Bold], nil, 1, 1, GL_ALPHA8, GL_ALPHA, true, false);
   FFonts[Result]^.List:=glGenLists(256);
   CreateFontTex(Result);
 end;

@@ -20,6 +20,7 @@ const
   GL_RGBA8         = $8058;
   GL_BGR           = $80E0;
   GL_BGRA          = $80E1;
+  GL_ALPHA8        = $803C;
   GL_TEXTURE0_ARB  = $84C0;
   GL_TEXTURE1_ARB  = $84C1;
   GL_TEXTURE_MAX_ANISOTROPY_EXT     = $84FE;
