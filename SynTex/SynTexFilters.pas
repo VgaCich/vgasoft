@@ -10,17 +10,17 @@ type
   TSynTexFilters=class
   protected
     FSynTex: TSynTex;
-    function  WrapVal(Val, Max: Integer; Clamp: Boolean): Integer;
-    function  PixelIndex(X, Y: Integer; ClampX, ClampY: Boolean): Integer;
-    function  GetPixel(Reg: PSynTexRegister; X, Y: Single; ClampX, ClampY, LERP: Boolean): TRGBA;
-    function  BlendColors(Color1, Color2: TRGBA; Blend: Byte): TRGBA; overload;
-    function  BlendColors(Color1, Color2: TRGBA; Blend: TRGBA): TRGBA; overload;
-    function  Add(Color1, Color2: TRGBA; Clamp: Boolean): TRGBA;
-    function  Sub(Color1, Color2: TRGBA; Clamp: Boolean): TRGBA;
-    function  Diff(Color1, Color2: TRGBA): TRGBA;
-    function  Mul(Color1, Color2: TRGBA): TRGBA; overload;
-    function  Mul(Color: TRGBA; Scale: Byte): TRGBA; overload;
-    function  Mul(Color: TRGBA; Scale: Integer; Clamp: Boolean): TRGBA; overload;
+    function  WrapVal(Val, Max: Integer; Clamp: Boolean): Integer; {$IFDEF INLINE} inline; {$ENDIF}
+    function  PixelIndex(X, Y: Integer; ClampX, ClampY: Boolean): Integer; {$IFDEF INLINE} inline; {$ENDIF}
+    function  GetPixel(Reg: PSynTexRegister; X, Y: Single; ClampX, ClampY, LERP: Boolean): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
+    function  BlendColors(Color1, Color2: TRGBA; Blend: Byte): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
+    function  BlendColors(Color1, Color2: TRGBA; Blend: TRGBA): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Add(Color1, Color2: TRGBA; Clamp: Boolean): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Sub(Color1, Color2: TRGBA; Clamp: Boolean): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Diff(Color1, Color2: TRGBA): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Mul(Color1, Color2: TRGBA): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Mul(Color: TRGBA; Scale: Byte): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Mul(Color: TRGBA; Scale: Integer; Clamp: Boolean): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
     procedure Convolution1D(Dst, Src: PSynTexRegister; Kernel: array of Single; Amp: Single; Horz, ClampX, ClampY: Boolean);
     function  BlurFilterFlat(D: Single): Single;
     function  BlurFilterLinear(D: Single): Single;
@@ -42,6 +42,9 @@ type
     function FiltColorRange(Regs: array of PSynTexRegister; RegsCount: Integer; Params: Pointer; ParamsSize: Integer): Boolean;
     function FiltAdjust(Regs: array of PSynTexRegister; RegsCount: Integer; Params: Pointer; ParamsSize: Integer): Boolean;
   end;
+
+const
+  White: TRGBA=(R: $FF; G: $FF; B: $FF; A: $FF);
 
 implementation
 
@@ -562,8 +565,6 @@ begin
 end;
 
 function TSynTexFilters.BlendColors(Color1, Color2: TRGBA; Blend: TRGBA): TRGBA;
-const
-  White: TRGBA=(R: $FF; G: $FF; B: $FF; A: $FF);
 begin
   Color1:=Mul(Color1, Sub(White, Blend, true));
   Color2:=Mul(Color2, Blend);

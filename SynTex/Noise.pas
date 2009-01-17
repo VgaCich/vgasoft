@@ -13,7 +13,7 @@ type
     function Normal(X, Y: Integer): TVector3D;
   public
     constructor Create(Freq: Single; WrapAt: Integer = 256);
-    function Noise(X, Y: Integer): Single;
+    function Noise(X, Y: Integer): Single; {$IFDEF INLINE} inline; {$ENDIF}
   end;
 
 implementation

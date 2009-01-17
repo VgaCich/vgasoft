@@ -86,7 +86,7 @@ type
     property BreakPoints[Index: Integer]: Integer read GetBreakPoint write SetBreakPoint;
   end;
 
-function CheckRemain(Stream: TStream; Needs: Integer{$IFDEF SYNTEX_USELOG}; const FailFunc: string{$ENDIF}): Boolean;
+function CheckRemain(Stream: TStream; Needs: Integer{$IFDEF SYNTEX_USELOG}; const FailFunc: string{$ENDIF}): Boolean; {$IFDEF INLINE} inline; {$ENDIF}
 
 const
   Commands: array[TCmdCode] of string=('RET', 'JMP', 'CALL', 'LDR', 'STR', 'FLT', 'SRS');
