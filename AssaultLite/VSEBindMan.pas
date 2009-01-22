@@ -358,7 +358,7 @@ begin
   FillKeys;
   if FPages>0 then
   begin
-    FPageLabel:=CreateSelect(Self, 10, Height-40, Min(Width div 2, Width-140), 30, ChangePage, '<', '>');
+    FPageLabel:=CreateSelect(Self, 10, Height-40, Min(Width div 2, Width-280), 30, ChangePage, '<', '>');
     Self.Lbl[FPageLabel]^.Caption:=Format(PageLabel, [FPage+1, FPages+1]);
   end;
   with Btn do
