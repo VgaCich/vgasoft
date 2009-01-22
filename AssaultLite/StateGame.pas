@@ -165,13 +165,11 @@ begin
   Result:=20;
   glClearColor(0, 0, 0, 1);
   Core.MouseCapture:=true;
-  ShowCursor(false);
   //Sound.PlayMusic('Music.xm');
 end;
 
 procedure TStateGame.Deactivate;
 begin
-  ShowCursor(true);
   Core.MouseCapture:=false;
   //Sound.StopMusic;
 end;

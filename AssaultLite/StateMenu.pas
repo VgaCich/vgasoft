@@ -482,7 +482,8 @@ begin
   inherited Create;
   FMainMenu:=TMainMenu.Create(Self);
   FOptions:=TOptions.Create(Self);
-  FKeyConfig:=TBindManCfgForm.Create(800, 600, 200, 130, 400, 350, TexMan.FontCreate('Arial', 12, true), 'Закрыть');
+  FKeyConfig:=TBindManCfgForm.Create(800, 600, 200, 130, 400, 350,
+    TexMan.FontCreate('Arial', 12, true), 'Стандартное', 'Применить');
   FKeyConfig.Caption:='Управление';
   FKeyConfig.OnClose:=KeyConfigClose;
   FCurFrm:=FMainMenu;

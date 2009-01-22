@@ -17,12 +17,15 @@ function  gleSetPix(DC: HDC; Depth: Cardinal): HGLRC; //used internally
 procedure gleSetGL; //Set default OpenGL state
 procedure gleResizeWnd(Width, Height: Integer); //used internally
 procedure glePerspectiveMatrix(FOV: Single; Width, Height: Integer); //Set perspective projection; FOV: Field of Vision; Width, Height: Viewport size
+procedure glePerspectiveMatrix2(FOV: Single; Width, Height: Integer; ZNear, ZFar: Single); //Set perspective projection; ZNear, ZFar: Z cutting planes
 procedure gleOrthoMatrix(Width, Height: Integer); //Set orthogonal projection; Width, Height: projection dimensions
-procedure gleOrthoMatrix2(Left, Top, Right, Bottom: Double); //Set orthogonal projection
+procedure gleOrthoMatrix2(Left, Top, Right, Bottom: Double); //Set orthogonal projection; Left, Top, Right, Bottom: projection dimensions
 function  gleError(GLError: Cardinal): string; //Convert OpenGL error code to text
 procedure gleColor(Color: TColor); //Set current OpenGL color
 function  gleColorTo4f(Color: TColor): TVector4f; //Convert GDI color to OpenGL color
 function  gleGetResolutions: TResolutions; //List available screen resolutions
+function  gleScreenTo3D(X, Y: Integer; GetDepth: Boolean=false): TVector3D; //Translates screen coordinates to 3D coordinates; GetDepth: fetch screen depth from framebuffer
+function  gle3DToScreen(X, Y, Z: Double): TPoint; //Translates 3D coordinates to screen coordinates
 
 implementation
 
@@ -122,21 +125,22 @@ end;
 
 procedure glePerspectiveMatrix(FOV: Single; Width, Height: Integer);
 begin
+  glePerspectiveMatrix2(FOV, Width, Height, 0.1, 10000);
+end;
+
+procedure glePerspectiveMatrix2(FOV: Single; Width, Height: Integer; ZNear, ZFar: Single);
+begin
   if Height<1 then Height:=1;
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity;
-  gluPerspective(FOV, Width/Height, 0.1, 10000.0);
+  gluPerspective(FOV, Width/Height, ZNear, ZFar);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity;
 end;
 
 procedure gleOrthoMatrix(Width, Height: Integer);
 begin
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity;
-  glOrtho(0, Width, Height, 0, -1, 1);
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity;
+  gleOrthoMatrix2(0, 0, Width, Height);
 end;
 
 procedure gleOrthoMatrix2(Left, Top, Right, Bottom: Double);
@@ -244,6 +248,36 @@ begin
           Inc(SC);
         end;
     until SC=0;
+end;
+
+function gleScreenTo3D(X, Y: Integer; GetDepth: Boolean=false): TVector3D;
+var
+  Viewport: array[0..3] of Integer;
+  ModelViewMatrix, ProjectionMatrix: array[0..15] of Double;
+  Z: Single;
+  OX, OY, OZ: Double;
+begin
+  glGetDoublev(GL_MODELVIEW_MATRIX, @ModelViewMatrix);
+	glGetDoublev(GL_PROJECTION_MATRIX, @ProjectionMatrix);
+	glGetIntegerv(GL_VIEWPORT, @Viewport);
+  Y:=Viewport[3]-Y-1;
+  if GetDepth
+    then glReadPixels(X, Y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, @Z)
+    else Z:=0;
+  gluUnProject(X, Y, Z, @ModelViewMatrix, @ProjectionMatrix, @Viewport, OX, OY, OZ);
+  Result:=VectorSetValue(OX, OY, OZ);
+end;
+
+function gle3DToScreen(X, Y, Z: Double): TPoint;
+var
+  Viewport: array[0..3] of Integer;
+  ModelViewMatrix, ProjectionMatrix: array[0..15] of Double;
+begin
+  glGetDoublev(GL_MODELVIEW_MATRIX, @ModelViewMatrix);
+	glGetDoublev(GL_PROJECTION_MATRIX, @ProjectionMatrix);
+	glGetIntegerv(GL_VIEWPORT, @Viewport);
+  gluProject(X, Y, Z, @ModelViewMatrix, @ProjectionMatrix, @Viewport, X, Y, Z);
+  Result:=Point(Round(X), Viewport[3]-Round(Y)-1);
 end;
 
 end.

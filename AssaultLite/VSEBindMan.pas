@@ -18,31 +18,15 @@ type
     Key: Byte;
     Events: PEventQueue;
   end;
-  TBindManCfgForm=class(TGUIForm) // Keys configuration form
-  private
-    FKeyNames: array[0..255] of string;
-    FLabels, FButtons: array of Integer;
-    FPageLabel, FPage, FPages, FActive: Integer;
-    FOnClose: TOnEvent;
-    procedure ChangePage(Btn: PBtn);
-    procedure FillKeys;
-    procedure KeyBtnClick(Btn: PBtn);
-    function KeyToStr(Key: Integer): string;
-    procedure CloseClick(Btn: PBtn);
-    procedure SetKey(Key: Integer);
-  public
-    constructor Create(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal; const CloseCapt: string);
-    destructor Destroy; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
-    property  OnClose: TOnEvent read FOnClose write FOnClose; //Triggered at click on 'close' button
-  end;
   TBindMan=class
   private
     FBindings: array of TBinding;
     FQueuePool: array of TEventQueue;
+    FScrollStateClicks: Integer;
+    FScrollStateUp: Boolean;
     function GetBindActive(Name: string): Boolean;
     function FindBinding(const Name: string): Integer;
+    procedure LoadBindings;
     function NewEvent(Event_: TBindEvent): PEventQueue;
     procedure SaveBindings;
   public
@@ -54,7 +38,27 @@ type
     function  GetBindEvent(const Name: string): TBindEvent; //Get oldest event from queue for binding, returns beNone if no events
     property  BindActive[Name: string]: Boolean read GetBindActive; //True if binded key pressed, mouse wheel up/down cannot be pressed, only events
   end;
-
+  TBindManCfgForm=class(TGUIForm) // Keys configuration form
+  private
+    FKeyNames: array[0..255] of string;
+    FLabels, FButtons: array of Integer;
+    FPageLabel, FPage, FPages, FActive: Integer;
+    FOnClose: TOnEvent;
+    procedure ChangePage(Btn: PBtn);
+    procedure FillKeys;
+    procedure KeyBtnClick(Btn: PBtn);
+    function KeyToStr(Key: Integer): string;
+    procedure CloseClick(Btn: PBtn);
+    procedure DefaultClick(Btn: PBtn);
+    procedure SetKey(Key: Integer);
+  public
+    constructor Create(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal; const DefaultCapt, CloseCapt: string);
+    destructor Destroy; override;
+    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
+    procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
+    property  OnClose: TOnEvent read FOnClose write FOnClose; //Triggered at click on 'close' button
+  end;
+  
 var
   BindMan: TBindMan; //Global variable for accessing to Bindings Manager
 
@@ -78,36 +82,11 @@ const
 
 constructor TBindMan.Create;
 var
-  Binds: TStringList;
-  S: string;
-  i, Idx: Integer;
+  i: Integer;
 begin
   inherited Create;
   {$IFDEF VSE_LOG}Log(llInfo, 'BindMan: Create');{$ENDIF}
-  Binds:=GetFileText(SBindCfg);
-  if not Assigned(Binds) then Exit;
-  try
-    SetLength(FBindings, Binds.Count);
-    for i:=0 to Binds.Count-1 do
-      with FBindings[i] do
-      begin
-        S:=Binds[i];
-        Name:=Tok(',', S);
-        Descript:=Tok(',', S);
-        Key:=StrToInt(Tok(',', S));
-        Events:=nil;
-      end;
-    Binds.Text:=VSEInit.Bindings;
-    for i:=0 to Binds.Count-1 do
-    begin
-      S:=Copy(Binds[i], 1, FirstDelimiter('=', Binds[i])-1);
-      Idx:=FindBinding(S);
-      if Idx>-1 then FBindings[Idx].Key:=StrToInt(Binds.Values[S]);
-    end;
-  finally
-    FAN(Binds);
-  end;
-  {$IFDEF VSE_LOG}Log(llInfo, 'BindMan: Loaded '+IntToStr(Length(FBindings))+' bindings');{$ENDIF}
+  LoadBindings;
   SetLength(FQueuePool, 3*MaxEventAge*Length(FBindings));
   for i:=0 to High(FQueuePool) do
     FQueuePool[i].Age:=DeadEvent;
@@ -120,11 +99,6 @@ begin
   Finalize(FQueuePool);
   inherited Destroy;
 end;
-
-{function TBindMan.CreateConfigForm(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal): TBindManCfgForm;
-begin
-  //SaveBindings;
-end;}
 
 function TBindMan.FindBinding(const Name: string): Integer;
 var
@@ -146,7 +120,17 @@ var
 begin
   Result:=false;
   i:=FindBinding(Name);
-  if i>-1 then Result:=Core.KeyPressed[FBindings[i].Key];
+  if i>-1 then
+    with FBindings[i] do
+    begin
+      if Key in [VK_MWHEELUP, VK_MWHEELDOWN] then
+      begin
+        if (FScrollStateClicks>0) and (((Key=VK_MWHEELUP) and FScrollStateUp) or
+                                      ((Key=VK_MWHEELDOWN) and not FScrollStateUp))
+          then Result:=true;
+      end
+        else Result:=Core.KeyPressed[Key];
+    end;
 end;
 
 function TBindMan.GetBindEvent(const Name: string): TBindEvent;
@@ -186,6 +170,39 @@ begin
       end;
 end;
 
+procedure TBindMan.LoadBindings;
+var
+  Binds: TStringList;
+  S: string;
+  i: Integer;
+  Idx: Integer;
+begin
+  Binds:=GetFileText(SBindCfg);
+  if not Assigned(Binds) then Exit;
+  try
+    SetLength(FBindings, Binds.Count);
+    for i:=0 to Binds.Count-1 do
+      with FBindings[i] do
+      begin
+        S:=Binds[i];
+        Name:=Tok(',', S);
+        Descript:=Tok(',', S);
+        Key:=StrToInt(Tok(',', S));
+        Events:=nil;
+      end;
+    Binds.Text:=VSEInit.Bindings;
+    for i:=0 to Binds.Count-1 do
+    begin
+      S:=Copy(Binds[i], 1, FirstDelimiter('=', Binds[i])-1);
+      Idx:=FindBinding(S);
+      if Idx>-1 then FBindings[Idx].Key:=StrToInt(Binds.Values[S]);
+    end;
+  finally
+    FAN(Binds);
+  end;
+  {$IFDEF VSE_LOG}Log(llInfo, 'BindMan: Loaded '+IntToStr(Length(FBindings))+' bindings');{$ENDIF};
+end;
+
 procedure TBindMan.MouseEvent(Button: Integer; Event: TMouseEvent);
 const
   EvMap: array[meDown..meUp] of TKeyEvent = (keDown, keUp);
@@ -201,6 +218,8 @@ begin
       Key:=VK_MWHEELDOWN;
       Button:=-Button;
     end;
+    FScrollStateClicks:=Button+1;
+    FScrollStateUp:=Key=VK_MWHEELUP;
     while Button>0 do
     begin
       KeyEvent(Key, keDown);
@@ -235,6 +254,7 @@ var
   i: Integer;
   Event: PEventQueue;
 begin
+  if FScrollStateClicks>0 then Dec(FScrollStateClicks);
   for i:=0 to High(FBindings) do
     with FBindings[i] do
     begin
@@ -263,7 +283,7 @@ end;
 
 { TBindManCfgForm }
 
-constructor TBindManCfgForm.Create(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal; const CloseCapt: string);
+constructor TBindManCfgForm.Create(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal; const DefaultCapt, CloseCapt: string);
 var
   Btn: TBtn;
   Lbl: TLbl;
@@ -322,7 +342,7 @@ begin
     X:=10;
     Width:=Btn.X-20;
     Align:=laLeft;
-    Color:=$FF00B200;
+    Color:=Integer($FF00B200);
   end;
   for i:=0 to High(FLabels) do
   begin
@@ -345,6 +365,10 @@ begin
   begin
     Width:=120;
     Y:=FHeight-40;
+    X:=FWidth-260;
+    Caption:=DefaultCapt;
+    OnClick:=DefaultClick;
+    AddButton(Btn);
     X:=FWidth-130;
     Caption:=CloseCapt;
     OnClick:=CloseClick;
@@ -444,6 +468,13 @@ begin
   Finalize(FLabels);
   Finalize(FButtons);
   inherited Destroy;
+end;
+
+procedure TBindManCfgForm.DefaultClick(Btn: PBtn);
+begin
+  VSEInit.Bindings:='';
+  BindMan.LoadBindings;
+  FillKeys;
 end;
 
 procedure TBindManCfgForm.SetKey(Key: Integer);
