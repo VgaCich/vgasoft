@@ -9,7 +9,7 @@ MAKE = $(ROOT)\bin\make.exe -$(MAKEFLAGS) -f$**
 DCC = $(ROOT)\bin\dcc32.exe $**
 BRCC = $(ROOT)\bin\brcc32.exe $**
 #------------------------------------------------------------------------------
-PROJECTS = BestCompress.exe MemPak.exe PMEdit.exe STAsm.exe
+PROJECTS = BestCompress.exe MemPak.exe PMEdit.exe STAsm.exe BindEdit.exe
 #------------------------------------------------------------------------------
 default: $(PROJECTS)
 #------------------------------------------------------------------------------
@@ -24,6 +24,9 @@ PMEdit.exe: PMEdit\PMEdit.dpr
   $(DCC)
 
 STAsm.exe: STAsm\STAsm.dpr
+  $(DCC)
+
+BindEdit.exe: BindEdit\BindEdit.dpr
   $(DCC)
 
 
