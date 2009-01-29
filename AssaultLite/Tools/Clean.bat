@@ -8,4 +8,6 @@ cd ..\PMBuild
 call Clean
 cd ..\PMEdit
 call Clean
+cd ..\BindEdit
+call Clean
 cd ..
