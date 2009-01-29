@@ -277,18 +277,22 @@ end;
 
 procedure TMainForm.BSaveClick(Sender: TObject);
 var
-  List: TStringList;
+  F: TFileStream;
   i: Integer;
+  S: string;
 begin
   if not SaveDialog.Execute then Exit;
-  List:=TStringList.Create;
+  F:=TFileStream.Create(SaveDialog.FileName, fmCreate);
   try
     for i:=0 to BindsList.Items.Count-1 do
       with BindsList.Items[i] do
-        List.Add(Caption+','+SubItems[0]+','+IntToStr(Integer(Data)));
-    List.SaveToFile(SaveDialog.FileName);
+      begin
+        S:=Caption+','+SubItems[0]+','+IntToStr(Integer(Data));
+        if i<BindsList.Items.Count-1 then S:=S+#13#10;
+        F.Write(S[1], Length(S));
+      end;
   finally
-    List.Free;
+    F.Free;
   end;
 end;
 
