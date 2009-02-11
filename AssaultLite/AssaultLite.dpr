@@ -2,8 +2,8 @@ program AssaultLite;
 
 uses
   {$IFDEF VER_150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
-  AvL, avlUtils, VSEInit, VSECore, VSETexMan, StateStart, StateMenu, StateGame,
-  StateLoad;
+  AvL, avlUtils, VSEInit, {$IFDEF VSE_LOG}VSELog, {$ENDIF}VSECore, VSETexMan,
+  StateStart, StateMenu, StateGame, StateLoad;
 
 procedure InitStates;
 begin

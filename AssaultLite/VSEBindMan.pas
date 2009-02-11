@@ -111,7 +111,7 @@ begin
       Exit;
     end;
   Result:=-1;
-  {$IFDEF VSE_LOG}Log(llError, 'BindMan: Bind "'+Name+'" not found');{$ENDIF}
+  {$IFDEF VSE_LOG}Log(llWarning, 'BindMan: Bind "'+Name+'" not found');{$ENDIF}
 end;
 
 function TBindMan.GetBindActive(Name: string): Boolean;

@@ -120,22 +120,22 @@ begin
   end;
   with Caps do
   begin
-    LogRaw('');
-    LogRaw('DirectSound capabilities:');
-    LogRaw(Format('Hardware secondary buffers sample rate: min=%d, max=%d', [dwMinSecondarySampleRate, dwMaxSecondarySampleRate]));
-    LogRaw('Primary buffers: '+IntToStr(dwPrimaryBuffers));
-    LogRaw(Format('Hardware secondary buffers: total=%d, static=%d, streaming=%d', [dwMaxHwMixingAllBuffers, dwMaxHwMixingStaticBuffers,	dwMaxHwMixingStreamingBuffers]));
-    LogRaw(Format('Free hardware secondary buffers: total=%d, static=%d, streaming=%d', [dwFreeHwMixingAllBuffers, dwFreeHwMixingStaticBuffers,	dwFreeHwMixingStreamingBuffers]));
-    LogRaw(Format('Hardware secondary 3D buffers: total=%d, static=%d, streaming=%d', [dwMaxHw3DAllBuffers, dwMaxHw3DStaticBuffers,	dwMaxHw3DStreamingBuffers]));
-    LogRaw(Format('Free hardware secondary 3D buffers: total=%d, static=%d, streaming=%d', [dwFreeHw3DAllBuffers, dwFreeHw3DStaticBuffers,	dwFreeHw3DStreamingBuffers]));
-    LogRaw(Format('Hardware memory: max=%d, free=%d, contig=%d', [dwTotalHwMemBytes,	dwFreeHwMemBytes, dwMaxContigFreeHwMemBytes]));
-    LogRaw('Hardware buffers transfer rate: '+IntToStr(dwUnlockTransferRateHwBuffers));
-    LogRaw('CPU overhead: '+IntToStr(dwPlayCpuOverheadSwBuffers));
+    LogRaw(llInfo, '');
+    LogRaw(llInfo, 'DirectSound capabilities:');
+    LogRaw(llInfo, Format('Hardware secondary buffers sample rate: min=%d, max=%d', [dwMinSecondarySampleRate, dwMaxSecondarySampleRate]));
+    LogRaw(llInfo, 'Primary buffers: '+IntToStr(dwPrimaryBuffers));
+    LogRaw(llInfo, Format('Hardware secondary buffers: total=%d, static=%d, streaming=%d', [dwMaxHwMixingAllBuffers, dwMaxHwMixingStaticBuffers,	dwMaxHwMixingStreamingBuffers]));
+    LogRaw(llInfo, Format('Free hardware secondary buffers: total=%d, static=%d, streaming=%d', [dwFreeHwMixingAllBuffers, dwFreeHwMixingStaticBuffers,	dwFreeHwMixingStreamingBuffers]));
+    LogRaw(llInfo, Format('Hardware secondary 3D buffers: total=%d, static=%d, streaming=%d', [dwMaxHw3DAllBuffers, dwMaxHw3DStaticBuffers,	dwMaxHw3DStreamingBuffers]));
+    LogRaw(llInfo, Format('Free hardware secondary 3D buffers: total=%d, static=%d, streaming=%d', [dwFreeHw3DAllBuffers, dwFreeHw3DStaticBuffers,	dwFreeHw3DStreamingBuffers]));
+    LogRaw(llInfo, Format('Hardware memory: max=%d, free=%d, contig=%d', [dwTotalHwMemBytes,	dwFreeHwMemBytes, dwMaxContigFreeHwMemBytes]));
+    LogRaw(llInfo, 'Hardware buffers transfer rate: '+IntToStr(dwUnlockTransferRateHwBuffers));
+    LogRaw(llInfo, 'CPU overhead: '+IntToStr(dwPlayCpuOverheadSwBuffers));
     S:='Flags: ';
     for i:=0 to High(Flags) do
       if dwFlags and Flags[i].Value <> 0
         then S:=S+Flags[i].Name+' ';
-    LogRaw(S);
+    LogRaw(llInfo, S);
   end;
 end;
 {$ENDIF}

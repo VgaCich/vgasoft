@@ -646,7 +646,7 @@ begin
         FAN(Core);
         Quitting:=true;
         {$IFDEF VSE_LOG}Log(llInfo, 'Engine destroyed');
-        LogRaw('');{$ENDIF}
+        LogRaw(llError, '');{$ENDIF}
         Result:=0;
         PostQuitMessage(VSEStopState);
       end;

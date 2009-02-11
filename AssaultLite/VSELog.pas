@@ -2,47 +2,77 @@ unit VSELog;
 
 interface
 
-uses Windows, AvL, avlUtils;
+uses Windows, AvL, avlSyncObjs, avlUtils;
 
 type
   TLogLevel=(llInfo, llWarning, llError); //Level of log message: informational, warning, error
 
 procedure Log(Level: TLogLevel; const S: string); //Add message to log
 procedure LogF(Level: TLogLevel; const Fmt: string; const Args: array of const); //Add message to log, Format version
-procedure LogRaw(const S: string); //Add string to log without timestamp
+procedure LogRaw(Level: TLogLevel; const S: string);
 procedure LogAssert(Condition: Boolean; const Msg: string); //Add message if Condition=false
 procedure LogException(const Comment: string); //Write exception information to log and append Comment
 
+var
+  LogLevel: TLogLevel=llInfo; //Minimal level of message, that will pass to log
+
 implementation
 
+type
+  TLoggerThread=class(TThread)
+  protected
+    procedure Execute; override;
+  end;
+
+var
+  LogBuffer: string = '';
+  LogBufferLock: TCriticalSection;
+  LogEvent: TEvent;
+  Logger: TLoggerThread;
+  LogInitialized: Boolean;
+
+procedure TLoggerThread.Execute;
 var
   LogFile: TFileStream;
-  CanLog: Boolean;
+  Buffer: string;
+begin
+  DeleteFile(ChangeFileExt(FullExeName, '.log'));
+  LogFile:=TFileStream.Create(ChangeFileExt(FullExeName, '.log'), fmCreate);
+  try
+    while not Terminated do
+      case LogEvent.WaitFor(INFINITE) of
+        wrAbandoned: Break;
+        wrSignaled:
+          begin
+            LogBufferLock.Acquire;
+            Buffer:=LogBuffer;
+            LogBuffer:='';
+            LogBufferLock.Release;
+            LogFile.Write(Buffer[1], Length(Buffer));
+            FlushFileBuffers(LogFile.Handle);
+          end;
+        else begin
+          Buffer:='LogEvent error: '+SysErrorMessage(LogEvent.LastError);
+          LogFile.Write(Buffer[1], Length(Buffer));
+          Break;
+        end;
+      end;
+  finally
+    FAN(LogFile);
+  end;
+end;
 
 procedure LogAssert(Condition: Boolean; const Msg: string);
 begin
   if not Condition then Log(llError, 'Assertion failed: '+Msg);
 end;
 
-procedure WrLn(const S: string);
-const
-  CRLF: Word=$0A0D;
-begin
-  LogFile.Write(S[1], Length(S));
-  LogFile.Write(CRLF, 2);
-  {$IFDEF VSEDEBUG}FlushFileBuffers(LogFile.Handle);{$ENDIF}
-end;
-
 procedure Log(Level: TLogLevel; const S: string);
 begin
-  if not CanLog then Exit;
   case Level of
-    llInfo: WrLn('['+DateTimeToStr(Now)+'] '+S);
-    llWarning: WrLn('['+DateTimeToStr(Now)+'] Warning: '+S);
-    llError: begin
-               WrLn('['+DateTimeToStr(Now)+'] Error: '+S);
-               FlushFileBuffers(LogFile.Handle);
-             end;
+    llInfo: LogRaw(Level, '['+DateTimeToStr(Now)+'] '+S);
+    llWarning: LogRaw(Level, '['+DateTimeToStr(Now)+'] Warning: '+S);
+    llError: LogRaw(Level, '['+DateTimeToStr(Now)+'] Error: '+S);
   end;
 end;
 
@@ -51,10 +81,13 @@ begin
   Log(Level, Format(Fmt, Args));
 end;
 
-procedure LogRaw(const S: string);
+procedure LogRaw(Level: TLogLevel; const S: string);
 begin
-  if not CanLog then Exit;
-  WrLn(S);
+  if (Level<LogLevel) or not LogInitialized then Exit;
+  LogBufferLock.Acquire;
+  LogBuffer:=LogBuffer+S+#13#10;
+  LogBufferLock.Release;
+  LogEvent.SetEvent;
 end;
 
 procedure LogException(const Comment: string);
@@ -64,14 +97,18 @@ end;
 
 initialization
 
-  DeleteFile(ChangeFileExt(FullExeName, '.log'));
-  LogFile:=TFileStream.Create(ChangeFileExt(FullExeName, '.log'), fmCreate);
-  CanLog:=true;
+  LogEvent:=TEvent.Create(nil, false, false, '');
+  LogBufferLock:=TCriticalSection.Create;
+  Logger:=TLoggerThread.Create(false);
+  LogInitialized:=true;
 
 finalization
 
-  CanLog:=false;
-  FlushFileBuffers(LogFile.Handle);
-  FAN(LogFile);
+  LogInitialized:=false;
+  FAN(LogEvent);
+  Logger.WaitFor;
+  FAN(Logger);
+  FAN(LogBufferLock);
+  LogBuffer:='';
 
 end.
