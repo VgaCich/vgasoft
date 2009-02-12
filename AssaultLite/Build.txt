@@ -3,6 +3,7 @@
 http://vgasoft.googlecode.com/svn/AvL/AvL.pas
 http://vgasoft.googlecode.com/svn/AvL/avlMath.pas
 http://vgasoft.googlecode.com/svn/AvL/avlUtils.pas
+http://vgasoft.googlecode.com/svn/AvL/avlSyncObjs.pas
 http://vgasoft.googlecode.com/svn/AvL/avlVectors.pas
 2) «амены системных модулей, дл€ Delphi 7 качать здесь:
 http://vgacich.narod.ru/SysDCU-D7.7z

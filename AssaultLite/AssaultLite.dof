@@ -147,11 +147,12 @@ Item10=VSEDEBUG;VSE_ESC_EXIT
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [HistoryLists\hlSearchPath]
-Count=4
-Item0=$(DELPHI)\lib\sysdcu;SynTex;uFMOD
-Item1=$(DELPHI)\lib\sysdcu;SynTex
-Item2=SynTex
-Item3=$(DELPHI)\lib\sysdcu
+Count=5
+Item0=$(DELPHI)\lib\sysdcu;..\SynTex;uFMOD
+Item1=$(DELPHI)\lib\sysdcu;SynTex;uFMOD
+Item2=$(DELPHI)\lib\sysdcu;SynTex
+Item3=SynTex
+Item4=$(DELPHI)\lib\sysdcu
 [HistoryLists\hlUnitOutputDirectory]
 Count=1
 Item0=.\DCU

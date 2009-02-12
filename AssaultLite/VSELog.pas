@@ -40,22 +40,19 @@ begin
   LogFile:=TFileStream.Create(ChangeFileExt(FullExeName, '.log'), fmCreate);
   try
     while not Terminated do
-      case LogEvent.WaitFor(INFINITE) of
-        wrAbandoned: Break;
-        wrSignaled:
-          begin
-            LogBufferLock.Acquire;
-            Buffer:=LogBuffer;
-            LogBuffer:='';
-            LogBufferLock.Release;
-            LogFile.Write(Buffer[1], Length(Buffer));
-            FlushFileBuffers(LogFile.Handle);
-          end;
-        else begin
-          Buffer:='LogEvent error: '+SysErrorMessage(LogEvent.LastError);
-          LogFile.Write(Buffer[1], Length(Buffer));
-          Break;
-        end;
+      if LogEvent.WaitFor(INFINITE)=wrSignaled then
+      begin
+        LogBufferLock.Acquire;
+        Buffer:=LogBuffer;
+        LogBuffer:='';
+        LogBufferLock.Release;
+        LogFile.Write(Buffer[1], Length(Buffer));
+        FlushFileBuffers(LogFile.Handle);
+      end
+      else begin
+        Buffer:='LogEvent error: '+SysErrorMessage(LogEvent.LastError);
+        LogFile.Write(Buffer[1], Length(Buffer));
+        Break;
       end;
   finally
     FAN(LogFile);
@@ -97,7 +94,7 @@ end;
 
 initialization
 
-  LogEvent:=TEvent.Create(nil, false, false, '');
+  LogEvent:=TEvent.Create(nil, false, false, LogBuffer);
   LogBufferLock:=TCriticalSection.Create;
   Logger:=TLoggerThread.Create(false);
   LogInitialized:=true;
@@ -105,9 +102,11 @@ initialization
 finalization
 
   LogInitialized:=false;
-  FAN(LogEvent);
+  Logger.Terminate;
+  LogEvent.SetEvent;
   Logger.WaitFor;
   FAN(Logger);
+  FAN(LogEvent);
   FAN(LogBufferLock);
   LogBuffer:='';
 
