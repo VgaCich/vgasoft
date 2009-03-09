@@ -11,7 +11,7 @@ function GetFileText(const FileName: string): TStringList; //Get text file as TS
 implementation
 
 {$IFNDEF MEMPAK_PLAINFS}
-{$I MemPakTypes.inc}
+{$I VSEMemPakTypes.inc}
 type
   TMemStream=class(TCustomMemoryStream)
   public
