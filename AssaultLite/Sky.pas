@@ -44,6 +44,7 @@ begin
   with Camera.Eye do glTranslate(X, Y, Z);
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_LIGHTING);
+  glColor3f(1.0, 1.0, 1.0);
   FDome.Draw;
   glPopMatrix;
   glMatrixMode(GL_TEXTURE);

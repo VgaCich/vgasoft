@@ -502,6 +502,7 @@ end;
 procedure TStateMenu.Draw;
 begin
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
+  if FGame.CanResumeGame then FGame.Draw;
   FCurFrm.Draw;
 end;
 
