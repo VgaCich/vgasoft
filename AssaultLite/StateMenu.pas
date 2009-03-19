@@ -386,7 +386,7 @@ begin
   Line:=0;
   while Line<FText.Count do
   begin
-    Src:=FText[Line];
+    Src:=ProcessKeyTags(FText[Line]);
     Dst:='';
     while (Src<>'') and (TexMan.TextLen(FFont, Src)>620) do
     begin
@@ -483,7 +483,7 @@ begin
   FMainMenu:=TMainMenu.Create(Self);
   FOptions:=TOptions.Create(Self);
   FKeyConfig:=TBindManCfgForm.Create(800, 600, 200, 130, 400, 350,
-    TexMan.FontCreate('Arial', 12, true), 'Стандартное', 'Применить');
+    TexMan.FontCreate('Arial', 12, true), 'Стандартное', 'Принять');
   FKeyConfig.Caption:='Управление';
   FKeyConfig.OnClose:=KeyConfigClose;
   FCurFrm:=FMainMenu;

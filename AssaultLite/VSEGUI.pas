@@ -73,7 +73,7 @@ type
     property VirtScreenVAlign: TVirtScreenAlign read FVirtScreenVAlign write FVirtScreenVAlign; //Virtual screen vertical align
   end;
 
-function CreateSelect(Form: TGUIForm; X_, Y_, W, H: Integer; OnChange: TGUIOnClick; const PrevCapt, NextCapt: string): Integer;
+function CreateSelect(Form: TGUIForm; X_, Y_, W, H: Integer; OnChange: TGUIOnClick; const PrevCapt, NextCapt: string): Integer; //Creates select control, returns select state label index; distinguish prev & next buttons in handler by Btn^.Tag (-1 for prev, 1 for next)
 
 implementation
 
@@ -417,7 +417,7 @@ begin
       end;
 end;
 
-function CreateSelect(Form: TGUIForm; X_, Y_, W, H: Integer; OnChange: TGUIOnClick; const PrevCapt, NextCapt: string): Integer; //Creates select constrol, returns select state label index; distinguish prev & next buttons in handler by Btn^.Tag (-1 for prev, 1 for next)
+function CreateSelect(Form: TGUIForm; X_, Y_, W, H: Integer; OnChange: TGUIOnClick; const PrevCapt, NextCapt: string): Integer;
 var
   Lbl: TLbl;
   Btn: TBtn;

@@ -35,19 +35,18 @@ type
     procedure MouseEvent(Button: Integer; Event: TMouseEvent); //internally used
     procedure KeyEvent(Button: Integer; Event: TKeyEvent); //internally used
     procedure Update; //internally used
+    function  GetBindKeyName(const BindName: string): string; //Get name of binded to BindName key
     function  GetBindEvent(const Name: string): TBindEvent; //Get oldest event from queue for binding, returns beNone if no events
     property  BindActive[Name: string]: Boolean read GetBindActive; //True if binded key pressed, mouse wheel up/down cannot be pressed, only events
   end;
   TBindManCfgForm=class(TGUIForm) // Keys configuration form
   private
-    FKeyNames: array[0..255] of string;
     FLabels, FButtons: array of Integer;
     FPageLabel, FPage, FPages, FActive: Integer;
     FOnClose: TOnEvent;
     procedure ChangePage(Btn: PBtn);
     procedure FillKeys;
     procedure KeyBtnClick(Btn: PBtn);
-    function KeyToStr(Key: Integer): string;
     procedure CloseClick(Btn: PBtn);
     procedure DefaultClick(Btn: PBtn);
     procedure SetKey(Key: Integer);
@@ -58,7 +57,10 @@ type
     procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
     property  OnClose: TOnEvent read FOnClose write FOnClose; //Triggered at click on 'close' button
   end;
-  
+
+function KeyToStr(Key: Integer): string; //Get name for key code
+function ProcessKeyTags(const S: string): string; //Replaces tags $BindName$ by bind BindMane key name, $$ by $
+
 var
   BindMan: TBindMan; //Global variable for accessing to Bindings Manager
 
@@ -77,6 +79,81 @@ const
   MaxEventAge=5;
   DeadEvent=255;
   PageLabel='%d/%d';
+  TagDelim='$';
+
+var
+  KeyNames: array[0..255] of string;
+
+procedure InitKeyNames;
+var
+  i: Integer;
+begin
+  for i:=0 to 255 do
+  begin
+    SetLength(KeyNames[i], 101);
+    SetLength(KeyNames[i], GetKeyNameText(MapVirtualKey(i, 0) shl 16, @KeyNames[i][1], 100));
+  end;
+  KeyNames[0]:='---';
+  KeyNames[VK_LBUTTON]:='Left MB';
+  KeyNames[VK_RBUTTON]:='Right MB';
+  KeyNames[VK_MBUTTON]:='Middle MB';
+  KeyNames[VK_XBUTTON4]:='MB 4';
+  KeyNames[VK_XBUTTON5]:='MB 5';
+  KeyNames[VK_MWHEELUP]:='Wheel Up';
+  KeyNames[VK_MWHEELDOWN]:='Wheel Down';
+  KeyNames[$03]:='Cancel';
+  KeyNames[$0C]:='Clear';
+  KeyNames[$13]:='Pause';
+  KeyNames[$20]:='Space';
+  KeyNames[$21]:='Page Up';
+  KeyNames[$22]:='Page Down';
+  KeyNames[$23]:='End';
+  KeyNames[$24]:='Home';
+  KeyNames[$25]:='Left';
+  KeyNames[$26]:='Up';
+  KeyNames[$27]:='Right';
+  KeyNames[$28]:='Down';
+  KeyNames[$29]:='Select';
+  KeyNames[$2D]:='Insert';
+  KeyNames[$2E]:='Delete';
+  KeyNames[$5B]:='Left Win';
+  KeyNames[$5C]:='Right Win';
+  KeyNames[$5D]:='Apps';
+  KeyNames[$6F]:='Num /';
+  KeyNames[$90]:='Num Lock';
+end;
+
+function KeyToStr(Key: Integer): string;
+begin
+  Result:=KeyNames[Key];
+  if Result='' then Result:='VK #'+IntToStr(Key);
+end;
+
+function ProcessKeyTags(const S: string): string;
+var
+  CurPos, Idx: Integer;
+begin
+  Result:='';
+  CurPos:=0;
+  Idx:=Pos(TagDelim, S);
+  while Idx>0 do
+  begin
+    Result:=Result+Copy(S, CurPos+1, Idx-CurPos-1);
+    if Idx=Length(S) then Break;
+    if S[Idx+1]=TagDelim then
+    begin
+      Result:=Result+TagDelim;
+      CurPos:=Idx+1;
+    end
+    else begin
+      CurPos:=PosEx(TagDelim, S, Idx+1);
+      if CurPos=0 then Exit;
+      Result:=Result+BindMan.GetBindKeyName(Copy(S, Idx+1, CurPos-Idx-1));
+    end;
+    Idx:=PosEx(TagDelim, S, CurPos+1);
+  end;
+  Result:=Result+Copy(S, CurPos+1, MaxInt);
+end;
 
 { TBindMan }
 
@@ -146,6 +223,16 @@ begin
       Events^.Age:=DeadEvent;
       Events:=Events^.Next;
     end;
+end;
+
+function TBindMan.GetBindKeyName(const BindName: string): string;
+var
+  i: Integer;
+begin
+  i:=FindBinding(BindName);
+  if i>-1
+    then Result:=KeyToStr(FBindings[i].Key)
+    else Result:=''; 
 end;
 
 procedure TBindMan.KeyEvent(Button: Integer; Event: TKeyEvent);
@@ -291,39 +378,6 @@ var
 begin
   inherited Create(VirtScrW, VirtScrH, X, Y, Width, Height, Font);
   FActive:=-1;
-  for i:=0 to 255 do
-  begin
-    SetLength(FKeyNames[i], 101);
-    SetLength(FKeyNames[i], GetKeyNameText(MapVirtualKey(i, 0) shl 16, @FKeyNames[i][1], 100));
-  end;
-  FKeyNames[0]:='---';
-  FKeyNames[VK_LBUTTON]:='Left MB';
-  FKeyNames[VK_RBUTTON]:='Right MB';
-  FKeyNames[VK_MBUTTON]:='Middle MB';
-  FKeyNames[VK_XBUTTON4]:='MB 4';
-  FKeyNames[VK_XBUTTON5]:='MB 5';
-  FKeyNames[VK_MWHEELUP]:='Wheel Up';
-  FKeyNames[VK_MWHEELDOWN]:='Wheel Down';
-  FKeyNames[$03]:='Cancel';
-  FKeyNames[$0C]:='Clear';
-  FKeyNames[$13]:='Pause';
-  FKeyNames[$20]:='Space';
-  FKeyNames[$21]:='Page Up';
-  FKeyNames[$22]:='Page Down';
-  FKeyNames[$23]:='End';
-  FKeyNames[$24]:='Home';
-  FKeyNames[$25]:='Left';
-  FKeyNames[$26]:='Up';
-  FKeyNames[$27]:='Right';
-  FKeyNames[$28]:='Down';
-  FKeyNames[$29]:='Select';
-  FKeyNames[$2D]:='Insert';
-  FKeyNames[$2E]:='Delete';
-  FKeyNames[$5B]:='Left Win';
-  FKeyNames[$5C]:='Right Win';
-  FKeyNames[$5D]:='Apps';
-  FKeyNames[$6F]:='Num /';
-  FKeyNames[$90]:='Num Lock';
   BHeight:=TexMan.TextHeight(Font)+10;
   SetLength(FLabels, Min(Length(BindMan.FBindings), (Height-20-TexMan.TextHeight(Font)) div (BHeight+10)));
   SetLength(FButtons, Length(FLabels));
@@ -435,12 +489,6 @@ begin
   end;
 end;
 
-function TBindManCfgForm.KeyToStr(Key: Integer): string;
-begin
-  Result:=FKeyNames[Key];
-  if Result='' then Result:='VK #'+IntToStr(Key);
-end;
-
 procedure TBindManCfgForm.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 begin
   if FActive>-1 then
@@ -489,5 +537,8 @@ begin
   FActive:=-1;
   FillKeys;
 end;
+
+initialization
+  InitKeyNames;
 
 end.
