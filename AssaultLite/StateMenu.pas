@@ -133,7 +133,9 @@ end;
 procedure TMainMenu.KeyEvent(Button: Integer; Event: TKeyEvent);
 begin
   if (Button=VK_ESCAPE) and (Event=keDown)
-    then Core.StopEngine
+    then if Self.Button[FResumeButton].Enabled
+      then Core.SwitchState('Game')
+      else Core.StopEngine
     else inherited KeyEvent(Button, Event);
 end;
 
