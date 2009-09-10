@@ -15,11 +15,12 @@ type
     procedure DestClick(Sender: TObject);
     procedure SearchClick(Sender: Tobject);
     procedure AllClick(Sender: TObject);
+    procedure SrcChange(Sender: TObject);
   end;
 
 const
   ID: Cardinal=1279677270;
-  Capt='VgaSoft FileList 2.4';
+  Capt='VgaSoft FileList 2.7';
 
 var
   MainForm: TMainForm;
@@ -167,6 +168,11 @@ begin
   BSrc.Visible:=ESrc.Visible;
 end;
 
+procedure TMainForm.SrcChange(Sender: TObject);
+begin
+  EDest.Text:=ExcludeTrailingBackslash(ESrc.Text)+'.vfl';
+end;
+
 begin
   MainForm:=TMainForm.Create(nil, Capt);
   with MainForm do
@@ -182,6 +188,7 @@ begin
     LDest.SetBounds(5, 40, 80, 15);
     ESrc:=TEdit.Create(MainForm, 'C:\');
     ESrc.SetBounds(90, 5, ClientWidth-175, 24);
+    ESrc.OnChange:=SrcChange;
     EDest:=TEdit.Create(MainForm, 'C:\List.vfl');
     EDest.SetBounds(90, 35, ClientWidth-175, 24);
     if ParamCount>0 then ESrc.Text:=ParamStr(1);

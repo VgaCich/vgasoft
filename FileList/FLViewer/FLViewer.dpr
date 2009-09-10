@@ -70,6 +70,7 @@ type
     procedure WMCommand(var Msg: TWMCommand); message WM_COMMAND;
     procedure WMSize(var Msg: TWMSize); message WM_SIZE;
     procedure WMNotify(var Msg: TWMNotify); message WM_NOTIFY;
+    procedure WMDropFiles(var Message: TWMDropFiles); message WM_DROPFILES;
   end;
   TFindForm=class(TForm)
     LMask, LSizeMin, LSizeMax, LSize: TLabel;
@@ -86,7 +87,7 @@ type
 
 const
   ID: Cardinal=1279677270;
-  CCapt='VgaSoft FileList Viewer 2.6';
+  CCapt='VgaSoft FileList Viewer 2.7';
   AboutText=CCapt+#13#10 +
             'Copyright '#169'VgaSoft, 2004-2008';
 
@@ -134,6 +135,7 @@ procedure TMainForm.FormCreate(Sender: TObject);
 var
   i: Integer;
 begin
+  DragAcceptFiles(Handle, True);
   Folders:=TImageList.Create;
   Folders.AddMasked(LoadImage(hInstance, 'Folder', IMAGE_BITMAP, 0, 0, 0), clWhite);
   Icons:=TImageList.Create;
@@ -229,6 +231,19 @@ begin
         end;
       end;
     end;
+end;
+
+procedure TMainForm.WMDropFiles(var Message: TWMDropFiles);
+var
+  aFile: array[0..255] of Char;
+begin
+  inherited;
+  begin
+    DragQueryFile(Message.drop, 0, aFile, 256);
+    FileName:=string(aFile);
+    Open;
+  end;
+  DragFinish(Message.Drop);
 end;
 
 procedure TMainForm.OpenClick;
@@ -853,6 +868,7 @@ begin
   MainForm:=TMainForm.Create(nil, CCapt);
   with MainForm do
   begin
+    ExStyle:=ExStyle or WS_EX_ACCEPTFILES;
     Initialized:=false;
     OpenDelay:=false;
     FindDelay:=false;
