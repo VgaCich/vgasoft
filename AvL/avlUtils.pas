@@ -60,6 +60,7 @@ function IncPtr(Ptr: Pointer; N: Integer = 1): Pointer;
 function IntToStrLZ(I, Len: Integer): string;
 function ANSI2OEM(const S: string): string;
 procedure GetPrivilege(const Privilege: string);
+function ExecAndWait(const CmdLine: string): Boolean;
 
 implementation
 
@@ -698,6 +699,27 @@ begin
         AdjustTokenPrivileges(TokenHandle, false, TokenPriv, 0, TTokenPrivileges(nil^), DWORD(nil^));
       end;
   end;
+end;
+
+function ExecAndWait(const CmdLine: string): Boolean;
+var
+  SI: TStartupInfo;
+  PI: TProcessInformation;
+begin
+  FillChar(SI, SizeOf(SI) , 0);
+  with SI do
+  begin
+    cb := SizeOf( SI);
+  end;
+  if not CreateProcess(nil, PChar(CmdLine), nil, nil, false, Create_default_error_mode,
+                nil, nil, SI, PI)
+    then begin
+      //ShowMessage(SysErrorMessage(GetLastError));
+      Result:=false;
+      Exit;
+    end;
+  WaitForSingleObject(PI.hProcess, infinite);
+  Result:=true;
 end;
 
 end.
