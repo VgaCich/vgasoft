@@ -38,7 +38,7 @@ begin
     Hdr.NameLen:=Length(FileName);
     Hdr.FileSize:=IFile.Size;
     Pak.Write(Hdr, SizeOf(Hdr));
-    Pak.Write(FileName[1], Hdr.NameLen);
+    Pak.Write(UpperCase(FileName)[1], Hdr.NameLen);
     Pak.CopyFrom(IFile, Hdr.FileSize);
   finally
     FAN(IFile);

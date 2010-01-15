@@ -265,7 +265,11 @@ var
   Idx: Integer;
 begin
   Binds:=GetFileText(SBindCfg);
-  if not Assigned(Binds) then Exit;
+  if not Assigned(Binds) then
+  begin
+    {$IFDEF VSE_LOG}Log(llError, 'BindMan: Cannot load bindings config');{$ENDIF};
+    Exit;
+  end;
   try
     SetLength(FBindings, Binds.Count);
     for i:=0 to Binds.Count-1 do
@@ -381,7 +385,7 @@ begin
   BHeight:=TexMan.TextHeight(Font)+10;
   SetLength(FLabels, Min(Length(BindMan.FBindings), (Height-20-TexMan.TextHeight(Font)) div (BHeight+10)));
   SetLength(FButtons, Length(FLabels));
-  FPages:=High(BindMan.FBindings) div Length(FLabels);
+  FPages:=High(BindMan.FBindings) div Max(Length(FLabels), 1);
   with Btn do
   begin
     Typ:=btPush;

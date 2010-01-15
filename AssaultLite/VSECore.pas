@@ -53,7 +53,7 @@ type
     {Misc.}
     function  KeyRepeat(Key: Byte; Rate: Integer; var KeyVar: Cardinal): Boolean; //Returns true if Key pressed, but no more often then Rate; KeyVar - counter for rate limiting
     procedure SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean); //Set resolution ResX*ResY@Refresh; CanReset: return to previous resolution if fail
-    procedure MakeScreenshot(const Name: string); //Make screenshot to file "Name.bmp" in application's folder
+    procedure MakeScreenshot(Name: string; Numerate: Boolean = true);
     ///
     property Handle: THandle read FHandle; //Engine window handle
     property DC: HDC read FDC; //Engine window GDI device context
@@ -312,11 +312,13 @@ begin
     Exit;
   end;
   {$ENDIF}
+  {$IFDEF VSE_USE_SNAPSHOT_KEY}
   if (Button=VK_SNAPSHOT) and (Event=keUp) then
   begin
     MakeScreenshot('Screen');
     Exit;
   end;
+  {$ENDIF}
   BindMan.KeyEvent(Button, Event);
   if FCurState<>nil then
   try
@@ -342,6 +344,7 @@ end;
 
 procedure TCore.StopEngine;
 begin
+  {$IFDEF VSE_LOG}Log(llInfo, 'Stopping engine');{$ENDIF}
   PostMessage(Handle, WM_CLOSE, 0, 0);
 end;
 
@@ -350,11 +353,13 @@ begin
   Result:=Length(FStates);
   SetLength(FStates, Result+1);
   FStates[Result]:=State;
+  {$IFDEF VSE_LOG}LogF(llInfo, 'Added state #%d %s', [Result, State.Name]);{$ENDIF}
 end;
 
 function TCore.ReplaceState(OrigState: Cardinal; NewState: TGameState): Boolean;
 begin
   Result:=true;
+  {$IFDEF VSE_LOG}LogF(llInfo, 'Replacing state #%d with %s', [OrigState, NewState.Name]);{$ENDIF}
   if OrigState<Length(FStates)
     then FStates[OrigState]:=NewState
     else Result:=false;
@@ -362,6 +367,7 @@ end;
 
 procedure TCore.DeleteState(State: Cardinal);
 begin
+  {$IFDEF VSE_LOG}Log(llInfo, 'Deleting state #'+IntToStr(State));{$ENDIF}
   if State<Length(FStates) then
   begin
     if State<High(FStates)
@@ -453,17 +459,28 @@ begin
   TexMan.RebuildFonts;
 end;
 
-procedure TCore.MakeScreenshot(const Name: string);
+procedure TCore.MakeScreenshot(Name: string; Numerate: Boolean = true);
 var
   F: TFileStream;
   Pix: Pointer;
   BMPFH: TBitmapFileHeader;
   BMPIH: TBitmapInfoHeader;
+  i: Integer;
 begin
+  if Numerate then
+  begin
+    for i:=0 to 99 do
+      if (i=99) or not FileExists(ExePath+Name+IntToStrLZ(i, 2)+'.bmp') then
+      begin
+        Name:=ExePath+Name+IntToStrLZ(i, 2)+'.bmp';
+        Break;
+      end;
+  end
+    else Name:=ExePath+Name+'.bmp';
   GetMem(Pix, FResX*FResY*3);
   try
     glReadPixels(0, 0, FResX, FResY, GL_BGR, GL_UNSIGNED_BYTE, Pix);
-    F:=TFileStream.Create(ExePath+Name+'.bmp', fmCreate);
+    F:=TFileStream.Create(Name, fmCreate);
     with BMPFH, BMPIH do
     begin
       bfType:=$4D42;
@@ -486,6 +503,7 @@ begin
     F.Write(BMPFH, SizeOf(BMPFH));
     F.Write(BMPIH, SizeOf(BMPIH));
     F.Write(Pix^, FResX*FResY*3);
+    {$IFDEF VSE_LOG}Log(llInfo, 'Screenshot saved to "'+Name+'"');{$ENDIF}
   finally
     FreeMem(Pix);
     FAN(F);

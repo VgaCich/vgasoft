@@ -54,7 +54,7 @@ begin
       Pak.Read(Hdr, SizeOf(Hdr));
       SetLength(Name, Hdr.NameLen);
       Pak.Read(Name[1], Hdr.NameLen);
-      if UpperCase(Name)=FileName then
+      if Name=FileName then
       begin
         Result:=TMemStream.Create(IncPtr(Pak.Memory, Pak.Position), Hdr.FileSize);
         Exit;

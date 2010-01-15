@@ -15,6 +15,7 @@ type
     FLoadStage: TLoadStage;
     FLevelName: string;
     function GetName: string; override;
+    procedure Delay;
     procedure LoadTerrain;
     procedure StartGame;
     procedure STStore(Sender: TObject; const Reg: TSynTexRegister; TexSize: Integer; const Name: string);
@@ -51,7 +52,6 @@ begin
   S:=Format(SLoad, [FLevelName]);
   TexMan.TextOut(FFont, 400-TexMan.TextLen(FFont, S)/2, 500, S);
   TexMan.TextOut(FFont, 400-TexMan.TextLen(FFont, STitle)/2, 250, STitle);
-  if not Assigned(FLoadStage) then FLoadStage:=LoadTerrain;
 end;
 
 procedure TStateLoad.Update;
@@ -61,7 +61,7 @@ end;
 
 function TStateLoad.Activate: Cardinal;
 begin
-  FLoadStage:=nil;
+  FLoadStage:=Delay;
   Result:=50;
 end;
 
@@ -79,6 +79,11 @@ end;
 function TStateLoad.GetName: string;
 begin
   Result:='Load';
+end;
+
+procedure TStateLoad.Delay;
+begin
+  FLoadStage:=LoadTerrain;
 end;
 
 procedure TStateLoad.LoadTerrain;

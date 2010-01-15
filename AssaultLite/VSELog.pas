@@ -30,14 +30,19 @@ var
   LogEvent: TEvent;
   Logger: TLoggerThread;
   LogInitialized: Boolean;
+  LogStart, LastEvent: Cardinal;
 
 procedure TLoggerThread.Execute;
 var
   LogFile: TFileStream;
-  Buffer: string;
+  Buffer, LogFileName: string;
 begin
-  DeleteFile(ChangeFileExt(FullExeName, '.log'));
-  LogFile:=TFileStream.Create(ChangeFileExt(FullExeName, '.log'), fmCreate);
+  LogFileName:=ChangeFileExt(FullExeName, '.log');
+  if not FileExists(LogFileName)
+    then CloseHandle(FileCreate(LogFileName));
+  LogFile:=TFileStream.Create(LogFileName, fmOpenWrite or fmShareDenyWrite);
+  LogFile.Position:=0;
+  SetEndOfFile(LogFile.Handle);
   try
     while not Terminated do
       if LogEvent.WaitFor(INFINITE)=wrSignaled then
@@ -65,11 +70,21 @@ begin
 end;
 
 procedure Log(Level: TLogLevel; const S: string);
+var
+  TimeStamp: string;
+  Time, Delta: Cardinal;
 begin
+  LogBufferLock.Acquire;
+  Time:=GetTickCount;
+  Delta:=Time-LastEvent;
+  LastEvent:=Time;
+  Time:=Time-LogStart;
+  LogBufferLock.Release;
+  TimeStamp:=Format('[%02d:%02d:%02d.%03d (+%d ms)] ', [Time div 3600000, Time mod 3600000 div 60000, Time mod 60000 div 1000, Time mod 1000, Delta]);
   case Level of
-    llInfo: LogRaw(Level, '['+DateTimeToStr(Now)+'] '+S);
-    llWarning: LogRaw(Level, '['+DateTimeToStr(Now)+'] Warning: '+S);
-    llError: LogRaw(Level, '['+DateTimeToStr(Now)+'] Error: '+S);
+    llInfo: LogRaw(Level, TimeStamp+S);
+    llWarning: LogRaw(Level, TimeStamp+'Warning: '+S);
+    llError: LogRaw(Level, TimeStamp+'Error: '+S);
   end;
 end;
 
@@ -97,7 +112,11 @@ initialization
   LogEvent:=TEvent.Create(nil, false, false, LogBuffer);
   LogBufferLock:=TCriticalSection.Create;
   Logger:=TLoggerThread.Create(false);
+  LogStart:=GetTickCount;
+  LastEvent:=LogStart;
   LogInitialized:=true;
+  LogRaw(llError, 'Log started at '+DateTimeToStr(Now));
+  LogRaw(llError, '');     
 
 finalization
 
