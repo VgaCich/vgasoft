@@ -92,7 +92,7 @@ type
 
 implementation
 
-uses VSETexMan{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+uses VSETexMan;
 
 const
   SPriModelObjectCreateCannotLoadMo = 'PriModelObject.Create: Cannot load model object';
