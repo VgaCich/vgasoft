@@ -225,7 +225,7 @@ begin
     then Core.SwitchState('Menu')
     else begin
       {$IFDEF VSE_LOG}Log(llError, 'Loading textures failed');{$ENDIF}
-      Core.StopEngine;
+      Core.StopEngine(StopUserError);
     end;
 end;
 

@@ -25,7 +25,7 @@ type
     procedure Update; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
-    procedure SysNotify(Notify: TSysNotify); override;
+    function  SysNotify(Notify: TSysNotify): Boolean; override;
     property LevelName: string read FLevelName write FLevelName;
   end;
 
@@ -70,10 +70,12 @@ begin
 
 end;
 
-procedure TStateLoad.SysNotify(Notify: TSysNotify);
+function TStateLoad.SysNotify(Notify: TSysNotify): Boolean;
 begin
-  if Notify<>snUpdateOverload
-    then inherited SysNotify(Notify);
+  Result:=inherited SysNotify(Notify);
+  if (Notify=snUpdateOverload) or
+     (Notify=snMinimize)
+    then Result:=true;
 end;
 
 function TStateLoad.GetName: string;
@@ -98,7 +100,7 @@ begin
   if STCode=nil then
   begin
     {$IFDEF VSE_LOG}LogF(llError, 'Level %s textures synthesizing code not found', [FLevelName]);{$ENDIF}
-    Core.StopEngine;
+    Core.StopEngine(StopUserError);
     Exit;
   end;
   try
@@ -109,7 +111,7 @@ begin
     if not ST.Synthesize then
     begin
       {$IFDEF VSE_LOG}LogF(llError, 'Level %s textures synthesizing failed', [FLevelName]);{$ENDIF}
-      Core.StopEngine;
+      Core.StopEngine(StopUserError);
       Exit;
     end;
   finally

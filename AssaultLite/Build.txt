@@ -19,16 +19,17 @@ http://vgacich.narod.ru/SysDCU-D7.7z
 
 Дефайны:
 
-VSEDEBUG - сборка отладочной версии движка VSE
+VSE_DEBUG - сборка отладочной версии движка VSE, отключается останов движка при исключениях в пользовательском коде
 VSE_LOG - включить лог
 SYNTEX_USELOG - включить лог в SynTex'е
 MEMPAK_PLAINFS - использовать данные из папки Data (иначе из MemPak.inc)
 DEBUGMEM - отладка памяти (требуется FastMM)
 PM_DRAWNORMALS - рисовать нормали у моделей
 VSE_ESC_EXIT - принудительный выход по escape
+VSE_USE_SNAPSHOT_KEY - сохранение скриншота по нажатию кнопки Print Screen
 
 Рабочий набор дефайнов:
-VSEDEBUG;VSE_LOG;SYNTEX_USELOG;MEMPAK_PLAINFS
+VSE_DEBUG;DEBUGMEM;VSE_LOG;SYNTEX_USELOG;MEMPAK_PLAINFS;VSE_USE_SNAPSHOT_KEY
 
 Релизный набор дефайнов:
-<пусто>
+VSE_USE_SNAPSHOT_KEY

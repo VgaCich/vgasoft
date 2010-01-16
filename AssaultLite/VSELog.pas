@@ -11,7 +11,6 @@ procedure Log(Level: TLogLevel; const S: string); //Add message to log
 procedure LogF(Level: TLogLevel; const Fmt: string; const Args: array of const); //Add message to log, Format version
 procedure LogRaw(Level: TLogLevel; const S: string);
 procedure LogAssert(Condition: Boolean; const Msg: string); //Add message if Condition=false
-procedure LogException(const Comment: string); //Write exception information to log and append Comment
 
 var
   LogLevel: TLogLevel=llInfo; //Minimal level of message, that will pass to log
@@ -100,11 +99,6 @@ begin
   LogBuffer:=LogBuffer+S+#13#10;
   LogBufferLock.Release;
   LogEvent.SetEvent;
-end;
-
-procedure LogException(const Comment: string);
-begin
-  Log(llError, 'Exception "'+ExceptObject.ClassName+'" at '+IntToHex(Cardinal(ExceptAddr), 8)+' with message "'+Exception(ExceptObject).Message+'" '+Comment);
 end;
 
 initialization

@@ -25,10 +25,10 @@ type
     procedure Update; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
-    procedure Resume; override;
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
     procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
     procedure CharEvent(C: Char); override;
+    function  SysNotify(Notify: TSysNotify): Boolean; override;
     procedure NewGame;
     property CanResumeGame: Boolean read GetCanResumeGame;
     property Terrain: TTerrain read FTerrain;
@@ -174,11 +174,6 @@ begin
   //Sound.StopMusic;
 end;
 
-procedure TStateGame.Resume;
-begin
-
-end;
-
 procedure TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 begin
   if Event<>meMove then Exit;
@@ -201,6 +196,12 @@ end;
 procedure TStateGame.CharEvent(C: Char);
 begin
 
+end;
+
+function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
+begin
+  Result:=inherited SysNotify(Notify);
+  if Notify=snMinimize then Core.SwitchState('Menu');
 end;
 
 procedure TStateGame.NewGame;
