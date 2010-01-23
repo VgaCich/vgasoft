@@ -6,28 +6,33 @@ uses
   Windows, AvL, avlUtils, avlMath, avlVectors;
 
 type
-  TCollObj=class
+  TCollisionInfo=record
+  end;
+  TCollisionObject=class
+  protected
+    function DoCollisionCheck(Obj: TCollisionObject; var CollInfo: TCollisionInfo): Boolean; virtual; abstract; //Implements collision checking, return true if check with passed type of object implemented, false otherwise
   public
     Transform: TMatrix4D;
+    function CheckCollision(Obj: TCollisionObject; var CollInfo: TCollisionInfo): Boolean; //Check for collision with Obj, check result returned in CollInfo, returns false if collision with passed type of object not implemented 
   end;
-  TCollRay=class(TCollObj)
+  TCollisionRay=class(TCollisionObject)
   public
     Start, Dir: TVector3D;
   end;
-  TCollSphere=class(TCollObj)
+  TCollisionSphere=class(TCollisionObject)
   public
     Center: TVector3D;
     Radius: Single;
   end;
-  TCollAABB=class(TCollObj)
+  TCollisionAABB=class(TCollisionObject)
   public
     MinCorner, MaxCorner: TVector3D;
   end;
-  TCollBox=class(TCollObj)
+  TCollisionBox=class(TCollisionObject)
   public
 
   end;
-  TCollTerrain=class(TCollObj)
+  TCollisionTerrain=class(TCollisionObject)
   public
 
   end;
@@ -35,6 +40,12 @@ type
 function PointInRect(Point: TPoint; Rect: TRect): Boolean;
 
 implementation
+
+function TCollisionObject.CheckCollision(Obj: TCollisionObject; var CollInfo: TCollisionInfo): Boolean;
+begin
+  Result:=DoCollisionCheck(Obj, CollInfo);
+  if not Result then Result:=Obj.DoCollisionCheck(Self, CollInfo);
+end;
 
 function PointInRect(Point: TPoint; Rect: TRect): Boolean;
 begin
