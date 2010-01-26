@@ -35,6 +35,17 @@ procedure TLoggerThread.Execute;
 var
   LogFile: TFileStream;
   Buffer, LogFileName: string;
+
+  procedure WriteBuffer;
+  begin
+    LogBufferLock.Acquire;
+    Buffer:=LogBuffer;
+    LogBuffer:='';
+    LogBufferLock.Release;
+    LogFile.Write(Buffer[1], Length(Buffer));
+    FlushFileBuffers(LogFile.Handle);
+  end;
+
 begin
   LogFileName:=ChangeFileExt(FullExeName, '.log');
   if not FileExists(LogFileName)
@@ -44,20 +55,15 @@ begin
   SetEndOfFile(LogFile.Handle);
   try
     while not Terminated do
-      if LogEvent.WaitFor(INFINITE)=wrSignaled then
-      begin
-        LogBufferLock.Acquire;
-        Buffer:=LogBuffer;
-        LogBuffer:='';
-        LogBufferLock.Release;
-        LogFile.Write(Buffer[1], Length(Buffer));
-        FlushFileBuffers(LogFile.Handle);
-      end
+      if LogEvent.WaitFor(INFINITE)=wrSignaled
+        then WriteBuffer
       else begin
         Buffer:='LogEvent error: '+SysErrorMessage(LogEvent.LastError);
         LogFile.Write(Buffer[1], Length(Buffer));
+        FlushFileBuffers(LogFile.Handle);
         Break;
       end;
+    WriteBuffer;
   finally
     FAN(LogFile);
   end;

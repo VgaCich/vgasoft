@@ -9,6 +9,12 @@ http://vgasoft.googlecode.com/svn/AvL/avlVectors.pas
 http://vgacich.narod.ru/SysDCU-D7.7z
 В настройках проекта предполагается, что замены установлены в $(DELPHI)\Lib\sysdcu
 С другими заменами возможно потребуется закомментировать модуль SysSfIni в секции uses файла AssaultLite.dpr
+3) SynTex:
+http://vgasoft.googlecode.com/svn/SynTex
+В настройках предполагается, что SynTex расположен в ..\SynTex
+4) Заголовки DirectX от Clootie:
+http://clootie.ru
+http://sourceforge.net/projects/delphi-dx9sdk
 
 Сборка:
 1) Откройте группу проектов Tools\Tools.bpg, скомпилируйте все (Project->Build All) (для компиляции редактора моделей PMEdit потребуется установить компоненты из Tools\PMEdit\Components, для сборки Assault Lite редактор не требуется)

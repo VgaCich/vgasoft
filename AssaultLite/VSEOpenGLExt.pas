@@ -58,8 +58,6 @@ var
   PixelFormat: Cardinal;
 begin
   Result:=0;
-  //Log(llInfo, 'Init OpenGL');
-  //InitOpenGL;
   {$IFDEF VSE_LOG}Log(llInfo, 'Setting pixel format');{$ENDIF}
   ZeroMemory(@PFD, SizeOf(TPIXELFORMATDESCRIPTOR));
   with PFD do
@@ -100,8 +98,6 @@ begin
   end;
   {$IFDEF VSE_LOG}Log(llInfo, 'Reading extensions');{$ENDIF}
   ReadExtensions;
-  //Log(llInfo, 'Read implementation properties');
-  //ReadImplementationProperties;
 end;
 
 procedure gleSetGL;
@@ -118,7 +114,6 @@ end;
 
 procedure gleResizeWnd(Width, Height: Integer);
 begin
-//  LogF('gleResizeWnd: width=%d, height=%d', [Width, Height]);
   if Height=0 then Height:=1;
   glViewport(0, 0, Width, Height);
 end;
