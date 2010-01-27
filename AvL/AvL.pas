@@ -2357,6 +2357,7 @@ type
     function GetDrawStyle : DWord;
   public
     constructor Create;
+    destructor Destroy; override;
     procedure CreateList;
 
     function AddBitmap(Bmp, Msk : HBitmap): Integer;
@@ -5128,7 +5129,7 @@ constructor TForm.Create(Parent:TWinControl; Caption: String);
 begin
   FCaption := PChar(Caption);
 
-  FClassName := 'TForm';
+  FClassName := ClassName;
   FParent := Parent;
   FParentHandle := 0;
   FLeft := 200;//cw_UseDefault;
@@ -11043,15 +11044,18 @@ var
 begin
   Values.Clear ;
   GetMem(Buffer, IniBufferSize);
-  Pc:=Buffer;
-  i:=GetPrivateProfileSection(PChar(Section), Buffer, IniBufferSize, PChar(FileName));
-  if i=0 then Exit;
-  PcEnd:=Pc+i;
-  repeat
-    Values.Add(Pc);
-    Pc:=PC + Length(PC) + 1;
-  until PC >= PcEnd;
-  FreeMem(Buffer);
+  try
+    Pc:=Buffer;
+    i:=GetPrivateProfileSection(PChar(Section), Buffer, IniBufferSize, PChar(FileName));
+    if i=0 then Exit;
+    PcEnd:=Pc+i;
+    repeat
+      Values.Add(Pc);
+      Pc:=PC + Length(PC) + 1;
+    until PC >= PcEnd;
+  finally
+    FreeMem(Buffer);
+  end;
 end;
 
 procedure IniGetSectionValuesSL(FileName, Section: String; var Values: TSList);
@@ -15414,6 +15418,11 @@ begin
   FHeight := 16;
 end;
 
+destructor TImageList.Destroy;
+begin
+  if FHandle<>0 then ImageList_Destroy(FHandle);
+end;
+
 function TImageList.AddIcon(Image: hIcon): Integer;
 begin
   if FHandle = 0 then CreateList;
@@ -18776,5 +18785,6 @@ initialization
   AssertErrorProc:=@AssertErrorHandler;
 
 end.
+
 
 
