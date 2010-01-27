@@ -34,6 +34,7 @@ type
     procedure Update; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
+    function  SysNotify(Notify: TSysNotify): Boolean; override;
   end;
 
 implementation
@@ -135,7 +136,7 @@ end;
 
 procedure TStateStart.Update;
 begin
-
+  Log(llInfo, 'Start.Update');
 end;
 
 function TStateStart.Activate: Cardinal;
@@ -155,6 +156,12 @@ begin
   FLoadThread.WaitFor;
   FAN(FLoadThread);
   ShowCursor(true);
+end;
+
+function TStateStart.SysNotify(Notify: TSysNotify): Boolean;
+begin
+  Result:=inherited SysNotify(Notify);
+  if Notify=snMinimize then Result:=true;
 end;
 
 function TStateStart.GetName: string;

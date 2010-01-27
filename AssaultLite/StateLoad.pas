@@ -78,9 +78,7 @@ end;
 function TStateLoad.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result:=inherited SysNotify(Notify);
-  if (Notify=snUpdateOverload) or
-     (Notify=snMinimize)
-    then Result:=true;
+  if Notify=snMinimize then Result:=true;
 end;
 
 function TStateLoad.GetName: string;

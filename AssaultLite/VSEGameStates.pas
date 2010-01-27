@@ -18,7 +18,7 @@ type
   TSysNotify=(  //System notifies:
     snMinimize, //Application minimized, return false to pause or true to continue work
     snMaximize, //Application maximized
-    snUpdateOverload //Update Overload Detection triggered, return true to disable default handler
+    snUpdateOverload //Update Overload Detection triggered, return true to disable default handler (resets update timer)
   );
 
 const

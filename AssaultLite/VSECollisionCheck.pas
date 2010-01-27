@@ -54,6 +54,7 @@ implementation
 
 function TCollisionObject.CheckCollision(Obj: TCollisionObject; var CollInfo: TCollisionInfo): Boolean;
 begin
+  ZeroMemory(@CollInfo, SizeOf(CollInfo));
   Result:=DoCollisionCheck(Obj, CollInfo);
   if not Result then Result:=Obj.DoCollisionCheck(Self, CollInfo);
 end;

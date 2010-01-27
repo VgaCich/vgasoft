@@ -19,6 +19,7 @@ type
     constructor Create; //internally used
     destructor Destroy; override; //internally used
     {$IFDEF VSE_LOG}procedure LogCaps;{$ENDIF}
+    procedure Update; //internally used
     procedure PlayMusic(const FileName: string); //Play music from file
     procedure StopMusic; //Stop music
   end;
@@ -139,6 +140,11 @@ begin
   end;
 end;
 {$ENDIF}
+
+procedure TSound.Update;
+begin
+
+end;
 
 procedure TSound.PlayMusic(const FileName: string);
 begin

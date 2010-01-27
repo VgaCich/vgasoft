@@ -15,8 +15,6 @@ const
   StopUserException=2; //Engine stopped due to unhandled exception in user code
   StopDisplayModeError=3; //Engine stopped due to error when setting display mode
   StopUserError=4; //Engine stopped by user code due to error
-  //Normal work impossible 
-  StopUpdateOverload=101; //Engine stopped due to UpdateOverload detector triggering
 
 type
   TCore=class
@@ -88,7 +86,7 @@ type
     property PrevStateName: string read FPrevStateName; //Name of previous state
     property FPS: Cardinal read FFPS; //Current FPS
     property UpdateInterval: Cardinal read FUpdInt write FUpdInt; //Current state updates interval
-    property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold; //Update Overload Detection threshold, overloaded update cycles before triggering; 0 for disable
+    property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold; //Update Overload Detection threshold, overloaded update cycles before triggering
   end;
 
 function VSEStart: Integer; //Start engine, returns engine stop code
@@ -106,7 +104,7 @@ uses
 const
   MinResX = 640;
   MinResY = 480;
-  DefaultOverloadThreshold = 100;
+  DefaultOverloadThreshold = 8;
   WndClassName: PChar = 'VSENGINE';
   WM_XBUTTONDOWN=$20B;
   WM_XBUTTONUP=$20C;
@@ -242,15 +240,21 @@ begin
       SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
     end;
     FPaused:=not SendNotify(snMinimize);
+    if FPaused then
+    begin
+      if not FFullscreen
+        then SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+      Exit;
+    end;
   end;
   if FNeedSwitch
     then State:=FSwitchTo;
+  Sound.Update;
   if FPreviousUpdate=0 then FPreviousUpdate:=Time;
   T:=Time-FPreviousUpdate;
   FPreviousUpdate:=FPreviousUpdate+T-(T mod FUpdInt);
   if FCurState<>nil then
   begin
-    UpdTime:=Time;
     if FMouseCapture and not FMinimized then
     begin
       Windows.GetCursorPos(Cur);
@@ -265,22 +269,26 @@ begin
       end;
     end;
     for i:=1 to T div FUpdInt do
-    try
-      FCurState.Update;
-    except
-      {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Update');{$ENDIF}
-      {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
-    end;
-    if Time-UpdTime>T
-      then Inc(FUpdOverloadCount, T div FUpdInt)
-      else FUpdOverloadCount:=0;
-    if (FUpdOverloadThreshold>0) and (FUpdOverloadCount>FUpdOverloadThreshold) then
-      if not SendNotify(snUpdateOverload) then
-      begin
-        {$IFDEF VSE_LOG}Log(llError, 'Update overload in state "'+FCurState.Name+'"');
-        {$ELSE}MessageBox(FHandle, PChar('Update overload in state "'+FCurState.Name+'"'), PChar(CaptionVer), MB_ICONERROR);{$ENDIF}
-        Core.StopEngine(StopUpdateOverload);
+    begin
+      UpdTime:=Time;
+      try
+        FCurState.Update;
+      except
+        {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Update');{$ENDIF}
+        {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
       end;
+      if Time-UpdTime>FUpdInt then
+      begin
+        Inc(FUpdOverloadCount);
+        if FUpdOverloadCount>FUpdOverloadThreshold then
+          if not SendNotify(snUpdateOverload) then
+          begin
+            {$IFDEF VSE_LOG}Log(llWarning, 'Update overload in state "'+FCurState.Name+'"');{$ENDIF}
+            ResetUpdateTimer;
+          end;
+      end
+        else if FUpdOverloadCount>0 then Dec(FUpdOverloadCount);
+    end;
     try
       FCurState.Draw;
     except
@@ -299,6 +307,7 @@ begin
   {$IFDEF VSE_LOG}Log(llInfo, 'Window maximized');{$ENDIF}
   if FFullscreen then gleGoFullscreen(ResX, ResY, Refresh, FDepth);
   FMinimized:=false;
+  if FPaused then ResetUpdateTimer;
   FPaused:=false;
   SendNotify(snMaximize);
 end;
@@ -318,7 +327,7 @@ begin
     then SetCapture(FHandle)
     else if Event=meUp
       then ReleaseCapture;
-  if FMouseCapture and (Event=meMove) then Exit;
+  if (FMouseCapture and (Event=meMove)) or FPaused then Exit;
   if Event in [meDown, meUp, meWheel] then BindMan.MouseEvent(Button, Event);
   if FCurState<>nil then
   try
@@ -331,6 +340,7 @@ end;
 
 procedure TCore.KeyEvent(Button: Integer; Event: TKeyEvent);
 begin
+  if FPaused then Exit;
   {$IFDEF VSE_ESC_EXIT}
   if (Button=VK_ESCAPE) and (Event=keUp) then
   begin
@@ -357,6 +367,7 @@ end;
 
 procedure TCore.CharEvent(C: Char);
 begin
+  if FPaused then Exit;
   if FCurState<>nil then
   try
     FCurState.CharEvent(C);
@@ -606,6 +617,7 @@ begin
     end;
     FPrevStateName:=FCurState.Name;
   end;
+  BindMan.ResetEvents;
   FState:=Value;
   FCurState:=FStates[Value];
   try

@@ -35,6 +35,7 @@ type
     procedure MouseEvent(Button: Integer; Event: TMouseEvent); //internally used
     procedure KeyEvent(Button: Integer; Event: TKeyEvent); //internally used
     procedure Update; //internally used
+    procedure ResetEvents; //internally used
     function  GetBindKeyName(const BindName: string): string; //Get name of binded to BindName key
     function  GetBindEvent(const Name: string): TBindEvent; //Get oldest event from queue for binding, returns beNone if no events
     property  BindActive[Name: string]: Boolean read GetBindActive; //True if binded key pressed, mouse wheel up/down cannot be pressed, only events
@@ -361,6 +362,20 @@ begin
         Event:=Event^.Next;
       end;
     end;
+end;
+
+procedure TBindMan.ResetEvents;
+var
+  i: Integer;
+begin
+  FScrollStateClicks:=0;
+  for i:=0 to High(FBindings) do
+    with FBindings[i] do
+      while Assigned(Events) do
+      begin
+        Events^.Age:=DeadEvent;
+        Events:=Events^.Next;
+      end;
 end;
 
 procedure TBindMan.SaveBindings;
