@@ -48,7 +48,8 @@ procedure VectorSub(var Vector:TVector3D; Value : Single); overload;
 function VectorDivide(const Vector1, Vector2:TVector3D):TVector3D;overload;
 function VectorDivide(const Vector:TVector3D; Value:Single):TVector3D;overload;
 function VectorMultiply(const Vector1, Vector2:TVector3D):TVector3D; overload;
-function VectorMultiply(const Vector1: TVector3D; Value: Single):TVector3D; overload;
+function VectorMultiply(const Vector: TVector3D; Value: Single):TVector3D; overload;
+function VectorMultiply(const Vector: TVector3D; Matrix: TMatrix4D):TVector3D; overload;
 procedure VectorScale(var Vector:TVector3D; Value:Single);
 function VectorCrossProduct(const Vector1, Vector2:TVector3D):TVector3D;
 function VectorDotProduct(const Vector1, Vector2:TVector3D):Single;
@@ -185,18 +186,25 @@ begin
 end;
 
 
-function VectorMultiply(const Vector1, Vector2:TVector3D):TVector3D; overload;
+function VectorMultiply(const Vector1, Vector2:TVector3D):TVector3D;// overload;
 begin
   Result.X := Vector1.X * Vector2.X;
   Result.Y := Vector1.Y * Vector2.Y;
   Result.Z := Vector1.Z * Vector2.Z;
 end;
 
-function VectorMultiply(const Vector1: TVector3D; Value: Single):TVector3D;
+function VectorMultiply(const Vector: TVector3D; Value: Single): TVector3D;
 begin
-  Result.X := Vector1.X * Value;
-  Result.Y := Vector1.Y * Value;
-  Result.Z := Vector1.Z * Value;
+  Result.X := Vector.X * Value;
+  Result.Y := Vector.Y * Value;
+  Result.Z := Vector.Z * Value;
+end;
+
+function VectorMultiply(const Vector: TVector3D; Matrix: TMatrix4D):TVector3D;
+begin
+  Result.X:=Matrix[0, 0]*Vector.X + Matrix[1, 0]*Vector.Y + Matrix[2, 0]*Vector.Z + Matrix[3, 0];
+  Result.Y:=Matrix[0, 1]*Vector.X + Matrix[1, 1]*Vector.Y + Matrix[2, 1]*Vector.Z + Matrix[3, 1];
+  Result.Z:=Matrix[0, 2]*Vector.X + Matrix[1, 2]*Vector.Y + Matrix[2, 2]*Vector.Z + Matrix[3, 2];
 end;
 
 procedure VectorScale(var Vector:TVector3D; Value:Single);
