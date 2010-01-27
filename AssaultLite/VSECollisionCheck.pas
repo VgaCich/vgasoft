@@ -7,6 +7,7 @@ uses
 
 type
   TCollisionInfo=record
+    Collided: Boolean;
   end;
   TCollisionObject=class
   protected
@@ -16,10 +17,18 @@ type
     function CheckCollision(Obj: TCollisionObject; var CollInfo: TCollisionInfo): Boolean; //Check for collision with Obj, check result returned in CollInfo, returns false if collision with passed type of object not implemented 
   end;
   TCollisionRay=class(TCollisionObject)
+  private
+    FDir: TVector3D;
+    procedure SetDir(const Value: TVector3D);
+  protected
+    function DoCollisionCheck(Obj: TCollisionObject; var CollInfo: TCollisionInfo): Boolean; override;
   public
-    Start, Dir: TVector3D;
+    Start: TVector3D;
+    property Dir: TVector3D read FDir write SetDir;
   end;
   TCollisionSphere=class(TCollisionObject)
+  protected
+    function DoCollisionCheck(Obj: TCollisionObject; var CollInfo: TCollisionInfo): Boolean; override;
   public
     Center: TVector3D;
     Radius: Single;
@@ -41,11 +50,64 @@ function PointInRect(Point: TPoint; Rect: TRect): Boolean;
 
 implementation
 
+{TCollisionObject}
+
 function TCollisionObject.CheckCollision(Obj: TCollisionObject; var CollInfo: TCollisionInfo): Boolean;
 begin
   Result:=DoCollisionCheck(Obj, CollInfo);
   if not Result then Result:=Obj.DoCollisionCheck(Self, CollInfo);
 end;
+
+{TCollisionRay}
+
+function TCollisionRay.DoCollisionCheck(Obj: TCollisionObject; var CollInfo: TCollisionInfo): Boolean;
+
+  procedure CollideSphere(Obj: TCollisionSphere);
+  var
+    C, D: TVector3D;
+    Dist: Single;
+  begin
+    C:=VectorSub(VectorMultiply(Obj.Center, Transform), VectorMultiply(Start, Transform));
+    {TODO: transformation of Dir vector}
+    D:=Dir;//D:=VectorMultiply(Dir, ExtractRotate(Transform));
+    if VectorDotProduct(C, D)>=0
+      then Dist:=VectorSize(VectorCrossProduct(D, C))
+      else Dist:=VectorSize(C);
+    CollInfo.Collided:=Dist<Obj.Radius;
+  end;
+
+begin
+  Result:=true;
+  if Obj is TCollisionSphere then CollideSphere(Obj as TCollisionSphere)
+    else Result:=false;
+end;
+
+procedure TCollisionRay.SetDir(const Value: TVector3D);
+begin
+  FDir:=Value;
+  VectorNormalize(FDir);
+end;
+
+{TCollisionSphere}
+
+function TCollisionSphere.DoCollisionCheck(Obj: TCollisionObject; var CollInfo: TCollisionInfo): Boolean;
+
+  procedure CollideSphere(Obj: TCollisionSphere);
+  var
+    C1, C2: TVector3D;
+  begin
+    C1:=VectorMultiply(Center, Transform);
+    C2:=VectorMultiply(Obj.Center, Obj.Transform);
+    CollInfo.Collided:=VectorSize(VectorSub(C1, C2))<Radius+Obj.Radius;
+  end;
+
+begin
+  Result:=true;
+  if Obj is TCollisionSphere then CollideSphere(Obj as TCollisionSphere)
+    else Result:=false;
+end;
+
+{Misc}
 
 function PointInRect(Point: TPoint; Rect: TRect): Boolean;
 begin

@@ -7,6 +7,7 @@ uses Windows, OpenGL, oglExtensions, AvL, avlVectors{$IFDEF VSE_LOG}, VSELog{$EN
 type
   TResolution=record //Resolution info
     Width, Height: Cardinal;
+    RefreshRate: Cardinal;
     RefreshRates: array of Cardinal;
   end;
   TResolutions=array of TResolution;
@@ -23,11 +24,16 @@ procedure gleOrthoMatrix2(Left, Top, Right, Bottom: Double); //Set orthogonal pr
 function  gleError(GLError: Cardinal): string; //Convert OpenGL error code to text
 procedure gleColor(Color: TColor); //Set current OpenGL color
 function  gleColorTo4f(Color: TColor): TVector4f; //Convert GDI color to OpenGL color
-function  gleGetResolutions: TResolutions; //List available screen resolutions
+function  gleGetResolutions: TResolutions; //List available screen resolutions, RefreshRate not used
+function  gleGetCurrentResolution: TResolution; //Returns current resolution, RefreshRates not used
 function  gleScreenTo3D(X, Y: Integer; GetDepth: Boolean=false): TVector3D; //Translates screen coordinates to 3D coordinates; GetDepth: fetch screen depth from framebuffer
 function  gle3DToScreen(X, Y, Z: Double): TPoint; //Translates 3D coordinates to screen coordinates
 
 implementation
+
+const
+  ENUM_CURRENT_SETTINGS=LongWord(-1);
+  ENUM_REGISTRY_SETTINGS=LongWord(-2);
 
 function gleGoFullscreen(Width, Height, Refresh, Depth: Integer): Boolean;
 var
@@ -213,7 +219,7 @@ var
   DM: TDevMode;
 begin
   ZeroMemory(@DM, SizeOf(DM));
-  i:=1;
+  i:=0;
   while EnumDisplaySettings(nil, i, DM) do
   begin
     if (DM.dmPelsWidth >= 640) and (DM.dmPelsHeight >= 480) and (DM.dmDisplayFrequency <> 1)
@@ -243,6 +249,18 @@ begin
           Inc(SC);
         end;
     until SC=0;
+end;
+
+function gleGetCurrentResolution: TResolution;
+var
+  DM: TDevMode;
+begin
+  ZeroMemory(@DM, SizeOf(DM));
+  ZeroMemory(@Result, SizeOf(Result));
+  if not EnumDisplaySettings(nil, ENUM_CURRENT_SETTINGS, DM) then Exit;
+  Result.Width:=DM.dmPelsWidth;
+  Result.Height:=DM.dmPelsHeight;
+  Result.RefreshRate:=DM.dmDisplayFrequency;
 end;
 
 function gleScreenTo3D(X, Y: Integer; GetDepth: Boolean=false): TVector3D;

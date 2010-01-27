@@ -13,12 +13,13 @@ type
     FFont: Cardinal;
     FGame: TStateGame;
     FLoadStage: TLoadStage;
-    FLevelName: string;
+    FLevelName, FStageName: string;
     function GetName: string; override;
     procedure Delay;
     procedure LoadTerrain;
     procedure StartGame;
     procedure STStore(Sender: TObject; const Reg: TSynTexRegister; TexSize: Integer; const Name: string);
+    procedure SetStage(Stage: TLoadStage; const Name: string);
   public
     constructor Create;
     procedure Draw; override;
@@ -34,7 +35,7 @@ implementation
 uses VSECore {$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
-  SLoad='Загрузка уровня %s...';
+  SLoad='Загрузка уровня %s: %s...';
   STitle='Assault Lite';
 
 constructor TStateLoad.Create;
@@ -49,19 +50,23 @@ var
   S: string;
 begin
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
-  S:=Format(SLoad, [FLevelName]);
+  S:=Format(SLoad, [FLevelName, FStageName]);
   TexMan.TextOut(FFont, 400-TexMan.TextLen(FFont, S)/2, 500, S);
   TexMan.TextOut(FFont, 400-TexMan.TextLen(FFont, STitle)/2, 250, STitle);
 end;
 
 procedure TStateLoad.Update;
 begin
-  if Assigned(FLoadStage) then FLoadStage;
+  if Assigned(FLoadStage) then
+  begin
+    FLoadStage;
+    Core.ResetUpdateTimer;
+  end;
 end;
 
 function TStateLoad.Activate: Cardinal;
 begin
-  FLoadStage:=Delay;
+  SetStage(Delay, '');
   Result:=50;
 end;
 
@@ -85,7 +90,7 @@ end;
 
 procedure TStateLoad.Delay;
 begin
-  FLoadStage:=LoadTerrain;
+  SetStage(LoadTerrain, 'ландшафт');
 end;
 
 procedure TStateLoad.LoadTerrain;
@@ -121,7 +126,7 @@ begin
   end;
   FGame.Terrain.Texture:=TexMan.GetTex('Grass');
   FGame.NewGame;
-  FLoadStage:=StartGame;
+  SetStage(StartGame, 'старт');
 end;
 
 procedure TStateLoad.StartGame;
@@ -134,6 +139,12 @@ procedure TStateLoad.STStore(Sender: TObject; const Reg: TSynTexRegister; TexSiz
 begin
   if Name='Terrain'
     then FGame.Terrain.Load(Reg, TexSize, 1, 1/4);
+end;
+
+procedure TStateLoad.SetStage(Stage: TLoadStage; const Name: string);
+begin
+  FLoadStage:=Stage;
+  FStageName:=Name;
 end;
 
 end.

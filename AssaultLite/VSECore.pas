@@ -7,6 +7,7 @@ uses
   VSEInit, VSEGameStates{$IFDEF VSE_LOG}, VSELog, VSESysInfo{$ENDIF};
 
 const
+  InvalidState = $FFFFFFFF; //Non-existing state index
   //Engine stop codes
   StopNormal=0; //Engine stopped normally
   //Critical error
@@ -61,11 +62,12 @@ type
     procedure SwitchState(const NewStateName: string); overload; //Switch to state by state name
     function  StateExists(State: Cardinal): Boolean; //Returns true if exists state with supplied index
     function  GetState(State: Cardinal): TGameState; //Returns state object by index
-    function  FindState(const Name: string): Cardinal; //Returns state index by state name
+    function  FindState(const Name: string): Cardinal; //Returns state index by state name or InvalidState if state not found
     {Misc.}
     function  KeyRepeat(Key: Byte; Rate: Integer; var KeyVar: Cardinal): Boolean; //Returns true if Key pressed, but no more often then Rate; KeyVar - counter for rate limiting
-    procedure SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean); //Set resolution ResX*ResY@Refresh; CanReset: return to previous resolution if fail
-    procedure MakeScreenshot(Name: string; Numerate: Boolean = true);
+    procedure SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean = true); //Set resolution ResX*ResY@Refresh; CanReset: return to previous resolution if fail
+    procedure MakeScreenshot(Name: string; Numerate: Boolean = true); //Makes screenshot in exe folder; Name: screentshot file name; Numerate: append counter to name
+    procedure ResetUpdateTimer; //Reset update timer and clear pending updates
     ///
     property Handle: THandle read FHandle; //Engine window handle
     property DC: HDC read FDC; //Engine window GDI device context
@@ -91,7 +93,7 @@ type
 
 function VSEStart: Integer; //Start engine, returns engine stop code
 function GetCursorPos(var Cursor: TPoint): Boolean; //Windows.GetCursorPos override, returns cursor position inside of engine window
-procedure LogException(Comment: string);
+procedure LogException(Comment: string); //Writes current exception info to log, followed by Comment. Call only in except block
 
 var
   Core: TCore; //Global variable for accessing to Engine Core
@@ -102,6 +104,9 @@ uses
   VSESound, VSETexMan, VSEBindMan;
 
 const
+  MinResX = 640;
+  MinResY = 480;
+  DefaultOverloadThreshold = 100;
   WndClassName: PChar = 'VSENGINE';
   WM_XBUTTONDOWN=$20B;
   WM_XBUTTONUP=$20C;
@@ -140,7 +145,7 @@ begin
   FPaused:=true;
   FMinimized:=false;
   FNeedSwitch:=false;
-  FState:=$FFFFFFFF;
+  FState:=InvalidState;
   FStates:=nil;
   FCurState:=nil;
   FHandle:=WndHandle;
@@ -150,7 +155,7 @@ begin
   QueryPerformanceFrequency(FPerformanceFrequency);
   FPreviousUpdate:=0;
   FUpdOverloadCount:=0;
-  FUpdOverloadThreshold:=100;
+  FUpdOverloadThreshold:=DefaultOverloadThreshold;
   Initializing:=false;
 end;
 
@@ -189,9 +194,9 @@ begin
   Fullscreen:=VSEInit.Fullscreen;
   FVSync:=VSEInit.VSync;
   if (FVSync<>0) and (FVSync<>1) then FVSync:=1;
-  if FResX<640 then FResX:=640;
-  if FResY<480 then FResY:=480;
-  if FRefresh<60 then FRefresh:=60;
+  if FResX<MinResX then FResX:=MinResX;
+  if FResY<MinResY then FResY:=MinResY;
+  if FRefresh=0 then FRefresh:=gleGetCurrentResolution.RefreshRate;
   FDC:=GetDC(FHandle);
   FRC:=gleSetPix(FDC, FDepth);
   if FRC=0 then raise Exception.Create('Unable to set rendering context');
@@ -437,7 +442,7 @@ function TCore.FindState(const Name: string): Cardinal;
 var
   i: Cardinal;
 begin
-  Result:=$FFFFFFFF;
+  Result:=InvalidState;
   for i:=0 to High(FStates) do
     if Assigned(FStates[i]) and (FStates[i].Name=Name) then
     begin
@@ -463,7 +468,7 @@ begin
     else KeyVar:=0;
 end;
 
-procedure TCore.SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean);
+procedure TCore.SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean = true);
 var
   OldResX, OldResY, OldRefresh: Cardinal;
 begin
@@ -484,8 +489,7 @@ begin
         then SetResolution(OldResX, OldResY, OldRefresh, false)
         else begin
           MessageBox(FHandle, 'Unable to enter fullscreen! Choose lower resolution or refresh rate', PChar(CaptionVer), MB_ICONERROR);
-          VSEStopState:=StopDisplayModeError;
-          Exit;
+          StopEngine(StopDisplayModeError);
         end;
     end;
   end
@@ -544,6 +548,11 @@ begin
   end;
 end;
 
+procedure TCore.ResetUpdateTimer;
+begin
+  FPreviousUpdate:=Time;
+end;
+
 //Private
 
 procedure TCore.SetFullscreen(Value: Boolean);
@@ -563,7 +572,7 @@ begin
   else begin
     SetWindowLong(FHandle, GWL_EXSTYLE, WS_EX_APPWINDOW or WS_EX_WINDOWEDGE);
     SetWindowLong(FHandle, GWL_STYLE, WS_OVERLAPPED or WS_CAPTION or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
-    SetWindowPos(FHandle, 0, (Screen.Width-FResX) div 2, (Screen.Height-FResY) div 2, 0, 0, SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE);
+    SetWindowPos(FHandle, HWND_NOTOPMOST, (Screen.Width-FResX) div 2, (Screen.Height-FResY) div 2, 0, 0, SWP_NOSIZE or SWP_FRAMECHANGED or SWP_SHOWWINDOW);
   end;
 end;
 
