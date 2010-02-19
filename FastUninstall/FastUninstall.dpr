@@ -14,7 +14,7 @@ const
   TB_REFRESH=2;
   TB_ABOUT=3;
   TB_EXIT=4;
-  CCapt='VS Fast Uninstall 1.1';
+  CCapt='VS Fast Uninstall 1.2';
   CKeyPrefix='Key: ';
 
 type
@@ -32,7 +32,6 @@ type
     MInfo: TMemo;
     TB: TToolBar;
     TBImages: TImageList;
-    FNoSearch: Boolean;
     function  GetRegValue(Key: HKEY; const Name: string): string;
   protected
     procedure FormCreate(Sender: TObject);
@@ -62,7 +61,6 @@ end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
-  FNoSearch:=false;
   RefreshClick;
 end;
 
@@ -155,7 +153,6 @@ begin
       RegKeyGetValueNames(SubKey, Values);
       for j:=0 to Values.Count-1 do
         S:=S+Values[j]+'='+GetRegValue(SubKey, Values[j])+#13#10;
-        //S:=S+Values[j]+'='+RegKeyGetStr(SubKey, Values[j])+#13#10;
       LBProgramsList.Objects[Index]:=TStr.Create(S);
     end;
     RegKeyClose(SubKey);
@@ -173,8 +170,7 @@ end;
 procedure TMainForm.AboutClick;
 const
   AboutText=CCapt+#13#10 +
-            'Copyright '#169'VgaSoft, 2004-2006'#13#10+
-            'www.vgasoft.narod.ru'#13#10#13#10+
+            'Copyright '#169'VgaSoft, 2004-2010'#13#10#13#10+
             'Keys:'#13#10+
             '  F1: About'#13#10+
             '  F5: Refresh'#13#10+
@@ -222,7 +218,7 @@ var
   S: string;
   i, Len: Integer;
 begin
-  if FNoSearch or (EIncSearch.Text='') then Exit;
+  if EIncSearch.Text='' then Exit;
   S:=EIncSearch.Text;
   Len:=Length(S);
   for i:=0 to LBProgramsList.ItemCount-1 do
@@ -239,12 +235,6 @@ procedure TMainForm.ShowInfo(Sender: TObject);
 begin
   if (LBProgramsList.ItemIndex<0) or (LBProgramsList.ItemIndex>=LBProgramsList.ItemCount) then Exit;
   MInfo.Text:=(LBProgramsList.Objects[LBProgramsList.ItemIndex] as TStr).FS;
-  if Sender<>Self then
-  begin
-    FNoSearch:=true;
-    EIncSearch.Text:=LBProgramsList.Items[LBProgramsList.ItemIndex];
-    FNoSearch:=false;
-  end;
 end;
 
 procedure TMainForm.WMCommand(var Msg: TWMCommand);

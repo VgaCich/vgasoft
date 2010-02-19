@@ -105,15 +105,11 @@ HostApplication=
 Launcher=
 UseLauncher=0
 DebugCWD=
-[Language]
-ActiveLang=
-ProjectLang=
-RootDir=C:\Delphi\Bin\
 [Version Info]
 IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
-MinorVer=1
+MinorVer=2
 Release=0
 Build=0
 Debug=0
@@ -126,16 +122,14 @@ CodePage=1251
 [Version Info Keys]
 CompanyName=VgaSoft
 FileDescription=Fast Uninstall
-FileVersion=1.1.0.0
+FileVersion=1.2.0.0
 InternalName=
-LegalCopyright=(c) VgaSoft, 2004-2006
+LegalCopyright=(c) VgaSoft, 2004-2010
 LegalTrademarks=
 OriginalFilename=FastUninstall.exe
 ProductName=Fast Uninstall
 ProductVersion=1.0.0.0
-Comments=www.vgasoft.narod.ru
-[Excluded Packages]
-c:\delphi\Projects\Bpl\mckEnhCombos.bpl=MCK Enhanced ComboBoxes
+Comments=
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
