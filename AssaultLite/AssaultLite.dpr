@@ -19,18 +19,14 @@ const
             'несколько десятков мегабайт места на вашем жестком диске';
   SUseFullscreen='Запустить игру в полноэкранном режиме?';
 
-var
-  Ini: string;
-
 begin
   VSEInit.InitStates:=InitStates;
   Caption:='Assault Lite';
   Version:='0.1';
-  Ini:=ChangeFileExt(FullExeName, '.ini');
   ResX:=800;
   ResY:=600;
   CacheDir:=ExePath+'Cache\';
-  if not FileExists(Ini) then
+  if not CheckINI then
   begin
     VSETexMan.UseCache:=MessageDlg(SUseCache, Caption, MB_ICONQUESTION or MB_YESNO)=ID_YES;
     Fullscreen:=MessageDlg(SUseFullscreen, Caption, MB_ICONQUESTION or MB_YESNO)=ID_YES;
@@ -41,10 +37,9 @@ begin
     end;
   end
   else begin
-    LoadINI(Ini);
+    LoadINI;
     VSETexMan.UseCache:=DirectoryExists(CacheDir);
   end;
   VSEStart;
-  SaveINI(Ini);
-  Ini:='';
+  SaveINI;
 end.

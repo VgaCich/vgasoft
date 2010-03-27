@@ -25,8 +25,10 @@ var //Start engine settings
   //SoundDevice: string='default';
   Bindings: string='';
 
-procedure LoadINI(const FileName: string); //Load settings from ini file
-procedure SaveINI(const FileName: string); //Save settings to ini file
+procedure LoadINI; //Load settings from ini file
+procedure SaveINI; //Save settings to ini file
+function GetINI: TIniFile; //Return TINiFile for save/read user settings
+function CheckINI: Boolean; //Return true if ini file exists
 
 implementation
 
@@ -34,15 +36,13 @@ const
   SBind = 'Bind';
   SSettings = 'Settings';
 
-procedure LoadINI(const FileName: string);
+procedure LoadINI;
 var
   INI: TIniFile;
   Bind: TStringList;
-const
-  SSettings = 'Settings';
 begin
-  {$IFDEF VSE_LOG}Log(llInfo, 'Loading INI file '+FileName);{$ENDIF}
-  INI:=TIniFile.Create(FileName);
+  {$IFDEF VSE_LOG}Log(llInfo, 'Loading settings from INI file');{$ENDIF}
+  INI:=GetINI;
   try
     ResX:=INI.ReadInteger(SSettings, 'ResX', ResX);
     ResY:=INI.ReadInteger(SSettings, 'ResY', ResY);
@@ -66,15 +66,15 @@ begin
   end;
 end;
 
-procedure SaveINI(const FileName: string);
+procedure SaveINI;
 var
   INI: TIniFile;
   Bind: TStringList;
   i: Integer;
   Name: string;
 begin
-  {$IFDEF VSE_LOG}Log(llInfo, 'Saving INI file '+FileName);{$ENDIF}
-  INI:=TIniFile.Create(FileName);
+  {$IFDEF VSE_LOG}Log(llInfo, 'Saving settings to INI file');{$ENDIF}
+  INI:=GetINI;
   try
     INI.WriteInteger(SSettings, 'ResX', ResX);
     INI.WriteInteger(SSettings, 'ResY', ResY);
@@ -100,6 +100,16 @@ begin
   finally
     FAN(INI);
   end;
+end;
+
+function GetINI: TIniFile;
+begin
+  Result:=TIniFile.Create(ChangeFileExt(FullExeName, '.ini'));
+end;
+
+function CheckINI: Boolean;
+begin
+  Result:=FileExists(ChangeFileExt(FullExeName, '.ini'));
 end;
 
 end.

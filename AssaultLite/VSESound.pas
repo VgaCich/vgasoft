@@ -15,6 +15,8 @@ type
     FMusicFile: TCustomMemoryStream;
     FMusicPCM: TWaveFormatEx;
     FMusicBufferDesc: TDSBufferDesc;
+    FEnableBGM: Boolean;
+    procedure SetEnableBGM(Value: Boolean);
   public
     constructor Create; //internally used
     destructor Destroy; override; //internally used
@@ -22,6 +24,7 @@ type
     procedure Update; //internally used
     procedure PlayMusic(const FileName: string); //Play music from file
     procedure StopMusic; //Stop music
+    property EnableBGM: Boolean read FEnableBGM write SetEnableBGM;
   end;
 
 var
@@ -30,7 +33,7 @@ var
 implementation
 
 uses
-  VSECore, VSEMemPak {$IFDEF VSE_LOG}, VSELog{$ENDIF};
+  VSEInit, VSECore, VSEMemPak {$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 {uFMOD}
 
@@ -38,6 +41,7 @@ const
 	XM_MEMORY=1;
 	uFMOD_BUFFER_SIZE=262144;
   uFMOD_MixRate = 44100;
+  SSound='Sound';
 
 {$L dsufmod.obj}
 function uFMOD_DSPlaySong(lpXM: Pointer; param, fdwSong: Integer;
@@ -46,6 +50,8 @@ function uFMOD_DSPlaySong(lpXM: Pointer; param, fdwSong: Integer;
 {TSound}
 
 constructor TSound.Create;
+var
+  Ini: TIniFile;
 begin
   inherited Create;
   {$IFDEF VSE_LOG}Log(llInfo, 'Sound: Create');{$ENDIF}
@@ -82,11 +88,25 @@ begin
     {$IFDEF VSE_LOG}Log(llError, 'Sound: Cannot create secondary buffer');{$ENDIF}
     FMusicBuffer:=nil;
   end;
+  Ini:=GetINI;
+  try
+    EnableBGM:=Ini.ReadBool(SSound, 'EnableBGM', true);
+  finally
+    FAN(Ini);
+  end;
 end;
 
 destructor TSound.Destroy;
+var
+  Ini: TIniFile;
 begin
   {$IFDEF VSE_LOG}Log(llInfo, 'Sound: Destroy');{$ENDIF}
+  Ini:=GetINI;
+  try
+    Ini.WriteBool(SSound, 'EnableBGM', EnableBGM);
+  finally
+    FAN(Ini);
+  end;
   StopMusic;
   FMusicBuffer:=nil;
   FDirectSound:=nil;
@@ -152,13 +172,25 @@ begin
   if Assigned(FMusicFile) then StopMusic;
   FMusicFile:=GetFile(FileName);
   if not Assigned(FMusicFile) then Exit;
-	uFMOD_DSPlaySong(FMusicFile.Memory, FMusicFile.Size, XM_MEMORY, FMusicBuffer);
+  if EnableBGM
+    then uFMOD_DSPlaySong(FMusicFile.Memory, FMusicFile.Size, XM_MEMORY, FMusicBuffer);
 end;
 
 procedure TSound.StopMusic;
 begin
   uFMOD_DSPlaySong(nil, 0, 0, nil);
   FAN(FMusicFile);
+end;
+
+procedure TSound.SetEnableBGM(Value: Boolean);
+begin
+  if Value=FEnableBGM
+    then Exit;
+  FEnableBGM:=Value;
+  if not FEnableBGM
+    then StopMusic
+    else if Assigned(FMusicBuffer) and Assigned(FMusicFile)
+      then uFMOD_DSPlaySong(FMusicFile.Memory, FMusicFile.Size, XM_MEMORY, FMusicBuffer);
 end;
 
 end.

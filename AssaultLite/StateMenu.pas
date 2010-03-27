@@ -24,7 +24,7 @@ type
   TOptions=class(TGUIForm)
   protected
     FParent: TStateMenu;
-    FLRes, FLRefr, FLDepth, FLCacheSize, FCFullScr, FCVSync, FBToggleCache,
+    FLRes, FLRefr, FLDepth, FLCacheSize, FCFullScr, FCVSync, FCEnableBGM, FBToggleCache,
       FBClearCache, FCurRes, FCurRefr, FDepth: Integer;
     FResolutions: TResolutions;
     procedure DrawForm; override;
@@ -79,7 +79,7 @@ type
 
 implementation
 
-uses VSECore, VSEInit;
+uses VSEInit, VSECore, VSESound;
 
 {TMainMenu}
 
@@ -199,6 +199,11 @@ begin
     Y:=230;
     Caption:='Верт. синхр.';
     FCVSync:=AddButton(Btn);
+    X:=220;
+    Y:=200;
+    Width:=160;
+    Caption:='Музыка';
+    FCEnableBGM:=AddButton(Btn);
     Typ:=btPush;
     X:=220;
     Y:=60;
@@ -272,6 +277,7 @@ var
 begin
   Button[FCFullScr].Checked:=Core.Fullscreen;
   Button[FCVSync].Checked:=Core.VSync;
+  Button[FCEnableBGM].Checked:=Sound.EnableBGM;
   FDepth:=Core.Depth;
   FCurRes:=-1;
   for i:=0 to High(FResolutions) do
@@ -361,6 +367,7 @@ begin
   Core.Fullscreen:=Button[FCFullScr].Checked;
   Core.VSync:=Button[FCVSync].Checked;
   Core.Depth:=FDepth;
+  Sound.EnableBGM:=Button[FCEnableBGM].Checked;
   FParent.FCurFrm:=FParent.FMainMenu;
 end;
 

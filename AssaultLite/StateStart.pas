@@ -136,7 +136,7 @@ end;
 
 procedure TStateStart.Update;
 begin
-  Log(llInfo, 'Start.Update');
+
 end;
 
 function TStateStart.Activate: Cardinal;
