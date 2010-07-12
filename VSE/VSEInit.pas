@@ -21,10 +21,10 @@ var
   ResX: Integer=640;
   ResY: Integer=480;
   Refresh: Integer=0;
-  Depth: Integer=16;
+  Depth: Integer=32;
   Fullscreen: Boolean=false;
   VSync: Integer=1;
-  SoundDevice: string='default';
+  //SoundDevice: string='default';
   FontsList: string='';
 
 procedure LoadINI(const FileName: string);
@@ -44,7 +44,7 @@ begin
     Depth:=INI.ReadInteger('Settings', 'Depth', Depth);
     Fullscreen:=INI.ReadBool('Settings', 'Fullscreen', Fullscreen);
     VSync:=INI.ReadInteger('Settings', 'VSync', VSync);
-    SoundDevice:=INI.ReadString('Settings', 'SoundDevice', SoundDevice);
+    //SoundDevice:=INI.ReadString('Settings', 'SoundDevice', SoundDevice);
   finally
     FAN(INI);
   end;
@@ -62,7 +62,7 @@ begin
     INI.WriteInteger('Settings', 'Depth', Depth);
     INI.WriteBool('Settings', 'Fullscreen', Fullscreen);
     INI.WriteInteger('Settings', 'VSync', VSync);
-    INI.WriteString('Settings', 'SoundDevice', SoundDevice);
+    //INI.WriteString('Settings', 'SoundDevice', SoundDevice);
   finally
     FAN(INI);
   end;

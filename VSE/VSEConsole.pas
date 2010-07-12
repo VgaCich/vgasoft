@@ -205,6 +205,11 @@ begin
     LogF(llError, 'Registering console command: name contains spaces (%s)', [Name]);
     Exit;
   end;
+  if FindCmd(Name)>-1 then
+  begin
+    LogF(llError, 'Registering console command: command already exists (%s)', [Name]);
+    Exit;
+  end;
   for i:=0 to High(FCommands) do
     if not FCommands[i].Exist then
     begin
@@ -332,7 +337,7 @@ var
 begin
   Result:=false;
   if not Assigned(PakMan) then Exit;
-  F:=PakMan.OpenFile(Args+CScriptExt, ofNoCreate);
+  F:=PakMan.OpenFile(Args+CScriptExt, pmNoCreate);
   if F=nil then
   begin
     LogF(llError, 'Cannot execute script "%s". File not found', [Args]);

@@ -1,0 +1,42 @@
+Extension: VSM
+
+Format:
+[Header:6]{ChunksCount[Chunk]}
+
+Header format:
+[ID:3=VSM][Version:1=0][ChunksCount:2]
+
+Chunk format:
+[ID:2][Size:4][Data:Size-6]
+
+Chunks:
+
+CHUNK_MATERIAL=$1000: Material record
+[NameSize:1][Name:NameSize][Flags:4][SubChunksCount:2]{SubChunksCount[SubChunk]}
+
+  SubChunks:
+  
+  CHUNK_MATERIAL_GL=$1001: OpenGL material parameters
+  [Diffuse:4][Specular:4][Ambient:4][Emission:4][Shininess:1=0-255][Flags:4]
+  Colors: R8G8B8A8
+  
+  CHUNK_MATERIAL_TEXTURE=$1002: Texture information
+  [MapNameSize:1][MapName:MapNameSize][Mode:1][Flags:4]
+  
+  CHUNK_MATERIAL_SHADER=$1003: Shader information
+  [ShaderNameSize:1][ShaderName:ShaderNameSize][Flags:4]
+  
+  CHUNK_MATERIAL_DATA=$1100: Additional material data
+  [ID:2][Flags:4][Size:4][Data:DataSize]
+
+CHUNK_OBJECT=$2000: Object record
+[NameSize:1][Name:NameSize][Flags:4][SubChunksCount:2]{SubChunksCount[SubChunk]}
+
+  Subchunks
+  CHUNK_OBJECT_VERTICES=$2031: Vertices array //merge with tc & normals
+  CHUNK_OBJECT_FACES=$2032: Faces array
+  CHUNK_OBJECT_SMOOTHGROUPS=$2033: Smooth groups information
+  CHUNK_OBJECT_MATERIAL=$2034: Material link
+  CHUNK_OBJECT_DATA=$2040: Additional object data
+
+CHUNK_DATA=$8000: Additional data record

@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, MMSystem, AvL, avlUtils, dglOpenGL, OpenGLExt,
   VSEInit, VSEPakMan, VSEGameStates, VSEConsole, VSEConsoleVariables, VSELog,
-  VSEManagers, {$IFNDEF VSE_NOSOUND}USound, {$ENDIF} VSESysInfo;
+  VSEManagers, VSESysInfo;
 
 type
   TCore=class
@@ -23,8 +23,9 @@ type
     FPrevStateName: string;
     FFullscreen, FNeedSwitch, FMinimized: Boolean;
     FKeyState: TKeyboardState;
-    {$IFNDEF VSE_NOSOUND}FSound: TSound;{$ENDIF}
     procedure SetFullscreen(Value: Boolean);
+    function  GetVSync: Boolean;
+    procedure SetVSync(Value: Boolean);
     procedure SetState(Value: Cardinal);
     function  GetKeyPressed(Index: Byte): Boolean;
     function  GetTime: Cardinal;
@@ -63,7 +64,9 @@ type
     property ResX: Cardinal read FResX;
     property ResY: Cardinal read FResY;
     property Refresh: Cardinal read FRefresh;
+    property Depth: Cardinal read FDepth write FDepth;
     property Fullscreen: Boolean read FFullscreen write SetFullscreen;
+    property VSync: Boolean read GetVSync write SetVSync;
     property Minimized: Boolean read FMinimized;
     property KeyPressed[Index: Byte]: Boolean read GetKeyPressed;
     property Time: Cardinal read GetTime;
@@ -71,7 +74,6 @@ type
     property CurState: TGameState read FCurState;
     property PrevStateName: string read FPrevStateName;
     property FPS: Cardinal read FFPS;
-    {$IFNDEF VSE_NOSOUND}property Sound: TSound read FSound;{$ENDIF}
     property UpdateInterval: Cardinal read FUpdInt write FUpdInt;
     property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold;
   end;
@@ -149,7 +151,6 @@ begin
   except
     LogException('in state '+StateName+'.Free');
   end;
-  {$IFNDEF VSE_NOSOUND}FAN(FSound);{$ENDIF}
   Managers.CleanupManagers;
   gleFreeFonts;
   wglMakeCurrent(FDC, 0);
@@ -169,7 +170,6 @@ begin
   FDepth:=VSEInit.Depth;
   Fullscreen:=VSEInit.Fullscreen;
   FVSync:=VSEInit.VSync;
-  {$IFNDEF VSE_NOSOUND}FSound:=TSound.Create(VSEInit.SoundDevice);{$ENDIF}
   if (FVSync<>0) and (FVSync<>1) then FVSync:=1;
   if FResX<640 then FResX:=640;
   if FResY<480 then FResY:=480;
@@ -204,7 +204,6 @@ begin
   VSEInit.Depth:=FDepth;
   VSEInit.Fullscreen:=FFullscreen;
   VSEInit.VSync:=FVSync;
-  {$IFNDEF VSE_NOSOUND}VSEInit.SoundDevice:=Sound.DeviceName;{$ENDIF}
 end;
 
 procedure TCore.Update;
@@ -217,7 +216,6 @@ begin
   begin
     Log(llInfo, 'Minimized');
     FMinimized:=True;
-    {$IFNDEF VSE_NOSOUND}Sound.Pause;{$ENDIF}
     if FFullscreen then gleGoBack;
     SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
   end;
@@ -267,7 +265,6 @@ begin
   except
     LogException('in state '+FCurState.Name+'.Resume');
   end;
-  {$IFNDEF VSE_NOSOUND}Sound.Start;{$ENDIF}
 end;
 
 procedure TCore.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
@@ -294,11 +291,13 @@ end;
 
 procedure TCore.KeyEvent(Button: Integer; Event: TKeyEvent);
 begin
+  {$IFDEF VSE_ESC_EXIT}
   if (Button=27) and (Event=keUp) then
   begin
     StopEngine;
     Exit;
   end;
+  {$ENDIF}
   if FCurState<>nil then
   try
     FCurState.KeyEvent(Button, Event);
@@ -447,6 +446,18 @@ begin
   SetWindowPos(FHandle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or SWP_FRAMECHANGED or SWP_SHOWWINDOW);
 end;
 
+function TCore.GetVSync: Boolean;
+begin
+  Result:=FVSync<>0;
+end;
+
+procedure TCore.SetVSync(Value: Boolean);
+const
+  VSync: array[Boolean] of Integer=(0, 1);
+begin
+  FVSync:=VSync[Value];
+end;
+
 procedure TCore.SetState(Value: Cardinal);
 begin
   if StateExists(FState) and StateExists(Value)
@@ -491,7 +502,7 @@ procedure TCore.LoadFonts;
   var
     Data: TStream;
   begin
-    Data:=PakMan.OpenFile(Name, ofNoCreate);
+    Data:=PakMan.OpenFile(Name, pmNoCreate);
     try
       if not gleLoadFont(ID, Data) then LogF(llError, 'Could''n load font %s(%s)!', [ID, Name]);
     finally

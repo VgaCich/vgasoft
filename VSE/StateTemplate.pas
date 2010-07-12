@@ -3,7 +3,7 @@ unit State<!Name>;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures, GameStates;
+  Windows, Messages, AvL, avlUtils, dglOpenGL, VSEGameStates;
 
 type
   TState<!Name>=class(TGameState)
@@ -23,7 +23,7 @@ type
 
 implementation
 
-uses UGame;
+uses VSECore;
 
 procedure TState<!Name>.Draw;
 begin

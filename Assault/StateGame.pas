@@ -4,8 +4,8 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, dglOpenGL, OpenGLExt, avlVectors, Textures,
-  VSEPakMan, VSEGameStates, VSEConsole, Unit3DS, VSELog, ConsoleSound, Shaders,
-  Terrain, StateMenu, VSEGUI;
+  VSEPakMan, VSEGameStates, VSEConsole, Unit3DS, VSELog, Shaders, StateMenu,
+  VSEGUI;
 
 type
   TStateGame=class(TGameState)
@@ -15,9 +15,9 @@ type
     FButtonMenu: TMenuButton;
     FGUI: TGUI;
     FModel: T3DModel;
-    FConsoleSound: TConsoleSound;
     FCursor: TCursor;
-//    FShader: TShader;
+    FShader: TShader;
+    FUniformEyePos, FUniformMainTex: TShaderUniform;
 //    FTerrain: TTerrain;
     function  SetModel(const Args: string): Boolean;
     procedure MenuClick(Sender: TObject);
@@ -42,8 +42,8 @@ implementation
 uses VSECore;
 
 constructor TStateGame.Create;
-{var
-  F: TStream;}
+var
+  F: TStream;
 begin
   inherited Create;
   FCursor:=TCursor.Create;
@@ -51,24 +51,25 @@ begin
   FModel:=T3DModel.Create;
   Console.RegisterCommand('setmodel', '', SetModel);
   FAngle:=0;
-  FConsoleSound:=TConsoleSound.Create;
   FGUI:=TGUI.Create(800, 600);
   FButtonMenu:=TMenuButton.Create(745, 575, 50, 20, nil, 'Menu');
   FButtonMenu.OnClick:=MenuClick;
   FGUI.AddForm(FButtonMenu);
   FGUI.GrabFocus(FButtonMenu);
   FText:=TStringList.Create;
-{  FShader:=TShader.Create;
-  F:=Core.PakMan.OpenFile('Bump2.shd', ofNoCreate);
+  FShader:=TShader.Create;
+  F:=PakMan.OpenFile('Test.shd', pmNoCreate);
   try
     FShader.Load(F);
     FShader.Link;
     if not FShader.Valid
-      then Log('StateGame.Create: Shader is not valid');
-    Log('Shader log: '+FShader.InfoLog);
+      then Log(llError, 'StateGame.Create: Shader is not valid');
+    Log(llInfo, 'Shader log: '+FShader.InfoLog);
+    FUniformEyePos:=FShader.GetUniform('eyePos');
+    FUniformMainTex:=FShader.GetUniform('mainTex');
   finally
-    Core.PakMan.CloseFile(F);
-  end;}
+    FAN(F);
+  end;
 {  F:=Core.PakMan.OpenFile('TestTerrain.vtr', ofNoCreate);
   try
     FTerrain:=TTerrain.Create(F, 0.01, 0.001);
@@ -80,13 +81,12 @@ end;
 destructor TStateGame.Destroy;
 begin
 //  FAN(FTerrain);
-//  FAN(FShader);
+  FAN(FShader);
   FAN(FCursor);
   Console.UnregisterCommand('setmodel');
   FAN(FText);
   FAN(FGUI);
   FAN(FModel);
-  FAN(FConsoleSound);
   inherited Destroy;
 end;
 
@@ -95,7 +95,7 @@ var
   S: string;
   i, X, Y: Integer;
 const
-  LightPos: array[0..3] of GLfloat=(0, 0, 100, 1.0);
+  LightPos: array[0..3] of GLfloat=(0, 0, 0, 1.0);
   LightDiffuse: array[0..3] of GLfloat=(0.7, 0.7, 0.7, 1);
   LightSpecular: array[0..3] of GLfloat=(0.1, 0.1, 0.1, 1);
 //  LightAmbient: array[0..3] of GLfloat=(0, 0, 0, 1);
@@ -115,10 +115,12 @@ begin
   glRotatef(FAngle*10, 0, 1, 0);
   glRotatef(FAngle, 1, 0, 0);
   glColor4d(0, 1, 0, 1);
-//  FShader.Enabled:=true;
+  FShader.Enabled:=true;
+  FUniformEyePos.Value(0, 0, 0);
+  FUniformMainTex.Value(0);
   FModel.Draw;
 //  FTerrain.Draw;
-//  FShader.Enabled:=false;
+  FShader.Enabled:=false;
   gleSelectFont('Default');
   glDisable(GL_LIGHTING);
   glDisable(GL_DEPTH_TEST);
@@ -216,7 +218,7 @@ var
   ModelData: TStream;
 begin
   Result:=false;
-  ModelData:=PakMan.OpenFile(Args+'.3ds', ofNoCreate);
+  ModelData:=PakMan.OpenFile(Args+'.3ds', pmNoCreate);
   try
     if Assigned(ModelData) then FModel.Load(ModelData);
   finally

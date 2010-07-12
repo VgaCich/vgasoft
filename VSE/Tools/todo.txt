@@ -1,0 +1,4 @@
+VSPak:
+* recompile with fixed UniTempFile
+* ANSI2OEM console output
+* Fix problem with file names starts/ends with spaces

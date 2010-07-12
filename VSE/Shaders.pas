@@ -30,6 +30,7 @@ type
     procedure Value(x: Single); overload;
     procedure Value(x, y: Single); overload;
     procedure Value(x, y, z: Single); overload;
+    procedure Value(x, y, z, w: Single); overload;
     procedure Value(i: Integer); overload;
     property Handle: Integer read FHandle;
     property Name: string read FName;
@@ -113,6 +114,11 @@ end;
 procedure TShaderUniform.Value(x, y, z: Single);
 begin
   glUniform3fARB(FHandle, x, y, z);
+end;
+
+procedure TShaderUniform.Value(x, y, z, w: Single);
+begin
+  glUniform4fARB(FHandle, x, y, z, w);
 end;
 
 procedure TShaderUniform.Value(i: Integer);
@@ -239,9 +245,25 @@ end;
 {protected}
 
 function TShader.Compile(const Prog: string; ObjType: Integer): Boolean;
+const
+  ShaderType: array[false..true] of string=('Vertex shader', 'Fragment shader');
 var
   ShTemp: Integer;
   P: PChar;
+
+  procedure CompileLog;
+  var
+    LogLen: Integer;
+    LogStr: string;
+  begin
+    glGetObjectParameterivARB(ShTemp, GL_OBJECT_INFO_LOG_LENGTH_ARB, @LogLen);
+    if (glGetError<>GL_NO_ERROR) or (LogLen<1) then Exit;
+    SetLength(LogStr, LogLen);
+    glGetInfoLogARB(ShTemp, LogLen, LogLen, PChar(LogStr));
+    SetLength(LogStr, LogLen);
+    Log(llInfo, LogStr);
+  end;
+
 begin
   Result:=false;
   if Prog='' then Exit;
@@ -249,7 +271,12 @@ begin
   ShTemp:=glCreateShaderObjectARB(ObjType);
   glShaderSourceARB(ShTemp, 1, @P, nil);
   glCompileShaderARB(ShTemp);
-  if Error(ShTemp, GL_OBJECT_COMPILE_STATUS_ARB) then Exit;
+  if Error(ShTemp, GL_OBJECT_COMPILE_STATUS_ARB) then
+  begin
+    Log(llError, ShaderType[ObjType=GL_FRAGMENT_SHADER_ARB]+' compilation failed');
+    CompileLog;
+    Exit;
+  end;
   glAttachObjectARB(FHandle, ShTemp);
   glDeleteObjectARB(ShTemp);
   Result:=True;

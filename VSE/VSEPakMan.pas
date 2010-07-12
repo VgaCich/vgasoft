@@ -137,8 +137,9 @@ function ExtractFilePath(const FileName: string): string;
 
 const
   //TPakMan.Open/CreateFile:Flags - accepts FileOpen modes if File.Source=fsFile
-  ofNoCreate=$00010000;
-  ofNoCheck=$00020000;
+  pmNoCreate=$00010000;
+  pmNoCheck=$00020000;
+  pmNoDelete=$00040000;
 
 var
   PakMan: TPakMan;
@@ -451,7 +452,7 @@ begin
     end;
     FOpenedFiles.Add(Result);
   end
-    else if Flags and ofNoCreate=0
+    else if Flags and pmNoCreate=0
       then Result:=CreateFile(Name, Flags)
       else begin
         Log(llError, 'PakMan: OpenFile('+Name+') failed: file not exists');
@@ -461,13 +462,14 @@ end;
 
 function TPakMan.CreateFile(Name: string; Flags: Cardinal): TStream;
 var
-  CurTok, NextTok, DestDir: string;
+  CurTok, NextTok, DestDir, FN: string;
   CurDir: TDirInfo;
   i: Integer;
   FI: TFileInfo;
 begin
   Result:=nil;
   if FIndex=nil then Exit;
+  FN:=Name;
   NextTok:=Tok(Sep, Name);
   CurDir:=FIndex;
   DestDir:=FBaseDir;
@@ -488,10 +490,16 @@ begin
   if CurDir.Source<>'' then DestDir:=CurDir.Source;
   if not ForceDirectories(DestDir) then
   begin
-    Log(llError, 'PakMan: CreateFile('+Name+') failed: cannot create destination dir');
+    Log(llError, 'PakMan: CreateFile('+FN+') failed: cannot create destination dir');
     Exit;
   end;
-  if AvL.FileExists(DestDir+CurTok) then AvL.DeleteFile(DestDir+CurTok);
+  if AvL.FileExists(DestDir+CurTok) then
+    if Flags and pmNoDelete = 0
+      then AvL.DeleteFile(DestDir+CurTok)
+      else begin
+        Log(llError, 'PakMan: CreateFile('+FN+') failed: file already exists');
+        Exit;
+      end;
   FI.PakFile:=DestDir;
   FI.Name:=CurTok;
   Result:=TPakFileStream.Create(FI, fmCreate, Self);
@@ -711,7 +719,7 @@ end;
 
 constructor TPakFileStream.Create(FileInfo: TFileInfo; Flags: Cardinal; PakMan: TPakMan);
 begin
-  inherited Create(FileInfo.PakFile+FileInfo.Name, Flags and $FFFF);
+  inherited Create(FileInfo.PakFile+FileInfo.Name, (Flags and $FFFF) or fmOpenReadWrite);
   FPakMan:=PakMan;
 end;
 
@@ -735,7 +743,7 @@ begin
   FInStream.Seek(FileInfo.Offset, soFromBeginning);
   FInStream.Read(Adler32, 4);
   FInStream.Read(CheckSize, 4);
-  if Flags and ofNoCheck=0 then
+  if Flags and pmNoCheck=0 then
     if Adler32<>StreamAdler32(FInStream, CheckSize)
       then raise Exception.Create('Source data is corrupted')
       else FInStream.Seek(FileInfo.Offset+8, soFromBeginning);
@@ -856,7 +864,7 @@ begin
   FInStream.Seek(FileInfo.Offset, soFromBeginning);
   FInStream.Read(Adler32, 4);
   FInStream.Read(CheckSize, 4);
-  if Flags and ofNoCheck=0 then
+  if Flags and pmNoCheck=0 then
     if Adler32<>StreamAdler32(FInStream, CheckSize)
       then raise Exception.Create('Source data is corrupted')
       else FInStream.Seek(FileInfo.Offset+8, soFromBeginning);
@@ -936,7 +944,7 @@ begin
   FInStream.Read(Adler32, 4);
   FInStream.Read(FSize, 4);
   FOffset:=FInStream.Position;
-  if Flags and ofNoCheck=0 then
+  if Flags and pmNoCheck=0 then
     if Adler32<>StreamAdler32(FInStream, FSize)
       then raise Exception.Create('Source data is corrupted')
       else FInStream.Seek(FOffset, soFromBeginning);

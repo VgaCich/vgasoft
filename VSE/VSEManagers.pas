@@ -46,6 +46,13 @@ begin
   LogNC('Error: Exception "'+ExceptObject.ClassName+'" at '+IntToHex(Cardinal(ExceptAddr), 8)+' with message "'+Exception(ExceptObject).Message+'" '+Comment);
 end;
 
+function RemT(const S: ShortString): string;
+begin
+  Result:=S;
+  if Result='' then Exit;
+  if UpCase(Result[1])='T' then Delete(Result, 1, 1);
+end;
+
 {TManager}
 
 constructor TManager.Create;
@@ -53,7 +60,7 @@ begin
   inherited Create;
   if Assigned(Managers)
     then Managers.AddManager(Self)
-    else raise Exception.Create('Cannot register manager '+ClassName);
+    else raise Exception.Create('Cannot register manager '+RemT(ClassName));
 end;
 
 destructor TManager.Destroy;
@@ -81,7 +88,7 @@ begin
   LogNC('Destroying managers system');
   for i:=FManagersList.Count-1 downto 0 do
   try
-    ManName:=TObject(FManagersList[i]).ClassName;
+    ManName:=RemT(TObject(FManagersList[i]).ClassName);
     TManager(FManagersList[i]).Destroy;
   except
     LogException('while destroying manager '+ManName);
@@ -112,7 +119,7 @@ begin
   try
     TManager(FManagersList[i]).Init;
   except
-    LogException('while initializing manager '+TManager(FManagersList[i]).ClassName);
+    LogException('while initializing manager '+RemT(TManager(FManagersList[i]).ClassName));
   end;
 end;
 
@@ -125,7 +132,7 @@ begin
   try
     TManager(FManagersList[i]).Cleanup;
   except
-    LogException('while cleanup manager '+TManager(FManagersList[i]).ClassName);
+    LogException('while cleanup manager '+RemT(TManager(FManagersList[i]).ClassName));
   end;
 end;
 

@@ -58,7 +58,7 @@ begin
     Log(llError, 'ConsoleSound: none free streams');
     Exit;
   end;
-  Data:=PakMan.OpenFile(Args, ofNoCreate);
+  Data:=PakMan.OpenFile(Args, pmNoCreate);
   if Data=nil then
   begin
     LogF(llError, 'ConsoleSound: cannot load sound stream "%s". File not found', [Args]);

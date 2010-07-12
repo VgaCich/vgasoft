@@ -432,7 +432,7 @@ begin
   begin
     SendEvent(FLastActive, reMouseLeave, 0, Cursor.X, Cursor.Y);
     SendEvent(FActive, reMouseEnter, 0, Cursor.X, Cursor.Y);
-  end
+  end;
 end;
 
 procedure TGUI.Draw;
@@ -555,7 +555,7 @@ var
   F: TStream;
 begin
   Result:=false;
-  F:=PakMan.OpenFile(FileName, ofNoCreate);
+  F:=PakMan.OpenFile(FileName, pmNoCreate);
   if not Assigned(F) then
   begin
     Log(llError, 'Cursor: Load('+FileName+') failed: cannot open file');
@@ -573,7 +573,7 @@ begin
   finally
     FAN(F);
   end;
-  F:=PakMan.OpenFile(TexName, ofNoCreate);
+  F:=PakMan.OpenFile(TexName, pmNoCreate);
   if not Assigned(F) then
   begin
     Log(llError, 'Cursor: Load('+FileName+') failed: cannot open texture');

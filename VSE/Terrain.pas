@@ -115,7 +115,7 @@ begin
       FIndexBuffer[2*(j*(FWidth+1)+i)+1]:=(j+1)*FWidth;
     end;
   end;
-  Tex:=PakMan.OpenFile('Grass.tga', ofNoCreate);
+  Tex:=PakMan.OpenFile('Grass.tga', pmNoCreate);
   try
     FTexture:=LoadTexture(Tex, tfTGA, true, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
   finally

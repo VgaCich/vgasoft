@@ -562,7 +562,7 @@ begin
            SetLength(FMaterialFile, I);
            NewChunk.ReadBuffer(FMaterialFile[1], I);
            SetLength(FMaterialFile, Length(FMaterialFile) - 1);
-           TexData:=PakMan.OpenFile(FMaterialFile, ofNoCreate);
+           TexData:=PakMan.OpenFile(FMaterialFile, pmNoCreate);
            try
              FGenTexture:=0;
              FGenTexture:=LoadTexture(TexData, FmtByExt(FMaterialFile), true, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);

@@ -126,7 +126,7 @@ constructor TTexture.Create(PrevItem: TTexture; const FileName: string; Group: C
 var
   F: TStream;
 begin
-  F:=PakMan.OpenFile(FileName, ofNoCreate);
+  F:=PakMan.OpenFile(FileName, pmNoCreate);
   try
     Create(PrevItem, FileName, F, Group, Filter, AnisoLevel, MipMap, Clamp, LOD);
   finally
