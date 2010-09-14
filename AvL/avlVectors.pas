@@ -49,7 +49,7 @@ function VectorDivide(const Vector1, Vector2:TVector3D):TVector3D;overload;
 function VectorDivide(const Vector:TVector3D; Value:Single):TVector3D;overload;
 function VectorMultiply(const Vector1, Vector2:TVector3D):TVector3D; overload;
 function VectorMultiply(const Vector: TVector3D; Value: Single):TVector3D; overload;
-function VectorMultiply(const Vector: TVector3D; Matrix: TMatrix4D):TVector3D; overload;
+function VectorMultiply(const Vector: TVector3D; const Matrix: TMatrix4D):TVector3D; overload;
 procedure VectorScale(var Vector:TVector3D; Value:Single);
 function VectorCrossProduct(const Vector1, Vector2:TVector3D):TVector3D;
 function VectorDotProduct(const Vector1, Vector2:TVector3D):Single;
@@ -63,8 +63,9 @@ function VectorIsLess(const Vector1, Vector2:TVector3D):Boolean;
 function VectorIsLessEqual(const Vector1, Vector2:TVector3D):Boolean;
 function ByteColorTo4f(const BytesToWrap:TByteColor):TVector4f;
 function Color4fToByte(const BytesToWrap:TVector4f):TByteColor;
-function TriangleNormal(Vert1, Vert2, Vert3: TVector3D): TVector3D;
-function TriangleAngle(Vert1, Vert2, Vert3: TVector3D): Single;
+function TriangleNormal(const Vert1: TVector3D; Vert2, Vert3: TVector3D):
+    TVector3D;
+function TriangleAngle(const Vert1: TVector3D; Vert2, Vert3: TVector3D): Single;
 
 implementation
 
@@ -200,7 +201,8 @@ begin
   Result.Z := Vector.Z * Value;
 end;
 
-function VectorMultiply(const Vector: TVector3D; Matrix: TMatrix4D):TVector3D;
+function VectorMultiply(const Vector: TVector3D; const Matrix: TMatrix4D):
+    TVector3D;
 begin
   Result.X:=Matrix[0, 0]*Vector.X + Matrix[1, 0]*Vector.Y + Matrix[2, 0]*Vector.Z + Matrix[3, 0];
   Result.Y:=Matrix[0, 1]*Vector.X + Matrix[1, 1]*Vector.Y + Matrix[2, 1]*Vector.Z + Matrix[3, 1];
@@ -305,7 +307,7 @@ begin
   Result.Blue:=Trunc(BytesToWrap.Blue * 255);
 end;
 
-function TriangleNormal(Vert1, Vert2, Vert3: TVector3D): TVector3D;
+function TriangleNormal(const Vert1: TVector3D; Vert2, Vert3: TVector3D): TVector3D;
 begin
   Vert2:=VectorSub(Vert1, Vert2);
   Vert3:=VectorSub(Vert1, Vert3);
@@ -313,7 +315,7 @@ begin
   VectorNormalize(Result);
 end;
 
-function TriangleAngle(Vert1, Vert2, Vert3: TVector3D): Single;
+function TriangleAngle(const Vert1: TVector3D; Vert2, Vert3: TVector3D): Single;
 begin
   Vert2:=VectorSub(Vert1, Vert2);
   Vert3:=VectorSub(Vert1, Vert3);
