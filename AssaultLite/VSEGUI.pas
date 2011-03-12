@@ -52,15 +52,15 @@ type
     procedure PaintRect(Rect: TRect); //Paints rectangle frame
     procedure FillRect(Rect: TRect); //Paints rectangle
     procedure DrawForm; dynamic; //Override for custom form drawing
-    procedure DrawButton(Btn: TBtn; State: TBtnState); dynamic; //Override for custom buttons drawing
-    procedure DrawRect(Rect: TRect); dynamic; //Override for custom rectangles drawing
-    procedure DrawLabel(Lbl: TLbl); dynamic; //Override for custom labels drawing
+    procedure DrawButton(const Btn: TBtn; State: TBtnState); dynamic; //Override for custom buttons drawing
+    procedure DrawRect(const Rect: TRect); dynamic; //Override for custom rectangles drawing
+    procedure DrawLabel(const Lbl: TLbl); dynamic; //Override for custom labels drawing
   public
     constructor Create(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal); //Creates form; VertScr*: virtual screen resolution (all dimensions defined in virtual screen coordinates); X, Y, Width, Height: form bounds; Font: form font
     destructor Destroy; override;
-    function  AddButton(Btn: TBtn): Integer; //Add button, returns button index
-    function  AddLabel(Lbl: TLbl): Integer; //Add label, returns label index
-    procedure AddRect(Rect: TRect); //Add rectangle (visual frame)
+    function AddButton(Btn: TBtn): Integer;
+    function  AddLabel(const Lbl: TLbl): Integer; //Add label, returns label index
+    procedure AddRect(const Rect: TRect); //Add rectangle (visual frame)
     procedure Draw; //Draw form
     procedure Update; //dynamic; //Update form
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); dynamic; //Process mouse event
@@ -117,14 +117,14 @@ begin
   FButtons[Result]:=Btn;
 end;
 
-function TGUIForm.AddLabel(Lbl: TLbl): Integer;
+function TGUIForm.AddLabel(const Lbl: TLbl): Integer;
 begin
   Result:=Length(FLabels);
   SetLength(FLabels, Result+1);
   FLabels[Result]:=Lbl;
 end;
 
-procedure TGUIForm.AddRect(Rect: TRect);
+procedure TGUIForm.AddRect(const Rect: TRect);
 begin
   SetLength(FRects, Length(FRects)+1);
   FRects[High(FRects)]:=Rect;
@@ -267,7 +267,7 @@ begin
   TexMan.TextOut(FFont, FX+5, FY+3, FCaption);
 end;
 
-procedure TGUIForm.DrawButton(Btn: TBtn; State: TBtnState);
+procedure TGUIForm.DrawButton(const Btn: TBtn; State: TBtnState);
 var
   TextX, TextY: Integer;
   Text: string;
@@ -330,7 +330,7 @@ begin
   end;
 end;
 
-procedure TGUIForm.DrawRect(Rect: TRect);
+procedure TGUIForm.DrawRect(const Rect: TRect);
 begin
   glLineWidth(1);
   glEnable(GL_LINE_SMOOTH);
@@ -338,7 +338,7 @@ begin
   PaintRect(Rect);
 end;
 
-procedure TGUIForm.DrawLabel(Lbl: TLbl);
+procedure TGUIForm.DrawLabel(const Lbl: TLbl);
 var
   Text: string;
   TextX: Integer;

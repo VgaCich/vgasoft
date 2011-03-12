@@ -16,14 +16,14 @@ type
     FDefMatrix, FMatrix: TMatrix4D;
   public
     constructor Create; overload;
-    constructor Create(Transform: TPMTransform); overload; //internally used
+    constructor Create(const Transform: TPMTransform); overload; //internally used
     procedure Apply; //Apply transform to OpenGL
     procedure Reset; //Reset to defaul transform
     procedure Translate(X, Y, Z: Single);
     procedure Rotate(Angle, X, Y, Z: Single);
     procedure Scale(X, Y, Z: Single);
     procedure Mul(Transform: TTransform); overload; //Concatenate with other transform
-    procedure Mul(Matrix: TMatrix4D); overload; //Concatenate with transform matrix
+    procedure Mul(const Matrix: TMatrix4D); overload; //Concatenate with transform matrix
   end;
   TPriModel=class;
   TPriModelObject=class //Model object
@@ -117,7 +117,7 @@ begin
   Reset;
 end;
 
-constructor TTransform.Create(Transform: TPMTransform);
+constructor TTransform.Create(const Transform: TPMTransform);
 begin
   inherited Create;
   FMatrix:=MatrixE;
@@ -196,7 +196,7 @@ begin
   Mul(Transform.FMatrix);
 end;
 
-procedure TTransform.Mul(Matrix: TMatrix4D);
+procedure TTransform.Mul(const Matrix: TMatrix4D);
 var
   Tmp: TMatrix4D;
   i, j: Integer;

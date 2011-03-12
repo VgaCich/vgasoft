@@ -272,7 +272,8 @@ end;
 
 procedure TMainForm.BRemoveClick(Sender: TObject);
 begin
-  BindsList.Selected.Delete;
+  if Assigned(BindsList.Selected)
+    then BindsList.Selected.Delete;
 end;
 
 procedure TMainForm.BSaveClick(Sender: TObject);

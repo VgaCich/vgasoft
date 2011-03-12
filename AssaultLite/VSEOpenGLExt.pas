@@ -73,6 +73,7 @@ begin
     dwFlags:=PFD_DRAW_TO_WINDOW or PFD_SUPPORT_OPENGL or PFD_DOUBLEBUFFER or PFD_SWAP_EXCHANGE;
     iPixelType:=PFD_TYPE_RGBA;
     cColorBits:=Depth;
+    //if Depth=32 then cAlphaBits:=8;
     cDepthBits:=24;
     iLayerType:=PFD_MAIN_PLANE;
   end;
@@ -206,7 +207,7 @@ function gleGetResolutions: TResolutions;
     Result[i].RefreshRates[High(Result[i].RefreshRates)]:=Refresh;
   end;
 
-  function Compare(A, B: TResolution): Boolean;
+  function Compare(const A, B: TResolution): Boolean;
   begin
     Result:=A.Width>B.Width;
     if A.Width=B.Width then Result:=A.Height>B.Height;

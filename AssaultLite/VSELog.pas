@@ -5,7 +5,7 @@ interface
 uses Windows, AvL, avlSyncObjs, avlUtils;
 
 type
-  TLogLevel=(llInfo, llWarning, llError); //Level of log message: informational, warning, error
+  TLogLevel=(llInfo, llWarning, llError, llAlways); //Level of log message: informational, warning, error
 
 procedure Log(Level: TLogLevel; const S: string); //Add message to log
 procedure LogF(Level: TLogLevel; const Fmt: string; const Args: array of const); //Add message to log, Format version
@@ -30,6 +30,8 @@ var
   Logger: TLoggerThread;
   LogInitialized: Boolean;
   LogStart, LastEvent: Cardinal;
+  LogErrors: Integer = 0;
+  LogWarnings: Integer = 0;
 
 procedure TLoggerThread.Execute;
 var
@@ -87,9 +89,15 @@ begin
   LogBufferLock.Release;
   TimeStamp:=Format('[%02d:%02d:%02d.%03d (+%d ms)] ', [Time div 3600000, Time mod 3600000 div 60000, Time mod 60000 div 1000, Time mod 1000, Delta]);
   case Level of
-    llInfo: LogRaw(Level, TimeStamp+S);
-    llWarning: LogRaw(Level, TimeStamp+'Warning: '+S);
-    llError: LogRaw(Level, TimeStamp+'Error: '+S);
+    llInfo, llAlways: LogRaw(Level, TimeStamp+S);
+    llWarning: begin
+      LogRaw(Level, TimeStamp+'Warning: '+S);
+      InterlockedIncrement(LogWarnings);
+    end;
+    llError: begin
+      LogRaw(Level, TimeStamp+'Error: '+S);
+      InterlockedIncrement(LogErrors);
+    end;
   end;
 end;
 
@@ -115,11 +123,14 @@ initialization
   LogStart:=GetTickCount;
   LastEvent:=LogStart;
   LogInitialized:=true;
-  LogRaw(llError, 'Log started at '+DateTimeToStr(Now));
-  LogRaw(llError, '');     
+  LogRaw(llAlways, 'Log started at '+DateTimeToStr(Now));
+  LogRaw(llAlways, '');
 
 finalization
 
+  LogRaw(llAlways, '');
+  LogRaw(llAlways, 'Log closed at '+DateTimeToStr(Now));
+  LogRaw(llAlways, 'Errors: '+IntToStr(LogErrors)+', Warnings: '+IntToStr(LogWarnings));
   LogInitialized:=false;
   Logger.Terminate;
   LogEvent.SetEvent;

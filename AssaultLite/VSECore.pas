@@ -242,6 +242,9 @@ begin
     FPaused:=not SendNotify(snMinimize);
     if FPaused then
     begin
+      if FNeedSwitch
+        then State:=FSwitchTo;
+      {TODO: Pause subsystems like sound}
       if not FFullscreen
         then SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
       Exit;
