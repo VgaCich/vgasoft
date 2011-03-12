@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Vectors, Math, OpenGL;
 
-{$I ..\..\PrimitiveModel.inc}
+{$I ..\..\VSEPrimitiveModel.inc}
 
 type
   TVertex=packed record
@@ -13,8 +13,17 @@ type
     Normal: TVector3D;
     TexCoord: TVector2D;
   end;
+  TVertexArray=packed array of TVertex;
   TFace=packed record
     Vert1, Vert2, Vert3: Word;
+  end;
+  TIndexArray=packed array of TFace;
+  TLineInfo=record
+    Start, Stride: Integer;
+  end;
+  TVertInfo=record
+    Count, LinesCount: Integer;
+    Lines: array[0..3] of TLineInfo;
   end;
   TPMBOnLoadTex=function(const TexName: string): Cardinal of object;
   TPMBOnBindTex=procedure(ID: Cardinal) of object;
@@ -79,7 +88,7 @@ type
     procedure SetScale(Scale: TVector3D; Normalize: Boolean);
     procedure ScaleScale(Scale: Single);
     procedure Apply; overload;
-    procedure Apply(var VA: array of TVertex); overload;
+    procedure Apply(var VA: TVertexArray); overload;
     property TranslateX: Single read GetTranslateX write SetTranslateX;
     property TranslateY: Single read GetTranslateY write SetTranslateY;
     property TranslateZ: Single read GetTranslateZ write SetTranslateZ;
@@ -96,9 +105,9 @@ type
     FTransform: TPMBTransform;
     FVisible, FDrawNormals, FHasNormals, FHasUV: Boolean;
     FHighlightVert: Integer;
-    FDrawVerts: packed array of TVertex;
+    FDrawVerts: TVertexArray;
     FVerts: packed array of TPMVertex;
-    FFaces: packed array of TFace;
+    FFaces: TIndexArray;
     FSelected: Boolean;
     procedure CreateDrawVerts;
     function  GetVertsCount: Integer;
@@ -134,10 +143,14 @@ type
     FObj: TPMBObject;
     FType, FFlags: Byte;
     FTransform: TPMBTransform;
-    FVerts: packed array of TVertex;
-    FFaces: packed array of TFace;
+    FVerts: TVertexArray;
+    FFaces: TIndexArray;
     FVisible, FDrawNormals, FTexGenUV, FInvertNormals: Boolean;
     procedure Quad(At: Integer; V1, V2, V3, V4: Word);
+    function  CreateCircle(const Center: TVector3D; Radius: Single; Sector: Byte; Count: Integer; Smooth, DoubleLine: Boolean): TVertInfo;
+    procedure CreateTCLine(FromX, ToX, FromY, ToY: Single; const VertInfo: TVertInfo);
+    procedure CreateTCCircle(CenterX, CenterY, Radius: Single; const VertInfo: TVertInfo);
+    procedure CreateStrip(Line1Start, Line1Stride, Line2Start, Line2Stride, Count: Integer; Smooth: Boolean);
     function  CreateVerts: Boolean; virtual; abstract;
     function  WriteChunk(Data: TStream): Boolean;
     class function ReadChunk(Obj: TPMBObject; Data: TStream; ChunkSize: Integer): TPMBPrimitive;
@@ -612,7 +625,7 @@ begin
   glScale(ScaleX, ScaleY, ScaleZ);
 end;
 
-procedure TPMBTransform.Apply(var VA: array of TVertex);
+procedure TPMBTransform.Apply(var VA: TVertexArray);
 var
   i: Integer;
   Scale, NScale, Translate: TVector3D;
@@ -1050,6 +1063,7 @@ end;
 
 procedure TPMBMesh.Relink(Obj: TPMBObject);
 begin
+  if Obj=FObj then Exit;
   FObj.Mesh:=nil;
   FObj:=Obj;
   FObj.Mesh:=Self;
@@ -1177,6 +1191,71 @@ begin
   end;
 end;
 
+function TPMBPrimitive.CreateCircle(const Center: TVector3D; Radius: Single; Sector: Byte; Count: Integer; Smooth, DoubleLine: Boolean): TVertInfo;
+var
+  i, j: Integer;
+  dPhi: Single;
+  V: TVector3D;
+  Stride: Integer;
+begin
+  Result.Count:=Count+1;
+  Stride:=SelI(Smooth, 1, 2);
+  Result.LinesCount:=SelI(DoubleLine, SelI(Smooth, 2, 4), SelI(Smooth, 1, 2));
+  for i:=0 to Result.LinesCount-1 do
+    with Result do
+    begin
+      Lines[i].Start:=Length(FVerts)+(i div 2)*2*Count+(i mod 2)*SelI(Smooth, Count, 1);
+      Lines[i].Stride:=Stride;
+    end;
+  dPhi:=(Sector+1)*pi/(128*Count);
+  SetLength(FVerts, Length(FVerts)+Result.Count*Result.LinesCount);
+  for i:=0 to Count do
+  begin
+    with V do
+    begin
+      X:=Center.X+Radius*Cos(i*dPhi);
+      Y:=Center.Y;
+      Z:=Center.Z+Radius*Sin(i*dPhi);
+    end;
+    for j:=0 to Result.LinesCount-1 do
+      FVerts[Result.Lines[j].Start+i*Result.Lines[j].Stride].Vertex:=V;
+  end;
+end;
+
+procedure TPMBPrimitive.CreateTCLine(FromX, ToX, FromY, ToY: Single; const VertInfo: TVertInfo);
+var
+  dX, dY: Single;
+  i: Integer;
+begin
+  {dX:=(ToX-FromX)/Count;
+  dY:=(ToY-FromY)/Count;
+  for i:=0 to Count do
+  with VA[i].TexCoord do
+  begin
+    X:=FromX+i*dX;
+    Y:=FromY+i*dY;
+  end; }
+end;
+
+procedure TPMBPrimitive.CreateTCCircle(CenterX, CenterY, Radius: Single; const VertInfo: TVertInfo);
+begin
+
+end;
+
+procedure TPMBPrimitive.CreateStrip(Line1Start, Line1Stride, Line2Start, Line2Stride, Count: Integer; Smooth: Boolean);
+var
+  i, Start, L1, L2: Integer;
+begin
+  Start:=Length(FFaces);
+  SetLength(FFaces, Start+2*Count);
+  for i:=0 to Count-1 do
+  begin
+    L1:=Line1Start+i*Line1Stride;
+    L2:=Line2Start+i*Line2Stride;
+    //Quad(Start+i*2, Line1Start+i*Line1Stride
+  end;
+end;
+
 function TPMBPrimitive.WriteChunk(Data: TStream): Boolean;
 var
   ChunkType: Byte;
@@ -1232,6 +1311,7 @@ end;
 
 procedure TPMBPrimitive.Relink(Obj: TPMBObject);
 begin
+  if Obj=FObj then Exit;
   FObj.DeletePrimitive(Self);
   FObj:=Obj;
   FObj.AddPrimitive(Self);
@@ -1365,8 +1445,8 @@ var
   Vert: TVertex;
 begin
   Result:=false;
-  dTheta:=FStacksSector*pi/(255*FStacks);
-  dPhi:=2*FSlicesSector*pi/(255*FSlices);
+  dTheta:=(FStacksSector+1)*pi/(256*FStacks);
+  //dPhi:=2*FSlicesSector*pi/(255*FSlices);
   U0:=FTexUV.OrigU/255;
   V0:=FTexUV.OrigV/255;
   dU:=FTexUV.SizeU/(255*FSlices);
@@ -1901,6 +1981,7 @@ end;
 
 procedure TPMBObject.Relink(Obj: TPMBObject);
 begin
+  if (Obj=Self) or (Obj=FParent) then Exit;
   if Assigned(FParent)
     then FParent.DeleteObject(Self)
     else FModel.DeleteObject(Self);
@@ -1910,11 +1991,10 @@ end;
 
 procedure TPMBObject.Relink(Model: TPMBModel);
 begin
-  if Assigned(FParent)
-    then FParent.DeleteObject(Self)
-    else FModel.DeleteObject(Self);
-  FParent:=nil;
+  if not Assigned(FParent) then Exit;
   if Model<>FModel then raise Exception.Create(SCannotRelinkObjectToAnotherModel);
+  FParent.DeleteObject(Self);
+  FParent:=nil;
   FModel.AddObject(Self);
 end;
 
