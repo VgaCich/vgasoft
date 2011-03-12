@@ -13,15 +13,15 @@ type
     function  WrapVal(Val, Max: Integer; Clamp: Boolean): Integer; {$IFDEF INLINE} inline; {$ENDIF}
     function  PixelIndex(X, Y: Integer; ClampX, ClampY: Boolean): Integer; {$IFDEF INLINE} inline; {$ENDIF}
     function  GetPixel(Reg: PSynTexRegister; X, Y: Single; ClampX, ClampY, LERP: Boolean): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
-    function  BlendColors(Color1, Color2: TRGBA; Blend: Byte): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
-    function  BlendColors(Color1, Color2: TRGBA; Blend: TRGBA): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
-    function  Add(Color1, Color2: TRGBA; Clamp: Boolean): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
-    function  Sub(Color1, Color2: TRGBA; Clamp: Boolean): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
-    function  Diff(Color1, Color2: TRGBA): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
-    function  Mul(Color1, Color2: TRGBA): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
-    function  Mul(Color: TRGBA; Scale: Byte): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
-    function  Mul(Color: TRGBA; Scale: Integer; Clamp: Boolean): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
-    procedure Convolution1D(Dst, Src: PSynTexRegister; Kernel: array of Single; Amp: Single; Horz, ClampX, ClampY: Boolean);
+    function BlendColors(Color1, Color2: TRGBA; Blend: Byte): TRGBA; overload;
+    function BlendColors(Color1, Color2: TRGBA; Blend: TRGBA): TRGBA; overload;
+    function  Add(const Color1, Color2: TRGBA; Clamp: Boolean): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Sub(const Color1, Color2: TRGBA; Clamp: Boolean): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Diff(const Color1, Color2: TRGBA): TRGBA; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Mul(const Color1, Color2: TRGBA): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Mul(const Color: TRGBA; Scale: Byte): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
+    function  Mul(const Color: TRGBA; Scale: Integer; Clamp: Boolean): TRGBA; overload; {$IFDEF INLINE} inline; {$ENDIF}
+    procedure Convolution1D(Dst, Src: PSynTexRegister; const Kernel: array of Single; Amp: Single; Horz, ClampX, ClampY: Boolean);
     function  BlurFilterFlat(D: Single): Single;
     function  BlurFilterLinear(D: Single): Single;
     function  BlurFilterGauss(D: Single): Single;
@@ -564,14 +564,15 @@ begin
   Result:=Add(Color1, Color2, true);
 end;
 
-function TSynTexFilters.BlendColors(Color1, Color2: TRGBA; Blend: TRGBA): TRGBA;
+function TSynTexFilters.BlendColors(Color1, Color2: TRGBA; Blend: TRGBA):
+    TRGBA;
 begin
   Color1:=Mul(Color1, Sub(White, Blend, true));
   Color2:=Mul(Color2, Blend);
   Result:=Add(Color1, Color2, true);
 end;
 
-function TSynTexFilters.Add(Color1, Color2: TRGBA; Clamp: Boolean): TRGBA;
+function TSynTexFilters.Add(const Color1, Color2: TRGBA; Clamp: Boolean): TRGBA;
 begin
   Result.R:=WrapVal(Word(Color1.R+Color2.R), 256, Clamp);
   Result.G:=WrapVal(Word(Color1.G+Color2.G), 256, Clamp);
@@ -579,7 +580,7 @@ begin
   Result.A:=WrapVal(Word(Color1.A+Color2.A), 256, Clamp);
 end;
 
-function TSynTexFilters.Sub(Color1, Color2: TRGBA; Clamp: Boolean): TRGBA;
+function TSynTexFilters.Sub(const Color1, Color2: TRGBA; Clamp: Boolean): TRGBA;
 begin
   Result.R:=WrapVal(SmallInt(Color1.R-Color2.R), 256, Clamp);
   Result.G:=WrapVal(SmallInt(Color1.G-Color2.G), 256, Clamp);
@@ -587,7 +588,7 @@ begin
   Result.A:=WrapVal(SmallInt(Color1.A-Color2.A), 256, Clamp);
 end;
 
-function TSynTexFilters.Diff(Color1, Color2: TRGBA): TRGBA;
+function TSynTexFilters.Diff(const Color1, Color2: TRGBA): TRGBA;
 begin
   Result.R:=WrapVal(SmallInt(128+Color1.R-Color2.R), 256, true);
   Result.G:=WrapVal(SmallInt(128+Color1.G-Color2.G), 256, true);
@@ -595,7 +596,7 @@ begin
   Result.A:=WrapVal(SmallInt(128+Color1.A-Color2.A), 256, true);
 end;
 
-function TSynTexFilters.Mul(Color1, Color2: TRGBA): TRGBA;
+function TSynTexFilters.Mul(const Color1, Color2: TRGBA): TRGBA;
 begin
   Result.R:=Word(Color1.R*Color2.R) shr 8;
   Result.G:=Word(Color1.G*Color2.G) shr 8;
@@ -603,7 +604,7 @@ begin
   Result.A:=Word(Color1.A*Color2.A) shr 8;
 end;
 
-function TSynTexFilters.Mul(Color: TRGBA; Scale: Byte): TRGBA;
+function TSynTexFilters.Mul(const Color: TRGBA; Scale: Byte): TRGBA;
 begin
   Result.R:=Word(Color.R*Scale) shr 8;
   Result.G:=Word(Color.G*Scale) shr 8;
@@ -611,7 +612,8 @@ begin
   Result.A:=Word(Color.A*Scale) shr 8;
 end;
 
-function TSynTexFilters.Mul(Color: TRGBA; Scale: Integer; Clamp: Boolean): TRGBA;
+function TSynTexFilters.Mul(const Color: TRGBA; Scale: Integer; Clamp:
+    Boolean): TRGBA;
 begin
   Result.R:=WrapVal(Color.R*Scale shr 8, 256, Clamp);
   Result.G:=WrapVal(Color.G*Scale shr 8, 256, Clamp);
@@ -619,7 +621,8 @@ begin
   Result.A:=WrapVal(Color.A*Scale shr 8, 256, Clamp);
 end;
 
-procedure TSynTexFilters.Convolution1D(Dst, Src: PSynTexRegister; Kernel: array of Single; Amp: Single; Horz, ClampX, ClampY: Boolean);
+procedure TSynTexFilters.Convolution1D(Dst, Src: PSynTexRegister; const Kernel:
+    array of Single; Amp: Single; Horz, ClampX, ClampY: Boolean);
 const
   DirSel: array[Boolean] of record X, Y: Byte; end = ((X: 0; Y: 1), (X: 1; Y:0));
   DirSign: array[0..1] of ShortInt = (-1, 1);
