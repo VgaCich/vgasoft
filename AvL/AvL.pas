@@ -13212,6 +13212,7 @@ var
   r:TRect;
 begin
   GetWindowRect(FHandle, r);
+  if Assigned(FParent) then ScreenToClient(FParent.Handle, r.TopLeft);
   Result := r.Left ;
 end;
 
@@ -13220,6 +13221,7 @@ var
  r:TRect;
 begin
  GetWindowRect(FHandle, r);
+ if Assigned(FParent) then ScreenToClient(FParent.Handle, r.TopLeft);
  Result := r.Top  ;
 // Result := FTop;
 end;

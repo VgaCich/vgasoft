@@ -87,9 +87,9 @@ type
 
 const
   ID: Cardinal=1279677270;
-  CCapt='VgaSoft FileList Viewer 2.7';
+  CCapt='VgaSoft FileList Viewer 2.8';
   AboutText=CCapt+#13#10 +
-            'Copyright '#169'VgaSoft, 2004-2008';
+            'Copyright '#169'VgaSoft, 2004-2011';
 
   TB_OPEN=0;
   TB_SAVE=1;
@@ -323,10 +323,11 @@ begin
   if SplitMoving then
   begin
     GetCursorPos(P);
-    P.X:=P.X-Left-Width+ClientWidth;
+    //P.X:=P.X-Left-Width+ClientWidth;
+    ScreenToClient(Handle, P);
     if (P.X<10) then P.X:=10;
-    if (P.X>ClientWidth-10-SPLITTERWIDTH) then P.X:=ClientWidth-10-SPLITTERWIDTH;
-    PSplitter.Left:=P.X;
+    if (P.X>ClientWidth-10) then P.X:=ClientWidth-10;
+    PSplitter.Left:=P.X-SPLITTERWIDTH div 2;
   end;
 end;
 
@@ -347,7 +348,7 @@ begin
     ReleaseCapture;
     SplitMoving:=false;
     PSplitter.Color:=SplitColor;
-    TVFolders.Width:=PSplitter.Left-Left-(Width-ClientWidth) div 2;
+    TVFolders.Width:=PSplitter.Left;
     LVFiles.SetBounds(TVFolders.Width+SPLITTERWIDTH, TB.Height,
       ClientWidth-TVFolders.Width-SPLITTERWIDTH, LVFiles.Height);
   end;

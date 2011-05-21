@@ -1,0 +1,60 @@
+;Name: Games.ini (in folder Launcher)
+
+[Games]
+;Games list
+;Games count
+Count=8
+;Games list entries
+;Index=Name
+0=Half-Life
+1=Opposing Force
+2=Blue Shift
+3=Deathmatch Classic
+4=Counter Strike
+5=Condition Zero
+6=Team Fortress
+7=Ricochet
+
+;Section name is game index
+[0]
+;command line for game
+CmdLine=hl.exe -nomaster
+;Game icon
+Icon=valve\game.ico
+;Folder with game specific dll's (in Launcher folder, dll's will be copied to folder, where Launcher.exe)
+DLLs=orig
+
+[1]
+CmdLine=hl.exe -nomaster -game gearbox
+Icon=gearbox\game.ico
+DLLs=orig
+
+[2]
+CmdLine=hl.exe -nomaster -game bshift
+Icon=bshift\BShift.ico
+DLLs=bshift
+
+[3]
+CmdLine=hl.exe -nomaster -game dmc
+Icon=dmc\game.ico
+DLLs=orig
+
+[4]
+CmdLine=hl.exe -nomaster -game cstrike
+Icon=cstrike\game.ico
+DLLs=orig
+
+[5]
+CmdLine=hl.exe -nomaster -game czero
+Icon=czero\game.ico
+DLLs=orig
+
+[6]
+CmdLine=hl.exe -nomaster -game tfc
+Icon=tfc\game.ico
+DLLs=orig
+
+[7]
+CmdLine=hl.exe -nomaster -game ricochet
+Icon=ricochet\game.ico
+DLLs=orig
