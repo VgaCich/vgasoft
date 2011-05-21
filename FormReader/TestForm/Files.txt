@@ -13,3 +13,6 @@ Tabs.txt
 LVItems.txt
 LVColumns.txt
 LVItemsEx.txt
+Buttons.txt
+Tree.txt
+Folder.bmp

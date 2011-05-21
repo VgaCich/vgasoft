@@ -1,14 +1,19 @@
 program ReadableFormTest;
 
 uses
-  Windows, Messages, AvL, avlUtils, avlReadableForm;
+  SysSfIni, AvL, Windows, Messages, avlUtils, avlReadableForm;
 
 type
   TMainForm=class(TReadableForm)
+  protected
+    procedure WMCommand(var Msg: TWMCommand); message WM_COMMAND;
   published
     Animate: TAnimate;
     FileListBox: TFileListBox;
     HotKey: THotKey;
+    ToolBar: TToolBar;
+    StatusBar: TStatusBar;
+    LabeledEdit: TLabeledEdit;
     procedure FormShow(Sender: TObject);
     procedure ButtonClick(Sender: TObject);
     procedure ComboChange(Sender: TObject);
@@ -18,6 +23,22 @@ type
 var
    FD: TMemoryStream;
    MainForm: TMainForm;
+
+procedure TMainForm.WMCommand(var Msg: TWMCommand);
+begin
+  if Assigned(ToolBar) and (Msg.Ctl=ToolBar.Handle) then
+  begin
+    case Msg.ItemID of
+      0: StatusBar.SetPartText(2, 0, 'Open');
+      1: StatusBar.SetPartText(2, 0, 'Save');
+      2: Animate.CommonAVI:=aviFindComputer;
+      3: Animate.CommonAVI:=aviFindFile;
+      4: StatusBar.SetPartText(2, 0, 'FormReader + ReadableForm testing application (c) Vga 2004-2011');
+      5: Close;
+    end;
+    Animate.Play(0, 100, 0);
+  end;
+end;
 
 procedure TMainForm.FormShow(Sender: TObject);
 begin
@@ -52,24 +73,31 @@ begin
   Caption:=S+Chr(HK);
 end;
 
+var
+  FormFile: string = 'TestForm.fdt';
+
 begin
-  if not FileExists('TestForm.fdt') then
+  if ParamCount=1 then FormFile:=ParamStr(1);
+  if not FileExists(FormFile) then
   begin
-    ShowMessage('File FormData.fdt not found');
+    ShowMessage('File "'+FormFile+'" not found');
     Exit;
   end;
   InitCommonControls;
+  FD:=TMemoryStream.Create;
   try
-    FD:=TMemoryStream.Create;
-    FD.LoadFromFile('TestForm.fdt');
+    FD.LoadFromFile(FormFile);
     try
       MainForm:=TMainForm.Create(nil, FD);
+      try
+        MainForm.Run;
+      finally
+        FAN(MainForm);
+      end;
     except
-      on E: Exception do ShowMessage(E.Message);
+      //MessageBox(0, PChar(Exception(ExceptObject).Message), 'Error', 0);
     end;
-    MainForm.Run;
   finally
-    FAN(MainForm);
     FAN(FD);
   end;
 end.

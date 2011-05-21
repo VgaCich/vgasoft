@@ -1,4 +1,4 @@
-//(c)VgaSoft, 2004
+//(c)VgaSoft, 2004-2011
 unit avlFormReader;
 
 interface
@@ -6,7 +6,6 @@ interface
 uses
   Windows, Messages, AvL, avlUtils;
   
-//To do: SpinEdit
 {$DEFINE TANIMATE}
 {$DEFINE TBUTTON}
 {$DEFINE TCHECKBOX}
@@ -15,15 +14,18 @@ uses
 {$DEFINE TEDIT}
 {$DEFINE TFILELISTBOX}
 {$DEFINE TFORM}
+{.$DEFINE TGRAPHICCONTROL} // Quite useless, only as ancestor 
 {$DEFINE TGROUPBOX}
 {$DEFINE THEADERCONTROL}
 {$DEFINE THOTKEY}
 {$DEFINE TIMAGE}
 {$DEFINE TIPEDIT}
 {$DEFINE TLABEL}
-{.$DEFINE TLABELEDEDIT} //Глючит!!!
+{$DEFINE TLABELEDEDIT}
 {$DEFINE TLISTBOX}
-{$DEFINE TLISTVIEW} //to do
+{$DEFINE TLISTVIEW}
+{$DEFINE TMDICHILDFORM}
+{$DEFINE TMDIFORM} 
 {$DEFINE TMEMO}
 {$DEFINE TMONTHCALENDAR}
 {$DEFINE TPANEL}
@@ -33,11 +35,12 @@ uses
 {$DEFINE TSCROLLBAR}
 {$DEFINE TSIMPLEPANEL}
 {$DEFINE TSPEEDBUTTON}
+{.$DEFINE TSPINEDIT} // Buggy and useless
 {$DEFINE TSTATUSBAR}
 {$DEFINE TTABCONTROL}
 {$DEFINE TTOOLBAR}
 {$DEFINE TTRACKBAR}
-{.$DEFINE TTREEVIEW} //to do
+{$DEFINE TTREEVIEW}
 {$DEFINE TUPDOWN}
 
 type
@@ -47,7 +50,7 @@ type
   private
     FControls: TList;
     FAddControlFuncs: array of TAddControlFunc;
-    FControlsNames, FControlsTypes, FControlTypeNames: TStringList;
+    FControlsNames, FControlsTypes, FControlTypeNames, FDataList: TStringList;
     FFormData: TStream;
     FCtrlStack: array of TWinControl;
     function  GetControl(const Name: string): TWinControl;
@@ -55,6 +58,7 @@ type
     procedure PushControl(Control: TWinControl);
     function  PopControl: TWinControl;
     function  AddControl(const ControlName, ControlType: string; Properties: TStringList; CurCtrl: TWinControl): TWinControl;
+    procedure SetFormData(Data: TStream);
   protected
     S: string;
     I: Integer;
@@ -67,20 +71,24 @@ type
     {$IFDEF TCHECKBOX} function AddCheckBox(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TCOMBOBOX} function AddComboBox(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TDATETIMEPICKER} function AddDateTimePicker(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
-    {$IF Defined(TEDIT) or Defined(TLABELEDEDIT)} procedure SetEditProperties(Edit: TEdit; Properties: TStringList); {$IFEND}
+    {$IF DEFINED(TEDIT) OR DEFINED(TLABELEDEDIT) OR DEFINED(TSPINBOX)} procedure SetEditProperties(Edit: TEdit; Properties: TStringList); {$IFEND}
     {$IFDEF TEDIT} function AddEdit(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TFILELISTBOX} function AddFileListBox(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
+    {$IF DEFINED(TFORM) OR DEFINED(TMDICHILDFORM) OR DEFINED(TMDIFORM)}procedure SetFormProperties(Form: TWinControl; Properties: TStringList);{$IFEND}
     {$IFDEF TFORM} function AddForm(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
+    {$IFDEF TGRAPHICCONTROL} function AddGraphicControl(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TGROUPBOX} function AddGroupBox(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF THEADERCONTROL} function AddHeaderControl(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF THOTKEY} function AddHotKey(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TIMAGE} function AddImage(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TIPEDIT} function AddIPEdit(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
-    {$IF Defined(TLABEL) or Defined(TLABELEDEDIT)} procedure SetLabelProperties(Lbl: TLabel; Properties: TStringList); {$IFEND}
+    {$IF DEFINED(TLABEL) OR DEFINED(TLABELEDEDIT)} procedure SetLabelProperties(Lbl: TLabel; Properties: TStringList); {$IFEND}
     {$IFDEF TLABEL} function AddLabel(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TLABELEDEDIT} function AddLabeledEdit(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TLISTBOX} function AddListBox(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TLISTVIEW} function AddListView(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
+    {$IFDEF TMDICHILDFORM} function AddMDIChildForm(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
+    {$IFDEF TMDIFORM} function AddMDIForm(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TMEMO} function AddMemo(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TMONTHCALENDAR} function AddMonthCalendar(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TPANEL} function AddPanel(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
@@ -90,6 +98,7 @@ type
     {$IFDEF TSCROLLBAR} function AddScrollBar(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TSIMPLEPANEL} function AddSimplePanel(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TSPEEDBUTTON} function AddSpeedButton(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
+    {$IFDEF TSPINEDIT} function AddSpinEdit(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TSTATUSBAR} function AddStatusBar(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TTABCONTROL} function AddTabControl(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
     {$IFDEF TTOOLBAR} function AddToolBar(Properties: TStringList; Parent: TWinControl): TWinControl; {$ENDIF}
@@ -99,8 +108,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    function  ReadForm: Boolean;
-    function  GetData(DataIndex: Cardinal; Data: TStream): Boolean;
+    function ReadForm: Boolean; virtual;
+    function GetData(const DataName: string; Data: TStream): Boolean;
     function  GetHandler(const HandlerName: string): TOnEvent;
     procedure AddControlType(const TypeName: string; AddControlFunc: TAddControlFunc);
     function  GetStrProperty(const PropertyName: string; Properties: TStringList; out Res: string): Boolean;
@@ -109,13 +118,19 @@ type
     procedure GetControlsList(List: TStringList);
     procedure GetTypesList(List: TStringList);
     procedure SetWinControlProperties(Control: TWinControl; Properties: TStringList);
-    property  FormData: TStream read FFormData write FFormData;
+    procedure DeleteControlFromList(Control: TWinControl);
+    property  FormData: TStream read FFormData write SetFormData;
     property  OnEventHandlerRequired: TOnEventHandlerRequired read FOnEventHandlerRequired write FOnEventHandlerrequired;
     property  Control[const Name: string]: TWinControl read GetControl; default;
     property  ControlType[const Name: string]: string read GetControlType;
   end;
 
 implementation
+
+type
+  TDataTableItem=packed record
+    Offset, Size: Cardinal;
+  end;
 
 constructor TFormReader.Create;
 begin
@@ -124,6 +139,7 @@ begin
   FControlsNames:=TStringList.Create;
   FControlsTypes:=TStringList.Create;
   FControlTypeNames:=TStringList.Create;
+  FDataList:=TStringList.Create;
   {$IFDEF TANIMATE} AddControlType('TAnimate', AddAnimate); {$ENDIF}
   {$IFDEF TBUTTON} AddControlType('TButton', AddButton); {$ENDIF}
   {$IFDEF TCHECKBOX} AddControlType('TCheckBox', AddCheckBox); {$ENDIF}
@@ -132,6 +148,7 @@ begin
   {$IFDEF TEDIT} AddControlType('TEdit', AddEdit); {$ENDIF}
   {$IFDEF TFILELISTBOX} AddControlType('TFileListBox', AddFileListBox); {$ENDIF}
   {$IFDEF TFORM} AddControlType('TForm', AddForm); {$ENDIF}
+  {$IFDEF TGRAPHICCONTROL} AddControlType('TGraphicControl', AddGraphicControl); {$ENDIF}
   {$IFDEF TGROUPBOX} AddControlType('TGroupBox', AddGroupBox); {$ENDIF}
   {$IFDEF THEADERCONTROL} AddControlType('THeaderControl', AddHeaderControl); {$ENDIF}
   {$IFDEF THOTKEY} AddControlType('THotKey', AddHotKey); {$ENDIF}
@@ -141,6 +158,8 @@ begin
   {$IFDEF TLABELEDEDIT} AddControlType('TLabeledEdit', AddLabeledEdit); {$ENDIF}
   {$IFDEF TLISTBOX} AddControlType('TListBox', AddListBox); {$ENDIF}
   {$IFDEF TLISTVIEW} AddControlType('TListView', AddListView); {$ENDIF}
+  {$IFDEF TMDICHILDFORM} AddControlType('TMDIChildForm', AddMDIChildForm); {$ENDIF}
+  {$IFDEF TMDIFORM} AddControlType('TMDIForm', AddMDIForm); {$ENDIF}
   {$IFDEF TMEMO} AddControlType('TMemo', AddMemo); {$ENDIF}
   {$IFDEF TMONTHCALENDAR} AddControlType('TMonthCalendar', AddMonthCalendar); {$ENDIF}
   {$IFDEF TPANEL} AddControlType('TPanel', AddPanel); {$ENDIF}
@@ -150,6 +169,7 @@ begin
   {$IFDEF TSCROLLBAR} AddControlType('TScrollBar', AddScrollBar); {$ENDIF}
   {$IFDEF TSIMPLEPANEL} AddControlType('TSimplePanel', AddSimplePanel); {$ENDIF}
   {$IFDEF TSPEEDBUTTON} AddControlType('TSpeedButton', AddSpeedButton); {$ENDIF}
+  {$IFDEF TSPINEDIT} AddControlType('TSpinEdit', AddSpinEdit); {$ENDIF}
   {$IFDEF TSTATUSBAR} AddControlType('TStatusBar', AddStatusBar); {$ENDIF}
   {$IFDEF TTABCONTROL} AddControlType('TTabControl', AddTabControl); {$ENDIF}
   {$IFDEF TTOOLBAR} AddControlType('TToolBar', AddToolBar); {$ENDIF}
@@ -162,6 +182,7 @@ destructor TFormReader.Destroy;
 begin
   Finalize(FAddControlFuncs);
   FreeList(FControls);
+  FAN(FDataList);
   FAN(FControlsNames);
   FAN(FControlsTypes);
   FAN(FControlTypeNames);
@@ -202,6 +223,24 @@ begin
   FControlsTypes.Add(ControlType);
 end;
 
+procedure TFormReader.SetFormData(Data: TStream);
+var
+  Size: Cardinal;
+  S: string;
+begin
+  FFormData:=Data;
+  Data.Seek(-SizeOf(Size), soFromEnd);
+  Data.Read(Size, SizeOf(Size));
+  Data.Seek(-(SizeOf(Size)+Size), soFromEnd);
+  Data.Read(Size, SizeOf(Size));
+  Data.Seek(Size*SizeOf(TDataTableItem), soFromCurrent);
+  Data.Read(Size, SizeOf(Size));
+  SetLength(S, Size);
+  Data.Read(S[1], Size);
+  FDataList.Text:=S;
+  Data.Position:=0;
+end;
+
 function TFormReader.ReadForm: Boolean;
 var
   Size, i: Cardinal;
@@ -211,8 +250,10 @@ var
   IsProperty: Boolean;
 begin
   Result:=false;
-  FFormData.Seek(0, soFromBeginning);
+  FFormData.Seek(-SizeOf(Size), soFromEnd);
   FFormData.Read(Size, SizeOf(Size));
+  FFormData.Position:=0;
+  Size:=FFormData.Size-SizeOf(Size)-Size;
   SetLength(S, Size);
   FFormData.Read(S[1], Size);
   try
@@ -227,17 +268,19 @@ begin
     begin
       S:=Controls[i];
       S:=TrimLeft(S);
-      if Length(S)=0 then Continue;
+      if (Length(S)=0) or (S[1]='#') then Continue;
       if IsProperty then
-        if S='PropEnd' then
+        if TrimRight(S)='PropEnd' then
         begin
           IsProperty:=false;
           PushControl(CurControl);
           CurControl:=AddControl(ControlName, ControlType, Properties, CurControl);
+          if not Assigned(CurControl)
+            then raise Exception.Create('Couldn''t create control '+ControlName+': '+ControlType);
           Properties.Clear;
         end
           else Properties.Add(S);
-      if not IsProperty and (S='End') then
+      if not IsProperty and (TrimRight(S)='End') then
         CurControl:=PopControl;
       if not IsProperty and (Copy(S, 1, FirstDelimiter(' ', S)-1)='Control') then
       begin
@@ -253,24 +296,24 @@ begin
   end;
 end;
 
-function TFormReader.GetData(DataIndex: Cardinal; Data: TStream): Boolean;
-type
-  TDataTableItem=packed record
-    Offset, Size: Cardinal;
-  end;
+function TFormReader.GetData(const DataName: string; Data: TStream): Boolean;
 var
-  DataCount: Cardinal;
+  DataCount, DataStart: Cardinal;
+  DataIndex: Integer;
   DataTableItem: TDataTableItem;
 begin
   Result:=false;
-  FFormData.Seek(0, soFromBeginning);
-  FFormData.Read(DataCount, SizeOf(DataCount));
-  FFormData.Seek(DataCount, soFromCurrent);
+  DataIndex:=FDataList.IndexOf(DataName);
+  if DataIndex<0 then Exit;
+  FFormData.Seek(-SizeOf(DataStart), soFromEnd);
+  FFormData.Read(DataStart, SizeOf(DataStart));
+  DataStart:=FFormData.Size-DataStart-SizeOf(DataStart);
+  FFormData.Position:=DataStart;
   FFormData.Read(DataCount, SizeOf(DataCount));
   if DataIndex>DataCount-1 then Exit;
   FFormData.Seek(DataIndex*SizeOf(DataTableItem), soFromCurrent);
   FFormData.Read(DataTableItem, SizeOf(DataTableItem));
-  FFormData.Seek(DataTableItem.Offset+(DataCount-DataIndex-1)*SizeOf(DataTableItem), soFromCurrent);
+  FFormData.Position:=DataTableItem.Offset+DataStart;
   Data.CopyFrom(FFormData, DataTableItem.Size);
   Data.Seek(0, soFromBeginning);
   Result:=true;
@@ -303,7 +346,7 @@ begin
   Res:=0;
   Result:=GetStrProperty(PropertyName, Properties, S);
   if not Result then Exit;
-  Res:=StrToInt(S);
+  Res:=StrToInt(Trim(S));
 end;
 
 function TFormReader.GetBoolProperty(const PropertyName: string; Properties: TStringList; out Res: Boolean): Boolean;
@@ -313,7 +356,7 @@ begin
   Res:=false;
   Result:=GetStrProperty(PropertyName, Properties, S);
   if not Result then Exit;
-  Res:=StrToInt(S)<>0;
+  Res:=StrToInt(Trim(S))<>0;
 end;
 
 procedure TFormReader.GetControlsList(List: TStringList);
@@ -349,22 +392,24 @@ begin
     if GetStrProperty('Font', Properties, S) then StrToFont(S, Font);
     Data:=TMemoryStream.Create;
     try
-      if GetIntProperty('CustomData', Properties, I) then
+      if GetStrProperty('CustomData', Properties, S) then
       begin
-        GetData(I, Data);
+        GetData(S, Data);
         GetMem(Pointer(I), Data.Size);
         CustomData:=Pointer(I);
         Data.Read(CustomData^, Data.Size);
       end;
-      if GetIntProperty('Icon', Properties, I) then
-      try
+      if GetStrProperty('Icon', Properties, S) then
+      begin
         Data.Clear;
-        GetData(I, Data);
-        S:=UniTempFile;
-        Data.SaveToFile(S);
-        Icon:=LoadImage(hInstance, PChar(S), IMAGE_ICON, 0, 0, LR_LOADFROMFILE or LR_LOADTRANSPARENT);
-      finally
-        DeleteFile(S);
+        GetData(S, Data);
+        try
+          S:=UniTempFile;
+          Data.SaveToFile(S);
+          Icon:=LoadImage(hInstance, PChar(S), IMAGE_ICON, 0, 0, LR_LOADFROMFILE or LR_LOADTRANSPARENT);
+        finally
+          DeleteFile(S);
+        end;
       end;
     finally
       FAN(Data);
@@ -386,6 +431,23 @@ begin
     if GetStrProperty('OnResize', Properties, S) then OnResize:=TOnEvent(GetHandler(S));
     if GetStrProperty('OnShow', Properties, S) then OnShow:=TOnEvent(GetHandler(S));
     if GetStrProperty('OnHide', Properties, S) then OnHide:=TOnEvent(GetHandler(S));
+  end;
+end;
+
+procedure TFormReader.DeleteControlFromList(Control: TWinControl);
+var
+  i: Integer;
+begin
+  i:=0;
+  while i<FControls.Count-1 do
+  begin
+    if FControls[i]=Control then
+    begin
+      FControls.Delete(i);
+      FControlsNames.Delete(i);
+      FControlsTypes.Delete(i);
+    end
+      else Inc(i);
   end;
 end;
 
@@ -437,11 +499,11 @@ begin
   SetWinControlProperties(Result, Properties);
   with Result as TComboBox do
   begin
-    if GetIntProperty('Items', Properties, I) then
+    if GetStrProperty('Items', Properties, S) then
     try
       Data:=TMemoryStream.Create;
       SData:=TStringList.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       SData.LoadFromStream(Data);
       for j:=0 to SData.Count-1 do
         ItemAdd(SData[j]);
@@ -467,11 +529,11 @@ begin
   begin
     if GetIntProperty('DateFormat', Properties, I) then DateFormat:=TDTDateFormat(I);
     if GetIntProperty('Kind', Properties, I) then Kind:=TDateTimeKind(I);
-    if GetIntProperty('DateTime', Properties, I) then
+    if GetStrProperty('DateTime', Properties, S) then
     begin
       Data:=TMemoryStream.Create;
       try
-        GetData(I, Data);
+        GetData(S, Data);
         Data.Read(DT, SizeOf(DT));
         DateTime:=DT;
       finally
@@ -482,7 +544,7 @@ begin
 end;
 {$ENDIF}
 
-{$IF Defined(TEDIT) or Defined(TLABELEDEDIT)}
+{$IF DEFINED(TEDIT) OR DEFINED(TLABELEDEDIT) OR DEFINED(TSPINEDIT)}
 procedure TFormReader.SetEditProperties(Edit: TEdit; Properties: TStringList);
 begin
   with Edit do
@@ -521,16 +583,14 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF TFORM}
-function TFormReader.AddForm(Properties: TStringList; Parent: TWinControl): TWinControl;
+{$IF DEFINED(TFORM) OR DEFINED(TMDICHILDFORM) OR DEFINED(TMDIFORM)}
+procedure TFormReader.SetFormProperties(Form: TWinControl; Properties: TStringList);
 begin
-  GetStrProperty('Caption', Properties, S);
-  Result:=TForm.Create(Parent, S);
-  SetWinControlProperties(Result, Properties);
-  with Result as TForm do
+  with Form as TForm do
   begin
     Width:=2*Width-ClientWidth;
     Height:=2*Height-ClientHeight;
+    if GetStrProperty('Caption', Properties, S) then Caption:=S;
     if GetIntProperty('AlphaBlendValue', Properties, I) then AlphaBlendValue:=I;
     if GetBoolProperty('AlphaBlend', Properties, B) then AlphaBlend:=B;
     if GetIntProperty('TransparentColorValue', Properties, I) then TransparentColorValue:=I;
@@ -548,6 +608,23 @@ begin
       if (I and $8)<>0 then BorderIcons:=BorderIcons+[biHelp];
     end;
   end;
+end;
+{$IFEND}
+
+{$IFDEF TFORM}
+function TFormReader.AddForm(Properties: TStringList; Parent: TWinControl): TWinControl;
+begin
+  Result:=TForm.Create(Parent, '');
+  SetWinControlProperties(Result, Properties);
+  SetFormProperties(Result, Properties);
+end;
+{$ENDIF}
+
+{$IFDEF TGRAPHICCONTROL}
+function TFormReader.AddGraphicControl(Properties: TStringList; Parent: TWinControl): TWinControl;
+begin
+  Result:=TGraphicControl.Create(Parent);
+  SetWinControlProperties(Result, Properties);
 end;
 {$ENDIF}
 
@@ -569,11 +646,11 @@ begin
   SetWinControlProperties(Result, Properties);
   with Result as THeaderControl do
   begin
-    if GetIntProperty('Sections', Properties, I) then
+    if GetStrProperty('Sections', Properties, S) then
     try
       Data:=TMemoryStream.Create;
       SData:=TStringList.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       SData.LoadFromStream(Data);
       for j:=0 to SData.Count-1 do
         SectionAdd(Copy(SData[j], 1, LastDelimiter('|', SData[j])-1),
@@ -612,10 +689,10 @@ function TFormReader.AddImage(Properties: TStringList; Parent: TWinControl): TWi
 begin
   Result:=TImage.Create(Parent);
   SetWinControlProperties(Result, Properties);
-  if GetIntProperty('Image', Properties, I) then
+  if GetStrProperty('Image', Properties, S) then
   try
     Data:=TMemoryStream.Create;
-    GetData(I, Data);
+    GetData(S, Data);
     S:=UniTempFile;
     Data.SaveToFile(S);
     (Result as TImage).LoadFromFile(S);
@@ -635,7 +712,7 @@ begin
 end;
 {$ENDIF}
 
-{$IF Defined(TLABEL) or Defined(TLABELEDEDIT)}
+{$IF DEFINED(TLABEL) OR DEFINED(TLABELEDEDIT)}
 procedure TFormReader.SetLabelProperties(Lbl: TLabel; Properties: TStringList);
 begin
   with Lbl do
@@ -683,11 +760,11 @@ begin
   SetWinControlProperties(Result, Properties);
   with Result as TListBox do
   begin
-    if GetIntProperty('Items', Properties, I) then
+    if GetStrProperty('Items', Properties, S) then
     try
       Data:=TMemoryStream.Create;
       SData:=TStringList.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       SData.LoadFromStream(Data);
       for j:=0 to SData.Count-1 do
         ItemAdd(SData[j]);
@@ -707,7 +784,7 @@ function TFormReader.AddListView(Properties: TStringList; Parent: TWinControl): 
   begin
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       S:=UniTempFile;
       Data.SaveToFile(S);
       Result:=TImageList.Create;
@@ -720,7 +797,7 @@ function TFormReader.AddListView(Properties: TStringList; Parent: TWinControl): 
 
 var
   j, k, W: Integer;
-  S, Capt: string;
+  Capt: string;
   A: TTextAlign;
 begin
   Result:=TListView.Create(Parent);
@@ -731,14 +808,14 @@ begin
     if GetBoolProperty('FlatScrollBars', Properties, B) then FlatScrollBars:=B;
     if GetIntProperty('OptionsEx', Properties, I) then OptionsEx:=I;
     if GetIntProperty('ViewStyle', Properties, I) then ViewStyle:=I;
-    if GetIntProperty('SmallImages', Properties, I) then SmallImages:=ReadImages;
-    if GetIntProperty('LargeImages', Properties, I) then LargeImages:=ReadImages;
-    if GetIntProperty('StateImages', Properties, I) then StateImages:=ReadImages;
+    if GetStrProperty('SmallImages', Properties, S) then SmallImages:=ReadImages;
+    if GetStrProperty('LargeImages', Properties, S) then LargeImages:=ReadImages;
+    if GetStrProperty('StateImages', Properties, S) then StateImages:=ReadImages;
     if GetStrProperty('OnCompare', Properties, S) then OnCompare:=TLVCompareEvent(GetHandler(S));
-    if GetIntProperty('Columns', Properties, I) then
+    if GetStrProperty('Columns', Properties, S) then
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       SData:=TStringList.Create;
       SData.LoadFromStream(Data);
       for j:=0 to SData.Count-1 do
@@ -753,10 +830,10 @@ begin
       FAN(SData);
       FAN(Data);
     end;
-    if GetIntProperty('Items', Properties, I) then
+    if GetStrProperty('Items', Properties, S) then
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       SData:=TStringList.Create;
       SData.LoadFromStream(Data);
       for j:=0 to SData.Count-1 do
@@ -770,10 +847,10 @@ begin
       FAN(SData);
       FAN(Data);
     end;
-    if GetIntProperty('ItemsEx', Properties, I) then
+    if GetStrProperty('ItemsEx', Properties, S) then
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       SData:=TStringList.Create;
       SData.LoadFromStream(Data);
       for j:=0 to SData.Count-1 do
@@ -792,6 +869,24 @@ begin
 end;
 {$ENDIF}
 
+{$IFDEF TMDICHILDFORM}
+function TFormReader.AddMDIChildForm(Properties: TStringList; Parent: TWinControl): TWinControl;
+begin
+  Result:=TMDIChildForm.Create(Parent as TMDIForm, '');
+  SetWinControlProperties(Result, Properties);
+  SetFormProperties(Result, Properties);
+end;
+{$ENDIF}
+
+{$IFDEF TMDIFORM}
+function TFormReader.AddMDIForm(Properties: TStringList; Parent: TWinControl): TWinControl;
+begin
+  Result:=TMDIForm.Create(Parent, '');
+  SetWinControlProperties(Result, Properties);
+  SetFormProperties(Result, Properties);
+end;
+{$ENDIF}
+
 {$IFDEF TMEMO}
 function TFormReader.AddMemo(Properties: TStringList; Parent: TWinControl): TWinControl;
 begin
@@ -800,10 +895,10 @@ begin
   SetWinControlProperties(Result, Properties);
   with Result as TMemo do
   begin
-    if GetIntProperty('TextData', Properties, I) then
+    if GetStrProperty('TextData', Properties, S) then
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       SetLength(S, Data.Size);
       Data.Read(S[1], Data.Size);
       Text:=S;
@@ -831,11 +926,11 @@ begin
   with Result as TMonthCalendar do
   begin
     if GetIntProperty('BorderStyle', Properties, I) then BorderStyle:=TBorderStyle(I);
-    if GetIntProperty('DateTime', Properties, I) then
+    if GetStrProperty('DateTime', Properties, S) then
     begin
       Data:=TMemoryStream.Create;
       try
-        GetData(I, Data);
+        GetData(S, Data);
         Data.Read(DT, SizeOf(DT));
         DateTime:=DT;
       finally
@@ -889,10 +984,10 @@ begin
   SetWinControlProperties(Result, Properties);
   with Result as TRichEdit do
   begin
-    if GetIntProperty('LoadFrom', Properties, I) then
+    if GetStrProperty('LoadFrom', Properties, S) then
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       LoadFromStream(Data);
     finally
       FAN(Data);
@@ -935,16 +1030,36 @@ begin
   GetStrProperty('Caption', Properties, S);
   Result:=TSpeedButton.Create(Parent, S);
   SetWinControlProperties(Result, Properties);
-  if GetIntProperty('Glyph', Properties, I) then
+  if GetStrProperty('Glyph', Properties, S) then
   try
     Data:=TMemoryStream.Create;
-    GetData(I, Data);
+    GetData(S, Data);
     S:=UniTempFile;
     Data.SaveToFile(S);
     (Result as TSpeedButton).Glyph:=LoadImage(hInstance, PChar(S), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE or LR_LOADTRANSPARENT);
   finally
     FAN(Data);
     DeleteFile(S);
+  end;
+end;
+{$ENDIF}
+
+{$IFDEF TSPINEDIT}
+function TFormReader.AddSpinEdit(Properties: TStringList; Parent: TWinControl): TWinControl;
+begin
+  Result:=TSpinEdit.Create(Parent);
+  SetWinControlProperties(Result, Properties);
+  with Result as TSpinEdit do
+  begin
+    SetEditProperties(EditBox, Properties);
+    if GetIntProperty('Min', Properties, I) then Min:=I;
+    if GetIntProperty('Max', Properties, I) then Max:=I;
+    if GetIntProperty('Increment', Properties, I) then Increment:=I;
+    if GetIntProperty('Position', Properties, I) then Position:=I;
+    if GetStrProperty('OnEditChange', Properties, S) then EditBox.OnChange:=TOnEvent(GetHandler(S));
+    if GetStrProperty('OnEditKeyDown', Properties, S) then EditBox.OnKeyDown:=TOnKey(GetHandler(S));
+    if GetStrProperty('OnEditKeyUp', Properties, S) then EditBox.OnKeyUp:=TOnKey(GetHandler(S));
+    if GetStrProperty('OnEditMessage', Properties, S) then EditBox.OnMessage:=TOnMessage(GetHandler(S));
   end;
 end;
 {$ENDIF}
@@ -973,10 +1088,10 @@ begin
       SetParts(Length(P), P);
       Finalize(P);
     end;
-    if GetIntProperty('PartsText', Properties, I) then
+    if GetStrProperty('PartsText', Properties, S) then
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       SData:=TStringList.Create;
       SData.LoadFromStream(Data);
       for j:=0 to SData.Count-1 do
@@ -1002,10 +1117,10 @@ begin
   begin
     if GetIntProperty('TabStyle', Properties, I) then Style:=TTabStyle(I);
     if GetIntProperty('TabPosition', Properties, I) then TabPosition:=TTabPosition(I);
-    if GetIntProperty('Images', Properties, I) then
+    if GetStrProperty('Images', Properties, S) then
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       S:=UniTempFile;
       Data.SaveToFile(S);
       Imgs:=TImageList.Create;
@@ -1013,13 +1128,12 @@ begin
       Images:=Imgs;
     finally
       FAN(Data);
-      FAN(Imgs);
       DeleteFile(S);
     end;
-    if GetIntProperty('Tabs', Properties, I) then
+    if GetStrProperty('Tabs', Properties, S) then
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       SData:=TStringList.Create;
       SData.LoadFromStream(Data);
       for j:=0 to SData.Count-1 do
@@ -1052,10 +1166,10 @@ begin
       GetBoolProperty('LargeImages', Properties, B);
       StandartImages(B);
     end;
-    if GetIntProperty('Images', Properties, I) then
+    if GetStrProperty('Images', Properties, S) then
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       S:=UniTempFile;
       Data.SaveToFile(S);
       Imgs:=TImageList.Create;
@@ -1063,13 +1177,12 @@ begin
       Images:=Imgs;
     finally
       FAN(Data);
-      FAN(Imgs);
       DeleteFile(S);
     end;
-    if GetIntProperty('Buttons', Properties, I) then
+    if GetStrProperty('Buttons', Properties, S) then
     try
       Data:=TMemoryStream.Create;
-      GetData(I, Data);
+      GetData(S, Data);
       SData:=TStringList.Create;
       SData.LoadFromStream(Data);
       for j:=0 to SData.Count-1 do
@@ -1104,12 +1217,53 @@ end;
 
 {$IFDEF TTREEVIEW}
 function TFormReader.AddTreeView(Properties: TStringList; Parent: TWinControl): TWinControl;
-begin
-  Result:=T.Create(Parent);
-  SetWinControlProperties(Result, Properties);
-  with Result as T do
-  begin
+var
+  Line: Integer;
 
+  function ReadImages: TImageList;
+  begin
+    try
+      Data:=TMemoryStream.Create;
+      GetData(S, Data);
+      S:=UniTempFile;
+      Data.SaveToFile(S);
+      Result:=TImageList.Create;
+      Result.AddMasked(LoadImage(hInstance, PChar(S), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE or LR_LOADTRANSPARENT), clFuchsia);
+    finally
+      FAN(Data);
+      DeleteFile(S);
+    end;
+  end;
+
+  procedure ReadNode(Parent: Integer);
+  begin
+    while (Line<SData.Count) and (Trim(SData[Line])='') do Inc(Line);
+    if Line>=SData.Count then Exit;
+    Parent:=(Result as TTreeView).ItemInsert(Parent, TrimLeft(SData[Line]));
+    Inc(Line);
+    while (Line<SData.Count) and (Trim(SData[Line])<>'') do ReadNode(Parent);
+    Inc(Line);
+  end;
+
+begin
+  Result:=TTreeView.Create(Parent);
+  SetWinControlProperties(Result, Properties);
+  with Result as TTreeView do
+  begin
+    if GetStrProperty('Images', Properties, S) then Images:=ReadImages;
+    if GetStrProperty('StateImages', Properties, S) then StateImages:=ReadImages;
+    if GetStrProperty('Items', Properties, S) then
+    try
+      Data:=TMemoryStream.Create;
+      GetData(S, Data);
+      SData:=TStringList.Create;
+      SData.LoadFromStream(Data);
+      Line:=0;
+      while Line<SData.Count do ReadNode(Integer(TVI_ROOT));
+    finally
+      FAN(SData);
+      FAN(Data);
+    end;
   end;
 end;
 {$ENDIF}

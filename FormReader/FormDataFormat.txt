@@ -1,4 +1,4 @@
-[ControlsSize:Cardinal][Controls:ControlsSize][Data]
+[Controls:vary][Data:DataSize][DataSize:Cardinal]
 
 Controls format (text data):
 
@@ -18,11 +18,15 @@ ChildControls format:
 
 Data format:
 
-  [DataTable:DataTableSize][DataStream]
+  [DataTable:vary][NamesTableSize:Cardinal][NamesTable:NamesTableSize][DataStream]
 
 DataTable format:
 
   [DataCount]{DataCount[Offset:Cardinal][Size:Cardinal]}
+
+NamesTable format:
+
+Text list of file names in same order as in DataTable
 
 Marking:
 

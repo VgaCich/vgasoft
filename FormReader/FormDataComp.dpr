@@ -15,7 +15,7 @@ var
   Temp: TMemoryStream;
   FilesList: TStringList;
   i: Integer;
-  Sz: Cardinal;
+  Size: Cardinal;
   DTI: TDataTableItem;
 begin
   if not FileExists(FormData+'Form.txt') then
@@ -31,8 +31,6 @@ begin
   try
     OutFile:=TFileStream.Create(ExcludeTrailingBackslash(FormData)+'.fdt', fmOpenWrite or fmCreate);
     InFile:=TFileStream.Create(FormData+'Form.txt', fmOpenRead);
-    Sz:=InFile.Size;
-    OutFile.Write(Sz, 4);
     OutFile.CopyFrom(InFile, 0);
     FAN(InFile);
     FilesList:=TStringList.Create;
@@ -40,8 +38,16 @@ begin
     RemoveVoidStrings(FilesList);
     Temp:=TMemoryStream.Create;
     Temp.Clear;
-    Sz:=FilesList.Count;
-    OutFile.Write(Sz, 4);
+    Size:=FilesList.Count;
+    Temp.Write(Size, SizeOf(Size));
+    Temp.SetSize(Temp.Size+Size*SizeOf(TDataTableItem)+SizeOf(Size));
+    Temp.Seek(0, soFromEnd);
+    Size:=Temp.Size;
+    FilesList.SaveToStream(Temp);
+    Temp.Position:=Size-SizeOf(Size);
+    Size:=Temp.Size-Size;
+    Temp.Write(Size, SizeOf(Size));
+    Temp.Seek(0, soFromEnd);
     for i:=0 to FilesList.Count-1 do
     begin
       if not FileExists(FormData+FilesList[i]) then
@@ -52,10 +58,14 @@ begin
       InFile:=TFileStream.Create(FormData+FilesList[i], fmOpenRead);
       DTI.Offset:=Temp.Size;
       DTI.Size:=InFile.Size;
-      OutFile.Write(DTI, SizeOf(DTI));
+      Temp.Position:=SizeOf(Size)+i*SizeOf(TDataTableItem);
+      Temp.Write(DTI, SizeOf(DTI));
+      Temp.Seek(0, soFromEnd);
       Temp.CopyFrom(InFile, 0);
     end;
     OutFile.CopyFrom(Temp, 0);
+    Size:=Temp.Size;
+    OutFile.Write(Size, SizeOf(Size));
     WriteLn('Done');
   finally
     FAN(OutFile);

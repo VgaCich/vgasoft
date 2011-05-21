@@ -1,57 +1,62 @@
 Control MainForm: TMainForm
     Width=600
-    Height=700
+    Height=730
     Position=1
     BorderIcons=0
     BorderStyle=1
     OnShow=FormShow
     Caption=Test Form
-    Icon=3
+    Icon=Icon.ico
   PropEnd
+  Control ToolBar: TToolBar
+      Images=tb.bmp
+      Buttons=Buttons.txt
+    PropEnd
+  End
   Control Button: TButton
       Caption=Close
       Left=520
-      Top=640
+      Top=670
       OnClick=ButtonClick
     PropEnd
   End
   Control Combo: TComboBox
       ComboStyle=2
       Left=5
-      Top=5
+      Top=35
       Width=100
-      Items=0
+      Items=ComboItems.txt
       ItemIndex=1
       OnChange=ComboChange
     PropEnd
   End
   Control Animate: TAnimate
       Left=110
-      Top=5
+      Top=35
       Width=32
       Height=32
-      CommonAVI=2
+      CommonAVI=3
     PropEnd
   End
   Control Check: TCheckBox
       Caption=Check
       Left=150
-      Top=5
+      Top=35
       Width=50
       Checked=1
     PropEnd
   End
   Control DTPicker: TDateTimePicker
       Left=5
-      Top=45
-      DateTime=1
+      Top=75
+      DateTime=DateTime.dat
       OnChange=DateTimeChange
     PropEnd
   End
   Control Edit: TEdit
       Text=TextEdit
       Left=5
-      Top=75
+      Top=105
       Width=50
       SelStart=2
       SelLength=4
@@ -60,20 +65,20 @@ Control MainForm: TMainForm
   End
   Control HeaderControl: THeaderControl
       Left=60
-      Top=75
+      Top=105
       Width=235
-      Sections=2
+      Sections=HCSections.txt
     PropEnd
   End
   Control GroupBox: TGroupBox
       Left=5
-      Top=105
+      Top=135
       Width=290
       Height=100
       Caption=Group
     PropEnd
     Control FileListBox: TFileListBox
-        Path=C:\Temp\
+        Path=C:\Windows\
         Left=5
         Top=15
         Width=280
@@ -84,7 +89,7 @@ Control MainForm: TMainForm
   End
   Control HotKey: THotKey
       Left=5
-      Top=210
+      Top=240
       Width=100
       HotKey=65
       Modifiers=6
@@ -93,15 +98,15 @@ Control MainForm: TMainForm
   End
   Control Image: TImage
       Left=110
-      Top=210
+      Top=240
       Width=128
       Height=32
-      Image=4
+      Image=MJedi.bmp
     PropEnd
   End
   Control Label: TLabel
       Left=5
-      Top=235
+      Top=265
       Width=100
       Height=15
       Color=0
@@ -112,41 +117,31 @@ Control MainForm: TMainForm
   End
   Control IPEdit: TIPEdit
       Left=5
-      Top=250
+      Top=280
       IP=2130706433
-    PropEnd
-  End
-  Control LabeledEdit: TLabeledEdit
-      Text=LabeledEdit
-      Caption=Label
-      Left=130
-      Top=270
-      SelStart=2
-      SelLength=4
-      SelText=SEL
     PropEnd
   End
   Control ListBox: TListBox
       ListStyle=4
       Sorted=1
-      Items=5
+      Items=ListBoxItems.txt
       Left=5
-      Top=275
+      Top=305
       Width=150
       Height=100
     PropEnd
   End
   Control Memo: TMemo
       Left=300
-      Top=5
+      Top=35
       Width=295
       Height=100
-      TextData=6
+      TextData=Form.txt
     PropEnd
   End
   Control Panel: TPanel
       Left=300
-      Top=110
+      Top=140
       Width=295
       Height=170
       Caption=TPanel
@@ -158,13 +153,13 @@ Control MainForm: TMainForm
         Width=285
         Height=160
         BorderStyle=1
-        DateTime=1
+        DateTime=DateTime.dat
       PropEnd
     End
   End
   Control ProgressBar: TProgressBar
       Left=300
-      Top=285
+      Top=315
       Width=295
       Height=15
       Min=20
@@ -175,7 +170,7 @@ Control MainForm: TMainForm
   End
   Control RB1: TRadioButton
       Left=160
-      Top=275
+      Top=305
       Width=100
       Height=15
       Checked=0
@@ -184,7 +179,7 @@ Control MainForm: TMainForm
   End
   Control RB2: TRadioButton
       Left=160
-      Top=295
+      Top=325
       Width=100
       Height=15
       Checked=1
@@ -193,7 +188,7 @@ Control MainForm: TMainForm
   End
   Control RB3: TRadioButton
       Left=160
-      Top=315
+      Top=345
       Width=100
       Height=15
       Checked=0
@@ -202,11 +197,11 @@ Control MainForm: TMainForm
   End
   Control RichEdit: TRichEdit
       Left=300
-      Top=305
+      Top=335
       Width=295
       Height=100
       Text=Some text
-      LoadFrom=7
+      LoadFrom=RichText.rtf
       Color=16744576
       MaxLength=4096
       SelStart=1024
@@ -214,7 +209,7 @@ Control MainForm: TMainForm
   End
   Control HScrollBar: TScrollBar
       Left=300
-      Top=410
+      Top=440
       Width=295
       Height=20
       Min=20
@@ -225,7 +220,7 @@ Control MainForm: TMainForm
   End
   Control VScrollBar: TScrollBar
       Left=260
-      Top=210
+      Top=240
       Width=20
       Height=200
       Min=20
@@ -236,7 +231,7 @@ Control MainForm: TMainForm
   End
   Control SimplePanel: TSimplePanel
       Left=5
-      Top=380
+      Top=410
       Width=250
       Height=100
       Caption=Simple panel
@@ -248,7 +243,7 @@ Control MainForm: TMainForm
         Width=80
         Height=40
         Caption=SpdBtn
-        Glyph=8
+        Glyph=SB.bmp
       PropEnd
     End
     Control SpeedButton1: TSpeedButton
@@ -257,30 +252,59 @@ Control MainForm: TMainForm
         Width=32
         Height=32
         Caption=SpdBtn
-        Glyph=8
+        Glyph=SB.bmp
       PropEnd
     End
+    Control LabeledEdit: TLabeledEdit
+        Text=LabeledEdit
+        Caption=ELabel
+        Left=5
+        Top=70
+        SelStart=2
+        SelLength=4
+        SelText=SEL
+      PropEnd
+    End
+#    Control GraphicControl: TGraphicControl
+#        Left=175
+#        Top=5
+#        Width=70
+#        Height=90
+#        Color=$FF00FF00
+#        OnPaint=GCPaint
+#      PropEnd
+#    End
   End
   Control StatusBar: TStatusBar
       SimpleText=Simple status text
       Parts=100|150|-1
-      PartsText=9
+      PartsText=SB.txt
     PropEnd
   End
   Control TabControl: TTabControl
       Left=5
-      Top=485
+      Top=515
       Width=250
-      Height=100
+      Height=155
       TabStyle=0
       TabPosition=0
-      Images=10
-      Tabs=11
+      Images=tb.bmp
+      Tabs=Tabs.txt
     PropEnd
+    Control TreeView: TTreeView
+        Left=5
+        Top=35
+        Width=240
+        Height=110
+        Items=Tree.txt
+        Images=tb.bmp
+        StateImages=Folder.bmp
+      PropEnd
+    End
   End
   Control TrackBar: TTrackBar
       Left=300
-      Top=435
+      Top=465
       Width=295
       Height=30
       Min=20
@@ -290,7 +314,7 @@ Control MainForm: TMainForm
   End
   Control UpDown: TUpDown
       Left=5
-      Top=590
+      Top=675
       Width=20
       Height=30
       Min=20
@@ -301,7 +325,7 @@ Control MainForm: TMainForm
   End
   Control UpDown2: TUpDown
       Left=30
-      Top=590
+      Top=675
       Width=40
       Height=20
       Min=20
@@ -310,36 +334,47 @@ Control MainForm: TMainForm
       Increment=5
     PropEnd
   End
-  Control SpinEdit: TEdit
+  Control SpinEditBox: TEdit
       Text=0
       Left=100
-      Top=620
+      Top=675
       Width=50
     PropEnd
   End
   Control Spin: TUpDown
       Left=80
-      Top=590
+      Top=675
       Width=20
       Height=30
       Min=20
       Max=40
       Position=30
       Increment=5
-      Associate=SpinEdit
+      Associate=SpinEditBox
     PropEnd
   End
+#  Control SpinEdit: TSpinEdit
+#      Left=100
+#      Top=655
+#      Width=50
+#      Height=30
+#      Min=10
+#      Max=50
+#      Position=25
+#      Increment=3
+#    PropEnd
+#  End
   Control ListView: TListView
       Left=300
-      Top=470
+      Top=500
       Width=295
       Height=150
-      Items=12
-      ItemsEx=14
-      SmallImages=10
-      LargeImages=10
+      Items=LVItems.txt
+      ItemsEx=LVItemsEx.txt
+      SmallImages=tb.bmp
+      LargeImages=tb.bmp
       ViewStyle=1
-      Columns=13
+      Columns=LVColumns.txt
       SelectedIndex=5
       SortType=2
       FlatScrollBars=1
