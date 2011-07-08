@@ -14,16 +14,33 @@ type
     procedure SrcClick(Sender: TObject);
     procedure DestClick(Sender: TObject);
     procedure SearchClick(Sender: Tobject);
+    procedure CancelClick(Sender: TObject);
     procedure AllClick(Sender: TObject);
     procedure SrcChange(Sender: TObject);
+    procedure GetAllFiles(Mask: string; Files: TStringList);
   end;
 
 const
   ID: Cardinal=1279677270;
-  Capt='VgaSoft FileList 2.7';
+  Capt='VgaSoft FileList 2.9';
 
 var
   MainForm: TMainForm;
+  Progress: Integer;
+  FCancel: Boolean;
+  
+procedure UCLProgressCallback(TextSize, CodeSize: Cardinal; State: Integer; User: Pointer);
+var
+  S: string;
+begin
+  if Progress<>Round(100*(TextSize/Integer(User))) then
+  begin
+    Progress:=Round(100*(TextSize/Integer(User)));
+    S:=MainForm.Caption;
+    MainForm.Caption:=Copy(S, 1, LastDelimiter(':', S)+1)+IntToStr(Progress)+'%';
+  end;
+  MainForm.ProcessMessages;
+end;
 
 procedure TMainForm.SrcClick(Sender: TObject);
 var
@@ -39,7 +56,7 @@ var
   Path: string;
 begin
   Path:=EDest.Text;
-  if OpenSaveDialog(Handle, false, '', 'vfl', 'VgaSoft FileList files|*.vfl|All files|*.*',
+  if OpenSaveDialog(Handle, false, '', 'vfl', 'Список VgaSoft FileList|*.vfl|Все файлы|*.*',
     ExtractFilePath(Path), 0, OFN_OVERWRITEPROMPT, Path)
     then EDest.Text:=Path;
 end;
@@ -52,43 +69,9 @@ var
   Size, BufSize, Index: Cardinal;
   Res: Integer;
   Drives, Dest: string;
+  UCLCB: TUCLProgressCallback;
 Label
   NextDisk;
-
-  procedure GetAllFiles(Mask: string);
-  var
-    Search: TSearchRec;
-    Directory: string;
-
-      function GetLastDirectory(S: string): string;
-      var
-        i: integer;
-      begin
-        Delete(S, Length(S), 1);
-        i:=Length(S);
-        while S[i]<>'\' do Dec(i);
-        Result:=Copy(S, i+1, MaxInt);
-      end;
-
-  begin
-    Directory := ExtractFilePath(Mask);
-    Files.Add('<'+GetLastDirectory(Directory)+'>');
-    if FindFirst(Mask, faAnyFile and not faDirectory, Search) = 0 then
-    begin
-      repeat
-        Files.Add(Search.Name+'|'+Int64ToStr((Int64(Search.FindData.nFileSizeHigh) shl 32) or Search.FindData.nFileSizeLow));
-      until FindNext(Search) <> 0;
-    end;
-    if FindFirst(Directory + '*.*', faDirectory+faHidden, Search) = 0 then
-    begin
-      repeat
-        if ((Search.Attr and faDirectory) = faDirectory) and (Search.Name<>'.') and (Search.Name<>'..') then
-          GetAllFiles(Directory + Search.Name + '\' + ExtractFileName(Mask));
-      until FindNext(Search) <> 0;
-      FindClose(Search);
-    end;
-    Files.Add('<|>');
-  end;
 
   function GetDrives: string;
   var
@@ -103,74 +86,170 @@ Label
         Result:=Result+Buf[i];
   end;
 
-begin
-  Index:=0;
-  Drives:=GetDrives;
-  Dest:=EDest.Text;
-  NextDisk:
-  if CAll.Checked then
+  procedure EnableAll(Enable: Boolean);
   begin
-    Inc(Index);
-    ESrc.Text:=Drives[Index]+':\';
-    EDest.Text:=Copy(Dest, 1, LastDelimiter('.', Dest)-1)+UpCase(Drives[Index])+ExtractFileExt(Dest);
-  end;
-  if not DirectoryExists(ESrc.Text) then Exit;
-  if EDest.Text='' then Exit;
-  if ESrc.Text[Length(ESrc.Text)]<>'\' then ESrc.Text:=ESrc.Text+'\';
-  try
-    ProcessMessages;
-    Buffer:=nil;
-    Files:=TStringList.Create;
-    Files.Clear;
-    Caption:=Capt+': Поиск...';
-    GetAllFiles(ESrc.Text+'*.*');
-    Caption:=Capt+': Сохранение...';
-    ProcessMessages;
-    OFile:=TFileStream.Create(EDest.Text, fmCreate);
-    OFile.WriteBuffer(ID, SizeOf(ID));
-    if CCompr.Checked then
+    if not CAll.Checked then
     begin
-      Size:=Length(Files.Text);
-      OFile.WriteBuffer(Size, SizeOf(Size));
-      BufSize:=UCLOutputBlockSize(Size);
-      GetMem(Buffer, BufSize);
-      Res:=ucl_nrv2e_99_compress(Pointer(Files.Text), Size, Buffer, BufSize, nil, 10, nil, nil);
-      if Res<>UCL_E_OK then
-      begin
-        MessageBox(Handle, PChar(Format('Compression error %d', [Res])), 'Error', MB_ICONERROR);
-        Exit;
-      end;
-      OFile.Write(Buffer^, BufSize);
-    end
-    else begin
-      Size:=0;
-      OFile.WriteBuffer(Size, SizeOf(Size));
-      Files.SaveToStream(OFile);
+      ESrc.Enabled:=Enable;
+      BSrc.Enabled:=Enable;
     end;
-    ProcessMessages;
-  finally
-    FreeMemAndNil(Buffer, UCLOutputBlockSize(Size));
-    FAN(OFile);
-    FAN(Files);
+    EDest.Enabled:=Enable;
+    CAll.Enabled:=Enable;
+    CCompr.Enabled:=Enable;
+    BDest.Enabled:=Enable;
   end;
-  if CAll.Checked then
-    if Index<Length(Drives)
-      then goto NextDisk;
-  EDest.Text:=Dest;
-  Caption:=Capt;
-  ShowMessage('Выполнено');
+
+begin
+  EnableAll(false);
+  BSearch.Caption:='Отмена';
+  BSearch.OnClick:=CancelClick;
+  try
+    Index:=0;
+    Drives:=GetDrives;
+    Dest:=EDest.Text;
+    NextDisk:
+    if CAll.Checked then
+    begin
+      Inc(Index);
+      ESrc.Text:=Drives[Index]+':\';
+      if Pos('%s', Dest)=0
+        then EDest.Text:=Copy(Dest, 1, LastDelimiter('.', Dest)-1)+'%s'+ExtractFileExt(Dest)
+        else EDest.Text:=Dest;
+      EDest.Text:=Format(EDest.Text, [UpperCase(Drives[Index])]);
+    end;
+    if not DirectoryExists(ESrc.Text) then
+    begin
+      MessageBox(Handle, 'Директория поиска не существует', 'Ошибка', MB_ICONERROR);
+      Exit;
+    end;
+    if EDest.Text='' then
+    begin
+      MessageBox(Handle, 'Не указано имя файла списка', 'Ошибка', MB_ICONERROR);
+      Exit;
+    end;
+    if ESrc.Text[Length(ESrc.Text)]<>'\' then ESrc.Text:=ESrc.Text+'\';
+    try
+      ProcessMessages;
+      Buffer:=nil;
+      Files:=TStringList.Create;
+      Files.Clear;
+      Caption:=Capt+': Поиск в <'+ESrc.Text+'>...';
+      GetAllFiles(ESrc.Text+'*.*', Files);
+      if FCancel then Exit;
+      BSearch.Enabled:=false;
+      Caption:=Capt+': Сохранение в <'+EDest.Text+'>: 0%';
+      Progress:=0;
+      ProcessMessages;
+      OFile:=TFileStream.Create(EDest.Text, fmCreate);
+      OFile.WriteBuffer(ID, SizeOf(ID));
+      if CCompr.Checked then
+      begin
+        Size:=Length(Files.Text);
+        OFile.WriteBuffer(Size, SizeOf(Size));
+        BufSize:=UCLOutputBlockSize(Size);
+        GetMem(Buffer, BufSize);
+        UCLCB.Callback:=UCLProgressCallback;
+        UCLCB.User:=Pointer(Size);
+        Res:=ucl_nrv2e_99_compress(Pointer(Files.Text), Size, Buffer, BufSize, @UCLCB, 10, nil, nil);
+        if Res<>UCL_E_OK then
+        begin
+          MessageBox(Handle, PChar(Format('Ошибка сжатия %d', [Res])), 'Ошибка', MB_ICONERROR);
+          Exit;
+        end;
+        OFile.Write(Buffer^, BufSize);
+      end
+      else begin
+        Size:=0;
+        OFile.WriteBuffer(Size, SizeOf(Size));
+        Files.SaveToStream(OFile);
+      end;
+      ProcessMessages;
+    finally
+      FreeMemAndNil(Buffer, UCLOutputBlockSize(Size));
+      FAN(OFile);
+      FAN(Files);
+      BSearch.Enabled:=true;
+    end;
+    if CAll.Checked then
+      if Index<Length(Drives)
+        then goto NextDisk;
+    Caption:=Capt;
+    ShowMessage('Выполнено');
+  finally
+    EDest.Text:=Dest;
+    EnableAll(true);
+    BSearch.Caption:='Искать';
+    BSearch.OnClick:=SearchClick;
+    FCancel:=false;
+  end;
+end;
+
+procedure TMainForm.CancelClick(Sender: TObject);
+begin
+  FCancel:=true;
 end;
 
 procedure TMainForm.AllClick(Sender: TObject);
 begin
-  ESrc.Visible:=not CAll.Checked;
-  LSrc.Visible:=ESrc.Visible;
-  BSrc.Visible:=ESrc.Visible;
+  ESrc.Enabled:=not CAll.Checked;
+  LSrc.Enabled:=not CAll.Checked;
+  BSrc.Enabled:=not CAll.Checked;
 end;
 
 procedure TMainForm.SrcChange(Sender: TObject);
 begin
   EDest.Text:=ExcludeTrailingBackslash(ESrc.Text)+'.vfl';
+end;
+
+procedure TMainForm.GetAllFiles(Mask: string; Files: TStringList);
+var
+  i: Integer;
+  Search: TSearchRec;
+  Directory: string;
+  Directories: TStringList;
+
+    function GetLastDirectory(S: string): string;
+    var
+      i: integer;
+    begin
+      Delete(S, Length(S), 1);
+      i:=Length(S);
+      while S[i]<>'\' do Dec(i);
+      Result:=Copy(S, i+1, MaxInt);
+    end;
+
+begin
+  Directory := ExtractFilePath(Mask);
+  Files.Add('<'+GetLastDirectory(Directory)+'>');
+  if FindFirst(Mask, faAnyFile and not faDirectory, Search) = 0 then
+  begin
+    repeat
+      Files.Add(Search.Name+'|'+Int64ToStr((Int64(Search.FindData.nFileSizeHigh) shl 32) or Search.FindData.nFileSizeLow));
+    until FindNext(Search) <> 0;
+  end;
+  FindClose(Search);
+  ProcessMessages;
+  if FCancel then Exit;
+  Directories:=TStringList.Create;
+  try
+    if FindFirst(Directory + '*.*', faDirectory+faHidden, Search) = 0 then
+    begin
+      repeat
+        if ((Search.Attr and faDirectory) = faDirectory) and (Search.Name<>'.') and (Search.Name<>'..') then
+          Directories.Add(Directory + Search.Name + '\' + ExtractFileName(Mask));
+      until FindNext(Search) <> 0;
+      FindClose(Search);
+    end;
+    for i:=0 to Directories.Count-1 do
+    begin
+      GetAllFiles(Directories[i], Files);
+      if FCancel then Exit;
+    end;
+  finally
+    FAN(Directories);
+    ProcessMessages;
+  end;
+  Files.Add('<|>');
 end;
 
 begin
@@ -208,6 +287,7 @@ begin
     BSearch:=TButton.Create(MainForm, 'Искать');
     BSearch.OnClick:=SearchClick;
     BSearch.SetBounds(ClientWidth-80, 65, 75, 25);
+    FCancel:=false;
     Run;
   end;
 end.

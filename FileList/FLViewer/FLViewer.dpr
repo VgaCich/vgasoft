@@ -87,7 +87,7 @@ type
 
 const
   ID: Cardinal=1279677270;
-  CCapt='VgaSoft FileList Viewer 2.8';
+  CCapt='VgaSoft FileList Viewer 2.9';
   AboutText=CCapt+#13#10 +
             'Copyright '#169'VgaSoft, 2004-2011';
 
