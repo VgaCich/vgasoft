@@ -56,7 +56,7 @@ var
   Path: string;
 begin
   Path:=EDest.Text;
-  if OpenSaveDialog(Handle, false, '', 'vfl', 'Список VgaSoft FileList|*.vfl|Все файлы|*.*',
+  if OpenSaveDialog(Handle, false, '', 'vfl', 'VgaSoft FileList files|*.vfl|All files|*.*',
     ExtractFilePath(Path), 0, OFN_OVERWRITEPROMPT, Path)
     then EDest.Text:=Path;
 end;
@@ -101,7 +101,7 @@ Label
 
 begin
   EnableAll(false);
-  BSearch.Caption:='Отмена';
+  BSearch.Caption:='Cancel';
   BSearch.OnClick:=CancelClick;
   try
     Index:=0;
@@ -119,12 +119,12 @@ begin
     end;
     if not DirectoryExists(ESrc.Text) then
     begin
-      MessageBox(Handle, 'Директория поиска не существует', 'Ошибка', MB_ICONERROR);
+      MessageBox(Handle, 'Search directory not exists', 'Error', MB_ICONERROR);
       Exit;
     end;
     if EDest.Text='' then
     begin
-      MessageBox(Handle, 'Не указано имя файла списка', 'Ошибка', MB_ICONERROR);
+      MessageBox(Handle, 'Filename not specified', 'Error', MB_ICONERROR);
       Exit;
     end;
     if ESrc.Text[Length(ESrc.Text)]<>'\' then ESrc.Text:=ESrc.Text+'\';
@@ -133,11 +133,11 @@ begin
       Buffer:=nil;
       Files:=TStringList.Create;
       Files.Clear;
-      Caption:=Capt+': Поиск в <'+ESrc.Text+'>...';
+      Caption:=Capt+': Searching in <'+ESrc.Text+'>...';
       GetAllFiles(ESrc.Text+'*.*', Files);
       if FCancel then Exit;
       BSearch.Enabled:=false;
-      Caption:=Capt+': Сохранение в <'+EDest.Text+'>: 0%';
+      Caption:=Capt+': Saving to <'+ExtractFileName(EDest.Text)+'>: 0%';
       Progress:=0;
       ProcessMessages;
       OFile:=TFileStream.Create(EDest.Text, fmCreate);
@@ -153,7 +153,7 @@ begin
         Res:=ucl_nrv2e_99_compress(Pointer(Files.Text), Size, Buffer, BufSize, @UCLCB, 10, nil, nil);
         if Res<>UCL_E_OK then
         begin
-          MessageBox(Handle, PChar(Format('Ошибка сжатия %d', [Res])), 'Ошибка', MB_ICONERROR);
+          MessageBox(Handle, PChar(Format('Compression error %d', [Res])), 'Error', MB_ICONERROR);
           Exit;
         end;
         OFile.Write(Buffer^, BufSize);
@@ -174,11 +174,11 @@ begin
       if Index<Length(Drives)
         then goto NextDisk;
     Caption:=Capt;
-    ShowMessage('Выполнено');
+    ShowMessage('Job done');
   finally
     EDest.Text:=Dest;
     EnableAll(true);
-    BSearch.Caption:='Искать';
+    BSearch.Caption:='Search';
     BSearch.OnClick:=SearchClick;
     FCancel:=false;
   end;
@@ -259,32 +259,32 @@ begin
     SetSize(400, Height-ClientHeight+95);
     Position:=poScreenCenter;
     BorderStyle:=bsDialog;
-    LSrc:=TLabel.Create(MainForm, 'Где искать:');
+    LSrc:=TLabel.Create(MainForm, 'Search in:');
     LSrc.Alignment:=SS_RIGHT;
-    LSrc.SetBounds(5, 10, 80, 15);
-    LDest:=TLabel.Create(MainForm, 'Сохранить в:');
+    LSrc.SetBounds(5, 10, 50, 15);
+    LDest:=TLabel.Create(MainForm, 'Save to:');
     LDest.Alignment:=SS_RIGHT;
-    LDest.SetBounds(5, 40, 80, 15);
+    LDest.SetBounds(5, 40, 50, 15);
     ESrc:=TEdit.Create(MainForm, 'C:\');
-    ESrc.SetBounds(90, 5, ClientWidth-175, 24);
+    ESrc.SetBounds(60, 5, ClientWidth-145, 24);
     ESrc.OnChange:=SrcChange;
     EDest:=TEdit.Create(MainForm, 'C:\List.vfl');
-    EDest.SetBounds(90, 35, ClientWidth-175, 24);
+    EDest.SetBounds(60, 35, ClientWidth-145, 24);
     if ParamCount>0 then ESrc.Text:=ParamStr(1);
     if ParamCount>1 then EDest.Text:=ParamStr(2);
-    CAll:=TCheckBox.Create(MainForm, 'Все диски');
+    CAll:=TCheckBox.Create(MainForm, 'Search all drives');
     CAll.OnClick:=AllClick;
-    CAll.SetBounds(90, 70, 100, 15);
-    CCompr:=TCheckBox.Create(MainForm, 'Сжатие');
-    CCompr.SetBounds(200, 70, 100, 15);
+    CAll.SetBounds(60, 70, 120, 15);
+    CCompr:=TCheckBox.Create(MainForm, 'Use compression');
+    CCompr.SetBounds(185, 70, 120, 15);
     CCompr.Checked:=true;
-    BSrc:=TButton.Create(MainForm, 'Обзор...');
+    BSrc:=TButton.Create(MainForm, 'Browse...');
     BSrc.OnClick:=SrcClick;
     BSrc.SetBounds(ClientWidth-80, 5, 75, 25);
-    BDest:=TButton.Create(MainForm, 'Обзор...');
+    BDest:=TButton.Create(MainForm, 'Browse...');
     BDest.OnClick:=DestClick;
     BDest.SetBounds(ClientWidth-80, 35, 75, 25);
-    BSearch:=TButton.Create(MainForm, 'Искать');
+    BSearch:=TButton.Create(MainForm, 'Search');
     BSearch.OnClick:=SearchClick;
     BSearch.SetBounds(ClientWidth-80, 65, 75, 25);
     FCancel:=false;
