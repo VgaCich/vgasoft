@@ -186,7 +186,10 @@ begin
   Cursor.Y:=Y;
   MapCursor(Cursor);
   case Event of
-    meDown: if Button=1 then FLast:=FActive;
+    meDown: begin
+      if Button=1 then FLast:=FActive;
+      FTabStop:=-1;
+    end;
     meUp: begin
       if Button=1 then
       begin
@@ -197,6 +200,7 @@ begin
         end
           else FLast:=-1;
       end;
+      FTabStop:=-1;
     end;
   end;
 end;
