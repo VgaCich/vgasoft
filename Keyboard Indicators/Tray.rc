@@ -1,0 +1,20 @@
+#include "MenuIDs.pas"
+
+TRAYMENU MENU 
+BEGIN
+  POPUP "TrayMenu" BEGIN
+    MENUITEM "Autostart", ID_AUTOSTART
+    MENUITEM "About", ID_ABOUT
+    MENUITEM SEPARATOR 
+    MENUITEM "Exit", ID_CLOSE
+  END
+END
+
+TR000 ICON TrayIcon\000.ico
+TR001 ICON TrayIcon\001.ico
+TR010 ICON TrayIcon\010.ico
+TR011 ICON TrayIcon\011.ico
+TR100 ICON TrayIcon\100.ico
+TR101 ICON TrayIcon\101.ico
+TR110 ICON TrayIcon\110.ico
+TR111 ICON TrayIcon\111.ico
