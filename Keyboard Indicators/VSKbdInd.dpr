@@ -1,7 +1,7 @@
 program VSKbdInd;
 
 uses
-  Windows, Messages, TaskBar, MenuIDs;
+  Windows, Messages, TaskBar, OneInstance, MenuIDs;
   
 {$R *.res}
 {$R Tray.res}
@@ -31,6 +31,7 @@ var
   WndClass: TWndClass;
   Msg: TMsg;
   TaskBarCreated, OldKeyState: Integer;
+  TrayIconCreated: Boolean = false;
 
 function Format(const Format: string; const Args: array of const): string;
 var
@@ -139,6 +140,12 @@ begin
   DestroyMenu(Menu);
 end;
 
+procedure CreateTrayIcon;
+begin
+  TrayIconCreated:=TaskBarAddIcon(hWnd, TrayIconID, LoadIcon(hInstance, 'TR000'), WM_TASKBAR, '');
+  OldKeyState:=-1;
+end;
+
 procedure UpdateTrayIcon;
 
   function KeyStateToStr(Key: Integer): string;
@@ -159,6 +166,7 @@ var
   KeyState: Integer;
   Hint, IconName: string;
 begin
+  if not TrayIconCreated then CreateTrayIcon;
   KeyState:=((GetKeyState(VK_NUMLOCK) and 1) shl 2) or ((GetKeyState(VK_CAPITAL) and 1) shl 1) or (GetKeyState(VK_SCROLL) and 1);
   if KeyState<>OldKeyState then
   begin
@@ -172,12 +180,8 @@ end;
 function WindowProc(hWnd: THandle; uMsg, wParam, lParam: Integer): Integer;
   stdcall; export;
 begin
-  Result := 0;
-  if uMsg = TaskBarCreated then
-  begin
-    TaskBarAddIcon(hWnd, TrayIconID, LoadIcon(hInstance, 'TR000'), WM_TASKBAR, '');
-    OldKeyState:=-1;
-  end;
+  Result:=0;
+  if uMsg=TaskBarCreated then CreateTrayIcon;
   case uMsg of
     WM_COMMAND:
       case wParam of
@@ -201,10 +205,17 @@ begin
         Exit;
       end;
   end;
-  Result := DefWindowProc(hWnd, uMsg, wParam, lParam);
+  Result:=DefWindowProc(hWnd, uMsg, wParam, lParam);
 end;
 
 begin
+  if IsRunning(ClassName) then
+  begin
+    hWnd:=FindWindow(Classname, nil);
+    TaskBarCreated:=RegisterWindowMessage('TaskbarCreated');
+    if hWnd<>0 then PostMessage(hWnd, TaskBarCreated, 0, 0);
+    Exit;
+  end;
   FillChar(WndClass, SizeOf(WndClass), 0);
   with WndClass do
   begin
@@ -219,8 +230,7 @@ begin
     Exit;
   end;
   TaskBarCreated:=RegisterWindowMessage('TaskbarCreated');
-  OldKeyState:=-1;
-  TaskBarAddIcon(hWnd, TrayIconID, LoadIcon(hInstance, 'TR000'), WM_TASKBAR, '');
+  CreateTrayIcon;
   ShowWindow(hWnd, SW_HIDE);
   SetTimer(hWnd, 1, 500, nil);
   while GetMessage(Msg, 0, 0, 0) do begin
