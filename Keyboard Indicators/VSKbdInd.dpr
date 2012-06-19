@@ -1,7 +1,7 @@
 program VSKbdInd;
 
 uses
-  Windows, Messages, TaskBar, OneInstance, MenuIDs;
+  Windows, Messages, TaskBar, avlOneInstance, MenuIDs;
   
 {$R *.res}
 {$R Tray.res}

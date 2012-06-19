@@ -1,25 +1,26 @@
-unit AvlOneInstance;
+unit avlOneInstance;
 
 interface
 
 uses
-  Windows, Avl;
+  Windows;
 
-function IsRunning: Boolean;
-
-const
-  UniqueID = 'Avl Program: ';
+function IsRunning(ID: PAnsiChar): Boolean;
 
 implementation
 
-function IsRunning: Boolean;
 var
-  hMutex : Integer;
+  Mutex: Integer;
+
+function IsRunning(ID: PAnsiChar): Boolean;
 begin
-  Result := False;
-  hMutex := CreateMutex(nil, True , PChar(UniqueID + ExtractFileName(ParamStr(0))));
-  if GetLastError = ERROR_ALREADY_EXISTS then Result := True;
+  Mutex:=CreateMutex(nil, true, ID);
+  Result:=GetLastError=ERROR_ALREADY_EXISTS;
 end;
 
-end.
+initialization
 
+finalization
+  ReleaseMutex(Mutex);
+
+end.
