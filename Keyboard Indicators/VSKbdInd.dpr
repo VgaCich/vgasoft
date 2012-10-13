@@ -209,10 +209,10 @@ begin
 end;
 
 begin
+  TaskBarCreated:=RegisterWindowMessage('TaskbarCreated');
   if IsRunning(ClassName) then
   begin
     hWnd:=FindWindow(Classname, nil);
-    TaskBarCreated:=RegisterWindowMessage('TaskbarCreated');
     if hWnd<>0 then PostMessage(hWnd, TaskBarCreated, 0, 0);
     Exit;
   end;
@@ -229,7 +229,6 @@ begin
     MessageBox(0, 'CreateWindow failed', nil, ID_OK);
     Exit;
   end;
-  TaskBarCreated:=RegisterWindowMessage('TaskbarCreated');
   CreateTrayIcon;
   ShowWindow(hWnd, SW_HIDE);
   SetTimer(hWnd, 1, 500, nil);
