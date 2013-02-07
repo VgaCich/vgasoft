@@ -91,7 +91,7 @@ const
   CaptionSend = 'Send: ';
   AboutCaption = 'About ';
   CRLF = #13#10;
-  AboutText = 'VgaSoft Terminal 1.0'+CRLF+CRLF+
+  AboutText = 'VgaSoft Terminal 1.0b'+CRLF+CRLF+
               'Copyright '#169' VgaSoft, 2013'+CRLF+
               'vgasoft@gmail.com';
   AboutIcon = 'MAINICON';
@@ -329,6 +329,7 @@ end;
 
 procedure TFormMain.FormDestroy(Sender: TObject);
 begin
+  if Assigned(FCOMPort) then BtnConnectClick(nil);
   SaveSettings;
 end;
 
