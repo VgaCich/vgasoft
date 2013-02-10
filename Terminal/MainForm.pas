@@ -67,6 +67,7 @@ type
     procedure RecvTimerTimer(Sender: TObject);
   private
     FCOMPort: TCOMPort;
+    FLogUpdateState: Boolean;
     FRecvBuffer: string;
     procedure AddToLog(Text, Caption: string; Color: TColor);
     procedure FillComboBox(Combo: TComboBox; Settings: array of TSettingsItem;
@@ -77,6 +78,7 @@ type
     procedure LoadSettings;
     procedure SaveSettings;
     procedure SendString(S: string);
+    procedure SetLogUpdateState(IsUpdating: Boolean);
   public
     { Public declarations }
   end;
@@ -91,7 +93,7 @@ const
   CaptionSend = 'Send: ';
   AboutCaption = 'About ';
   CRLF = #13#10;
-  AboutText = 'VgaSoft Terminal 1.0b'+CRLF+CRLF+
+  AboutText = 'VgaSoft Terminal 1.0'+CRLF+CRLF+
               'Copyright '#169' VgaSoft, 2013'+CRLF+
               'vgasoft@gmail.com';
   AboutIcon = 'MAINICON';
@@ -314,6 +316,7 @@ begin
   Application.Title:=FormMain.Caption;
   TermLog.MaxLength:=$200000;
   FRecvBuffer:='';
+  FLogUpdateState:=false;
   CBPortDropDown(CBPort);
   if CBPort.Items.Count>0
     then CBPort.ItemIndex:=0;
@@ -598,6 +601,7 @@ var
 begin
   if not Assigned(FCOMPort) then Exit;
   NewData:=ReadToBuffer;
+  if NewData>0 then SetLogUpdateState(true);
   case TTextMode(GetComboValue(CBRecvMode)) of
     tmHex: begin
       while Length(FRecvBuffer)>16 do
@@ -637,12 +641,13 @@ begin
       FRecvBuffer:='';
     end;
   end;
+  SetLogUpdateState(false);
 end;
 
 procedure TFormMain.SaveSettings;
 var
   Settings: TCustomIniFile;
-  i, Port: Integer;
+  i: Integer;
 begin
   Settings:=GetSettings;
   if not Assigned(Settings) then Exit;
@@ -732,6 +737,15 @@ begin
       FCOMPort.Write(TempDWord, SizeOf(TempDWord));
     end;
   end;
+end;
+
+procedure TFormMain.SetLogUpdateState(IsUpdating: Boolean);
+begin
+  if IsUpdating=FLogUpdateState then Exit;
+  FLogUpdateState:=IsUpdating;
+  if IsUpdating
+    then TermLog.Lines.BeginUpdate
+    else TermLog.Lines.EndUpdate;
 end;
 
 end.
