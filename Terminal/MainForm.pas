@@ -398,7 +398,7 @@ begin
     for i:=0 to CBPort.Items.Count-1 do
       if Integer(CBPort.Items.Objects[i])=Port then
       begin
-        CBPort.ItemIndex:=0;
+        CBPort.ItemIndex:=i;
         Break;
       end;
   finally
