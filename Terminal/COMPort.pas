@@ -22,7 +22,7 @@ type
     procedure SetStopBits(const Value: Integer);
     procedure UpdateState;
   public
-    constructor Create(const Port: string; BufSize: Integer = 1024);
+    constructor Create(Port: Integer; BufSize: Integer = 1024);
     destructor Destroy; override;
     function Read(out Data; Count: Integer): Integer;
     function Write(const Data; Count: Integer): Integer;
@@ -47,8 +47,7 @@ begin
   List.Clear;
   for i := 1 to 256 do
   begin
-    PortHandle:=CreateFile(PChar('COM'+IntToStr(i)), GENERIC_READ or GENERIC_WRITE,
-      0, nil, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, 0);
+    PortHandle:=FileOpen('\\.\COM'+IntToStr(i), fmOpenRead);
     if PortHandle<>INVALID_HANDLE_VALUE then
     begin
       List.AddObject('COM'+IntToStr(i), TObject(i));
@@ -83,13 +82,13 @@ const
   dcb_AbortOnError = $00004000;
   dcb_Reserveds = $FFFF8000;
 
-constructor TCOMPort.Create(const Port: string; BufSize: Integer = 1024);
+constructor TCOMPort.Create(Port: Integer; BufSize: Integer = 1024);
 var
   Timeouts: TCommTimeouts;
 begin
   inherited Create;
-  FHandle:=FileOpen(Port, fmOpenReadWrite);
-  if FHandle=INVALID_HANDLE_VALUE then raise Exception.Create('Couldn''t open port '+Port+#13+SysErrorMessage(GetLastError));
+  FHandle:=FileOpen('\\.\COM'+IntToStr(Port), fmOpenReadWrite);
+  if FHandle=INVALID_HANDLE_VALUE then raise Exception.Create('Couldn''t open port COM'+IntToStr(Port)+#13+SysErrorMessage(GetLastError));
   ZeroMemory(@FDCB, SizeOf(FDCB));
   FDCB.DCBlength:=SizeOf(FDCB);
   GetCommState(FHandle, FDCB);

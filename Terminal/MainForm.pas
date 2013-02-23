@@ -214,7 +214,7 @@ begin
     BtnConnect.Caption:='Connect';
   end
   else begin
-    FCOMPort:=TCOMPort.Create(CBPort.Text, 4096);
+    FCOMPort:=TCOMPort.Create(GetComboValue(CBPort), 4096);
     try
       FCOMPort.BitRate:=GetComboValue(CBBitRate);
       FCOMPort.DataBits:=GetComboValue(CBDataBits);
