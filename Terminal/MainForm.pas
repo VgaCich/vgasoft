@@ -69,9 +69,9 @@ type
     FCOMPort: TCOMPort;
     FLogUpdateState: Boolean;
     FRecvBuffer: string;
-    procedure AddToLog(Text, Caption: string; Color: TColor);
+    procedure AddToLog(Text, Caption: string; Color: TColor; Time: TDateTime);
     procedure FillComboBox(Combo: TComboBox; Settings: array of TSettingsItem;
-        DefItem: Cardinal = 0);
+        DefItem: Integer = 0);
     function GetComboValue(Combo: TComboBox): Integer;
     function GetIniName: string;
     function GetSettings: TCustomIniFile;
@@ -93,7 +93,7 @@ const
   CaptionSend = 'Send: ';
   AboutCaption = 'About ';
   CRLF = #13#10;
-  AboutText = 'VgaSoft Terminal 1.0'+CRLF+CRLF+
+  AboutText = 'VgaSoft Terminal 1.1'+CRLF+CRLF+
               'Copyright '#169' VgaSoft, 2013'+CRLF+
               'vgasoft@gmail.com';
   AboutIcon = 'MAINICON';
@@ -167,7 +167,7 @@ var
 
 {$R *.dfm}
 
-procedure TFormMain.AddToLog(Text, Caption: string; Color: TColor);
+procedure TFormMain.AddToLog(Text, Caption: string; Color: TColor; Time: TDateTime);
 var
   Index: Integer;
 begin
@@ -176,6 +176,7 @@ begin
       then Text[Index]:=#$20;
   if CBShowCaps.Checked then
   begin
+    Caption:='['+TimeToStr(Time)+'] '+Caption;
     Index:=TermLog.Lines.Add(Caption+Text);
     TermLog.SelStart:=SendMessage(TermLog.Handle, EM_LINEINDEX, Index, 0);
     TermLog.SelLength:=Length(Caption);
@@ -298,7 +299,7 @@ begin
 end;
 
 procedure TFormMain.FillComboBox(Combo: TComboBox; Settings: array of
-    TSettingsItem; DefItem: Cardinal = 0);
+    TSettingsItem; DefItem: Integer = 0);
 var
   i: Integer;
 begin
@@ -307,7 +308,7 @@ begin
   for i:=Low(Settings) to High(Settings) do
     Combo.Items.AddObject(Settings[i].Name, TObject(Settings[i].Value));
   Combo.Items.EndUpdate;
-  if DefItem<Combo.Items.Count
+  if (DefItem>=0) and (DefItem<Combo.Items.Count)
     then Combo.ItemIndex:=DefItem;
 end;
 
@@ -483,7 +484,7 @@ begin
   if not Assigned(FCOMPort) or not OpenDialog.Execute or not FileExists(OpenDialog.FileName) then Exit;
   F:=TFileStream.Create(OpenDialog.FileName, fmOpenRead);
   try
-    AddToLog('File "'+OpenDialog.FileName+'"', CaptionSend, clNavy);
+    AddToLog('File "'+OpenDialog.FileName+'"', CaptionSend, clNavy, Now);
     while F.Position<F.Size do
     begin
       Len:=F.Read(Buf[0], Length(Buf));
@@ -492,7 +493,7 @@ begin
         Done:=Done+FCOMPort.Write(Buf[Done], Len-Done);
       Application.ProcessMessages;
     end;
-    AddToLog('File "'+OpenDialog.FileName+'" sent', CaptionSend, clNavy);
+    AddToLog('File "'+OpenDialog.FileName+'" sent', CaptionSend, clNavy, Now);
   finally
     FreeAndNil(F);
   end;
@@ -598,46 +599,48 @@ procedure TFormMain.RecvTimerTimer(Sender: TObject);
 
 var
   NewData, i: Integer;
+  Time: TDateTime;
 begin
   if not Assigned(FCOMPort) then Exit;
   NewData:=ReadToBuffer;
+  Time:=Now;
   if NewData>0 then SetLogUpdateState(true);
   case TTextMode(GetComboValue(CBRecvMode)) of
     tmHex: begin
       while Length(FRecvBuffer)>16 do
       begin
-        AddToLog(ConvertToHex(FRecvBuffer, 16), CaptionRecv, clMaroon);
+        AddToLog(ConvertToHex(FRecvBuffer, 16), CaptionRecv, clMaroon, Time);
         Delete(FRecvBuffer, 1, 16);
       end;
       if (NewData=0) and (Length(FRecvBuffer)>0) then
       begin
-        AddToLog(ConvertToHex(FRecvBuffer, Length(FRecvBuffer)), CaptionRecv, clMaroon);
+        AddToLog(ConvertToHex(FRecvBuffer, Length(FRecvBuffer)), CaptionRecv, clMaroon, Time);
         FRecvBuffer:='';
       end;
     end;
     tmInt8: begin
       for i:=0 to Length(FRecvBuffer)-1 do
-        AddToLog(IntToStr(Ord(FRecvBuffer[i+1])), CaptionRecv, clMaroon);
+        AddToLog(IntToStr(Ord(FRecvBuffer[i+1])), CaptionRecv, clMaroon, Time);
       FRecvBuffer:='';
     end;
     tmInt16: begin
       NewData:=Length(FRecvBuffer) div 2;
       for i:=0 to NewData-1 do
-        AddToLog(IntToStr(Word(PWord(@FRecvBuffer[2*i+1])^)), CaptionRecv, clMaroon);
+        AddToLog(IntToStr(Word(PWord(@FRecvBuffer[2*i+1])^)), CaptionRecv, clMaroon, Time);
       Delete(FRecvBuffer, 1, 2*NewData);
     end;
     tmInt32: begin
       NewData:=Length(FRecvBuffer) div 4;
       for i:=0 to NewData-1 do
-        AddToLog(IntToStr(Integer(PInteger(@FRecvBuffer[4*i+1])^)), CaptionRecv, clMaroon);
+        AddToLog(IntToStr(Integer(PInteger(@FRecvBuffer[4*i+1])^)), CaptionRecv, clMaroon, Time);
       Delete(FRecvBuffer, 1, 4*NewData);
     end;
   else
     while (Pos(#10, FRecvBuffer)>0) or (Pos(#13, FRecvBuffer)>0) do
-      AddToLog(ReadLine, CaptionRecv, clMaroon);
+      AddToLog(ReadLine, CaptionRecv, clMaroon, Time);
     if (NewData=0) and (Length(FRecvBuffer)>0) then
     begin
-      AddToLog(FRecvBuffer, CaptionRecv, clMaroon);
+      AddToLog(FRecvBuffer, CaptionRecv, clMaroon, Time);
       FRecvBuffer:='';
     end;
   end;
@@ -695,7 +698,7 @@ var
   TempDWord: DWORD;
   i, Len: Integer;
 begin
-  AddToLog(S, CaptionSend, clGreen);
+  AddToLog(S, CaptionSend, clGreen, Now);
   case TTextMode(GetComboValue(CBSendMode)) of
     tmASCII: FCOMPort.Write(S[1], Length(S));
     tmASCIILF: begin
