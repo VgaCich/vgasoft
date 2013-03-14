@@ -20,6 +20,18 @@ unit MulticastEvent;
 в выделенном модуле <modulename>
 }
 
+(*TODO:
+1) Cross-thread events
+2)
+#include "boost/signals.hpp"
+
+class Button
+{
+public:
+    boost::signal<void()> OnPressed; //Сигнал
+};
+*)
+
 interface
 
 uses SysUtils;
