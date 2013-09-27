@@ -187,14 +187,32 @@ implementation
 
 {$B-}
 
+const
+  HashTable: array[0..$FF] of Byte = (
+    $01, $57, $31, $0C, $B0, $B2, $66, $A6, $79, $C1, $06, $54, $F9, $E6, $2C, $A3,
+    $0E, $C5, $D5, $B5, $A1, $55, $DA, $50, $40, $EF, $18, $E2, $EC, $8E, $26, $C8,
+    $6E, $B1, $68, $67, $8D, $FD, $FF, $32, $4D, $65, $51, $12, $2D, $60, $1F, $DE,
+    $19, $6B, $BE, $46, $56, $ED, $F0, $22, $48, $F2, $14, $D6, $F4, $E3, $95, $EB,
+    $61, $EA, $39, $16, $3C, $FA, $52, $AF, $D0, $05, $7F, $C7, $6F, $3E, $87, $F8,
+    $AE, $A9, $D3, $3A, $42, $9A, $6A, $C3, $F5, $AB, $11, $BB, $B6, $B3, $00, $F3,
+    $84, $38, $94, $4B, $80, $85, $9E, $64, $82, $7E, $5B, $0D, $99, $F6, $D8, $DB,
+    $77, $44, $DF, $4E, $53, $58, $C9, $63, $7A, $0B, $5C, $20, $88, $72, $34, $0A,
+    $8A, $1E, $30, $B7, $9C, $23, $3D, $1A, $8F, $4A, $FB, $5E, $81, $A2, $3F, $98,
+    $AA, $07, $73, $A7, $F1, $CE, $03, $96, $37, $3B, $97, $DC, $5A, $35, $17, $83,
+    $7D, $AD, $0F, $EE, $4F, $5F, $59, $10, $69, $89, $E1, $E0, $D9, $A0, $25, $7B,
+    $76, $49, $02, $9D, $2E, $74, $09, $91, $86, $E4, $CF, $D4, $CA, $D7, $45, $E5,
+    $1B, $BC, $43, $7C, $A8, $FC, $2A, $04, $1D, $6C, $15, $F7, $13, $CD, $27, $CB,
+    $E9, $28, $BA, $93, $C6, $C0, $9B, $21, $A4, $BF, $62, $CC, $A5, $B4, $75, $4C,
+    $8C, $24, $D2, $AC, $29, $36, $9F, $08, $B9, $E8, $71, $C4, $E7, $2F, $92, $78,
+    $33, $41, $1C, $90, $FE, $DD, $5D, $BD, $C2, $8B, $70, $2B, $47, $6D, $B8, $D1);
+
 function StringHash(const S: AnsiString): Byte;
 var
   i: Integer;
 begin
   Result:=0;
   for i:=1 to Length(S) do
-    Result:=Result+Ord(S[i]);
-  if (Result=0) and (S<>'') then Result:=1;
+    Result:=HashTable[Result xor Ord(S[i])];
 end;
 
 { TMulticastEventBase }
@@ -289,7 +307,7 @@ end;
 function TMulticastEventBase.ResetListener: Boolean;
 begin
   FCurListener:=FListeners;
-  if (FBroadcastIdHash<>0) and not Assigned(FCurListener.Method.Code)
+  if (FBroadcastId<>'') and not Assigned(FCurListener.Method.Code)
     then FListeners.Method:=GetBroadcastSender;
   Result:=Assigned(FCurListener.Method.Code);
 end;
