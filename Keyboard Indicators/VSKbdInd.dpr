@@ -11,8 +11,8 @@ const
   TrayIconID = 0;
   CRLF = #13#10;
   ClassName = 'VSKeyboardIndicatorsWnd';
-  AboutText = 'VgaSoft Keyboard Indicators 1.0'+CRLF+CRLF+
-              'Copyright '#169' VgaSoft, 2012'+CRLF+
+  AboutText = 'VgaSoft Keyboard Indicators 1.1'+CRLF+CRLF+
+              'Copyright '#169' VgaSoft, 2012-2013'+CRLF+
               'vgasoft@gmail.com';
   AboutIcon = 'MAINICON';
   RegRunKey = 'Software\Microsoft\Windows\CurrentVersion\Run';
@@ -25,6 +25,7 @@ resourcestring
                  'Scroll Lock: %s';
   LEDOn = 'On';
   LEDOff = 'Off';
+  NextWPHotKey = '0'; //Hotkey for Win7's "Next desktop background", =IntToStr((MOD_ALT|MOD_CONTROL|MOD_SHIFT shl 8) or VK_xxx)
 
 var
   hWnd: THandle;
@@ -32,6 +33,7 @@ var
   Msg: TMsg;
   TaskBarCreated, OldKeyState: Integer;
   TrayIconCreated: Boolean = false;
+  HextWPHotKeyID: Word;
 
 function Format(const Format: string; const Args: array of const): string;
 var
@@ -53,6 +55,13 @@ begin
   wvsprintf(@Buffer[0], PChar(Format), PChar(ElsArray));
   Result := Buffer;
   if ElsArray <> nil then FreeMem(ElsArray);
+end;
+
+function StrToInt(const S: string): Integer;
+var
+  E: Integer;
+begin
+  Val(S, Result, E);
 end;
 
 procedure ShowAboutDialog;
@@ -189,6 +198,12 @@ begin
         ID_ABOUT: ShowAboutDialog;
         ID_AUTOSTART: SetAutostartState(not GetAutostartState);
       end;
+    WM_HOTKEY:
+      if wParam=HextWPHotKeyID then
+      begin
+        hWnd:=FindWindow('SystemTray_Main', nil);
+        SendMessage(hWnd, $04E7, 0, 0);
+      end;
     WM_TASKBAR:
       case wParam of
         TrayIconID:
@@ -231,9 +246,20 @@ begin
   end;
   CreateTrayIcon;
   ShowWindow(hWnd, SW_HIDE);
+  if NextWPHotKey <> '0' then
+  begin
+    HextWPHotKeyID:=GlobalAddAtom('vs.kbdind.hotkey.nextwallpaper');
+    if HextWPHotKeyID<>0
+      then RegisterHotKey(hWnd, HextWPHotKeyID, Hi(StrToInt(NextWPHotKey)), Lo(StrToInt(NextWPHotKey)));
+  end;
   SetTimer(hWnd, 1, 500, nil);
   while GetMessage(Msg, 0, 0, 0) do begin
     TranslateMessage(Msg);
     DispatchMessage(Msg);
+  end;
+  if HextWPHotKeyID <> 0 then
+  begin
+    UnregisterHotKey(hWnd, HextWPHotKeyID);
+    GlobalDeleteAtom(HextWPHotKeyID);
   end;
 end.
