@@ -387,7 +387,7 @@ begin
         end;
     end;
   end;
-  glViewport(0, 0, Core.ResX, Core.ResY);
+  glViewport(0, 0, Core.ResolutionX, Core.ResolutionY);
 end;
 
 procedure TTexMan.CreateFontTex(Font: Cardinal);
@@ -407,7 +407,7 @@ var
 begin
   with FFonts[Font]^ do
   try
-    k:=Core.ResY/600;
+    k:=Core.ResolutionY/600;
     FNT:=CreateFont(-MulDiv(Size, Ceil(k*GetDeviceCaps(Core.DC, LOGPIXELSY)), 72), 0, 0,
       0, Weight[Bold], 0, 0, 0, RUSSIAN_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
       ANTIALIASED_QUALITY, 0, PChar(Name));

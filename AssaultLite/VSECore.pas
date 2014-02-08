@@ -22,7 +22,10 @@ type
     FHandle: THandle;
     FDC: HDC;
     FRC: HGLRC;
-    FResX, FResY, FRefresh, FDepth: Cardinal;
+    FResolutionX: Cardinal;
+    FResolutionY: Cardinal;
+    FRefreshRate: Cardinal;
+    FColorDepth: Cardinal;
     FVSync: Integer;
     FFramesCount, FFPS, FFPSTimer, FPreviousUpdate, FUpdInt, FUpdOverloadCount, FUpdOverloadThreshold: Cardinal;
     FPerformanceFrequency: Int64;
@@ -63,17 +66,17 @@ type
     function  FindState(const Name: string): Cardinal; //Returns state index by state name or InvalidState if state not found
     {Misc.}
     function  KeyRepeat(Key: Byte; Rate: Integer; var KeyVar: Cardinal): Boolean; //Returns true if Key pressed, but no more often then Rate; KeyVar - counter for rate limiting
-    procedure SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean = true); //Set resolution ResX*ResY@Refresh; CanReset: return to previous resolution if fail
+    procedure SetResolution(ResolutionX, ResolutionY, RefreshRate: Cardinal; Fullscreen: Boolean; CanReset: Boolean = true);  //Set resolution ResX*ResY@Refresh; CanReset: return to previous resolution if fail
     procedure MakeScreenshot(Name: string; Numerate: Boolean = true); //Makes screenshot in exe folder; Name: screentshot file name; Numerate: append counter to name
     procedure ResetUpdateTimer; //Reset update timer and clear pending updates
     ///
     property Handle: THandle read FHandle; //Engine window handle
     property DC: HDC read FDC; //Engine window GDI device context
     property RC: HGLRC read FRC; //Engine window OpenGL rendering context
-    property ResX: Cardinal read FResX; //Horizontal resolution of viewport
-    property ResY: Cardinal read FResY; //Vertical resolution of viewport
-    property Refresh: Cardinal read FRefresh; //Screen refresh rate, fullscreen only
-    property Depth: Cardinal read FDepth write FDepth; //Color depth, applied after engine restarting
+    property ResolutionX: Cardinal read FResolutionX; //Horizontal resolution of viewport
+    property ResolutionY: Cardinal read FResolutionY; //Vertical resolution of viewport
+    property RefreshRate: Cardinal read FRefreshRate; //Screen refresh rate, fullscreen only
+    property ColorDepth: Cardinal read FColorDepth write FColorDepth; //Color depth, applied after engine restart
     property Fullscreen: Boolean read FFullscreen write SetFullscreen; //Fullscreen mode
     property VSync: Boolean read GetVSync write SetVSync; //Vertical synchronization
     property Minimized: Boolean read FMinimized; //Engine window minimized
@@ -102,8 +105,8 @@ uses
   VSESound, VSETexMan, VSEBindMan;
 
 const
-  MinResX = 640;
-  MinResY = 480;
+  MinResolutionX = 640;
+  MinResolutionY = 480;
   DefaultOverloadThreshold = 8;
   WndClassName: PChar = 'VSENGINE';
   WM_XBUTTONDOWN=$20B;
@@ -185,18 +188,18 @@ end;
 
 procedure TCore.StartEngine;
 begin
-  FResX:=VSEInit.ResX;
-  FResY:=VSEInit.ResY;
-  FRefresh:=VSEInit.Refresh;
-  FDepth:=VSEInit.Depth;
-  Fullscreen:=VSEInit.Fullscreen;
-  FVSync:=VSEInit.VSync;
+  FResolutionX:=InitSettings.ResolutionX;
+  FResolutionY:=InitSettings.ResolutionY;
+  FRefreshRate:=InitSettings.RefreshRate;
+  FColorDepth:=InitSettings.ColorDepth;
+  Fullscreen:=InitSettings.Fullscreen;
+  VSync:=InitSettings.VSync;
   if (FVSync<>0) and (FVSync<>1) then FVSync:=1;
-  if FResX<MinResX then FResX:=MinResX;
-  if FResY<MinResY then FResY:=MinResY;
-  if FRefresh=0 then FRefresh:=gleGetCurrentResolution.RefreshRate;
+  if FResolutionX<MinResolutionX then FResolutionX:=MinResolutionX;
+  if FResolutionY<MinResolutionY then FResolutionY:=MinResolutionY;
+  if FRefreshRate=0 then FRefreshRate:=gleGetCurrentResolution.RefreshRate;
   FDC:=GetDC(FHandle);
-  FRC:=gleSetPix(FDC, FDepth);
+  FRC:=gleSetPix(FDC, FColorDepth);
   if FRC=0 then raise Exception.Create('Unable to set rendering context');
   Sound:=TSound.Create;
   TexMan:=TTexMan.Create;
@@ -214,12 +217,12 @@ end;
 
 procedure TCore.SaveSettings;
 begin
-  VSEInit.ResX:=FResX;
-  VSEInit.ResY:=FResY;
-  VSEInit.Refresh:=FRefresh;
-  VSEInit.Depth:=FDepth;
-  VSEInit.Fullscreen:=FFullscreen;
-  VSEInit.VSync:=FVSync;
+  Settings.Int[SSectionSettings, SNameResolutionX]:=FResolutionX;
+  Settings.Int[SSectionSettings, SNameResolutionY]:=FResolutionY;
+  Settings.Int[SSectionSettings, SNameRefreshRate]:=FRefreshRate;
+  Settings.Int[SSectionSettings, SNameColorDepth]:=FColorDepth;
+  Settings.Bool[SSectionSettings, SNameFullscreen]:=Fullscreen;
+  Settings.Bool[SSectionSettings, SNameVSync]:=VSync;
 end;
 
 procedure TCore.Update;
@@ -261,9 +264,9 @@ begin
     if FMouseCapture and not FMinimized then
     begin
       Windows.GetCursorPos(Cur);
-      Cur.X:=Cur.X-FResX div 2;
-      Cur.Y:=Cur.Y-FResY div 2;
-      SetCursorPos(FResX div 2, FResY div 2);
+      Cur.X:=Cur.X-FResolutionX div 2;
+      Cur.Y:=Cur.Y-FResolutionY div 2;
+      SetCursorPos(FResolutionX div 2, FResolutionY div 2);
       try
         FCurState.MouseEvent(0, meMove, Cur.X, Cur.Y);
       except
@@ -308,7 +311,7 @@ end;
 procedure TCore.Resume;
 begin
   {$IFDEF VSE_LOG}Log(llInfo, 'Window maximized');{$ENDIF}
-  if FFullscreen then gleGoFullscreen(ResX, ResY, Refresh, FDepth);
+  if FFullscreen then gleGoFullscreen(ResolutionX, ResolutionY, RefreshRate, FColorDepth);
   FMinimized:=false;
   if FPaused then ResetUpdateTimer;
   FPaused:=false;
@@ -482,32 +485,33 @@ begin
     else KeyVar:=0;
 end;
 
-procedure TCore.SetResolution(ResX, ResY, Refresh: Cardinal; CanReset: Boolean = true);
+procedure TCore.SetResolution(ResolutionX, ResolutionY, RefreshRate: Cardinal; Fullscreen: Boolean; CanReset: Boolean = true);
 var
   OldResX, OldResY, OldRefresh: Cardinal;
 begin
-  OldResX:=FResX;
-  OldResY:=FResY;
-  OldRefresh:=FRefresh;
-  FResX:=ResX;
-  FResY:=ResY;
-  FRefresh:=Refresh;
-  {$IFDEF VSE_LOG}LogF(llInfo, 'Set resolution %dx%d@%d', [ResX, ResY, Refresh]);{$ENDIF}
-  SendMessage(FHandle, WM_SIZE, 0, ResY shl 16 + ResX);
+  OldResX:=FResolutionX;
+  OldResY:=FResolutionY;
+  OldRefresh:=FRefreshRate;
+  FResolutionX:=ResolutionX;
+  FResolutionY:=ResolutionY;
+  FRefreshRate:=RefreshRate;
+  {$IFDEF VSE_LOG}LogF(llInfo, 'Set resolution %dx%d@%d', [ResolutionX, ResolutionY, RefreshRate]);{$ENDIF}
+  Self.Fullscreen:=Fullscreen;
+  SendMessage(FHandle, WM_SIZE, 0, ResolutionY shl 16 + ResolutionX);
   if FFullscreen then
   begin
-    if not gleGoFullscreen(ResX, ResY, Refresh, FDepth) then
+    if not gleGoFullscreen(ResolutionX, ResolutionY, RefreshRate, FColorDepth) then
     begin
-      {$IFDEF VSE_LOG}Log(llError, 'Unable to enter fullscreen! Choose lower resolution or refresh rate');{$ENDIF}
+      {$IFDEF VSE_LOG}Log(llError, 'Unable to set resolution! Choose lower resolution or refresh rate');{$ENDIF}
       if CanReset
         then SetResolution(OldResX, OldResY, OldRefresh, false)
         else begin
-          MessageBox(FHandle, 'Unable to enter fullscreen! Choose lower resolution or refresh rate', PChar(CaptionVer), MB_ICONERROR);
+          MessageBox(FHandle, 'Unable to set resolution! Choose lower resolution or refresh rate', PChar(InitSettings.Caption), MB_ICONERROR);
           StopEngine(StopDisplayModeError);
         end;
     end;
   end
-  else SetWindowPos(FHandle, 0, (Screen.Width-FResX) div 2, (Screen.Height-FResY) div 2, 0, 0, SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE);
+  else SetWindowPos(FHandle, 0, (Screen.Width-FResolutionX) div 2, (Screen.Height-FResolutionY) div 2, 0, 0, SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE);
   TexMan.RebuildFonts;
 end;
 
@@ -529,24 +533,24 @@ begin
       end;
   end
     else Name:=ExePath+Name+'.bmp';
-  GetMem(Pix, FResX*FResY*3);
+  GetMem(Pix, FResolutionX*FResolutionY*3);
   try
-    glReadPixels(0, 0, FResX, FResY, GL_BGR, GL_UNSIGNED_BYTE, Pix);
+    glReadPixels(0, 0, FResolutionX, FResolutionY, GL_BGR, GL_UNSIGNED_BYTE, Pix);
     F:=TFileStream.Create(Name, fmCreate);
     with BMPFH, BMPIH do
     begin
       bfType:=$4D42;
-      bfSize:=FResX*FResY*3+SizeOf(BMPFH)+SizeOf(BMPIH);
+      bfSize:=FResolutionX*FResolutionY*3+SizeOf(BMPFH)+SizeOf(BMPIH);
       bfReserved1:=0;
       bfReserved2:=0;
       bfOffBits:=SizeOf(BMPFH)+SizeOf(BMPIH);
       biSize:=SizeOf(BMPIH);
-      biWidth:=FResX;
-      biHeight:=FResY;
+      biWidth:=FResolutionX;
+      biHeight:=FResolutionY;
       biPlanes:=1;
       biBitCount:=24;
       biCompression:=0;
-      biSizeImage:=FResX*FResY*3;
+      biSizeImage:=FResolutionX*FResolutionY*3;
       biXPelsPerMeter:=0;
       biYPelsPerMeter:=0;
       biClrUsed:=0;
@@ -554,7 +558,7 @@ begin
     end;
     F.Write(BMPFH, SizeOf(BMPFH));
     F.Write(BMPIH, SizeOf(BMPIH));
-    F.Write(Pix^, FResX*FResY*3);
+    F.Write(Pix^, FResolutionX*FResolutionY*3);
     {$IFDEF VSE_LOG}Log(llInfo, 'Screenshot saved to "'+Name+'"');{$ENDIF}
   finally
     FreeMem(Pix);
@@ -574,7 +578,7 @@ begin
   if FFullscreen=Value then Exit;
   FFullscreen:=Value;
   if Value
-    then FFullscreen:=gleGoFullscreen(FResX, FResY, FRefresh, FDepth)
+    then FFullscreen:=gleGoFullscreen(FResolutionX, FResolutionY, FRefreshRate, FColorDepth)
     else gleGoBack;
   {$IFDEF VSE_LOG}if FFullscreen<>Value then Log(llError, 'Unable to enter fullscreen! Choose lower resolution or refresh rate');{$ENDIF}
   if FFullscreen then
@@ -586,7 +590,7 @@ begin
   else begin
     SetWindowLong(FHandle, GWL_EXSTYLE, WS_EX_APPWINDOW or WS_EX_WINDOWEDGE);
     SetWindowLong(FHandle, GWL_STYLE, WS_OVERLAPPED or WS_CAPTION or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
-    SetWindowPos(FHandle, HWND_NOTOPMOST, (Screen.Width-FResX) div 2, (Screen.Height-FResY) div 2, 0, 0, SWP_NOSIZE or SWP_FRAMECHANGED or SWP_SHOWWINDOW);
+    SetWindowPos(FHandle, HWND_NOTOPMOST, (Screen.Width-FResolutionX) div 2, (Screen.Height-FResolutionY) div 2, 0, 0, SWP_NOSIZE or SWP_FRAMECHANGED or SWP_SHOWWINDOW);
   end;
 end;
 
@@ -643,7 +647,7 @@ begin
   FMouseCapture:=Value;
   if Value then
   begin
-    SetCursorPos(FResX div 2, FResY div 2);
+    SetCursorPos(FResolutionX div 2, FResolutionY div 2);
     SetCapture(FHandle);
     ShowCursor(false);
   end
@@ -658,7 +662,7 @@ var
   T: Int64;
 begin
   QueryPerformanceCounter(T);
-  Result:=Trunc(1000*T/FPerformanceFrequency);
+  Result:=Trunc(1000*(T/FPerformanceFrequency));
 end;
 
 function WndProc(hWnd: HWND; Msg: UINT; wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;
@@ -681,18 +685,18 @@ begin
           SendMessage(Handle, WM_CLOSE, 0, 0);
         end;
         {$IFDEF VSE_LOG}Log(llInfo, 'Engine created');{$ENDIF}
-        Core.SetResolution(Core.ResX, Core.ResY, Core.Refresh, false);
+        Core.SetResolution(Core.ResolutionX, Core.ResolutionY, Core.RefreshRate, false);
         {$IFDEF VSE_LOG}Log(llInfo, 'States initialization');{$ENDIF}
-        if Assigned(InitStates) then
+        if Assigned(InitSettings.InitStates) then
           try
-            InitStates;
+            InitSettings.InitStates;
           except
             {$IFDEF VSE_LOG}LogException('in InitStates');{$ENDIF}
             Core.StopEngine(StopUserException);
           end
           else begin
             {$IFDEF VSE_LOG}Log(llError, 'InitStates() not initialized');{$ENDIF}
-            MessageBox(Handle, 'InitStates() not initialized', PChar(CaptionVer), MB_ICONERROR);
+            MessageBox(Handle, 'InitStates() not initialized', PChar(InitSettings.Caption), MB_ICONERROR);
             VSEStopState:=1;
             Core.StopEngine(StopInitError);
             Exit;
@@ -719,8 +723,7 @@ begin
         if Assigned(Core) and Core.Fullscreen then gleGoBack;
         FAN(Core);
         Quitting:=true;
-        {$IFDEF VSE_LOG}Log(llInfo, 'Engine destroyed');
-        LogRaw(llError, '');{$ENDIF}
+        {$IFDEF VSE_LOG}Log(llInfo, 'Engine destroyed');{$ENDIF}
         Result:=0;
         PostQuitMessage(VSEStopState);
       end;
@@ -734,14 +737,14 @@ begin
         if Assigned(Core) then begin
           if Core.Fullscreen then
           begin
-            WndWidth:=Core.ResX;
-            WndHeight:=Core.ResY;
+            WndWidth:=Core.ResolutionX;
+            WndHeight:=Core.ResolutionY;
           end
           else begin
-            WndWidth:=Core.ResX+GetSystemMetrics(SM_CXDLGFRAME)*2;
-            WndHeight:=Core.ResY+GetSystemMetrics(SM_CYCAPTION)+GetSystemMetrics(SM_CYDLGFRAME)*2;
+            WndWidth:=Core.ResolutionX+GetSystemMetrics(SM_CXDLGFRAME)*2;
+            WndHeight:=Core.ResolutionY+GetSystemMetrics(SM_CYCAPTION)+GetSystemMetrics(SM_CYDLGFRAME)*2;
           end;
-          gleResizeWnd(Core.ResX, Core.ResY);
+          gleResizeWnd(Core.ResolutionX, Core.ResolutionY);
           if Core.Fullscreen
             then SetWindowPos(Handle, HWND_TOPMOST, 0, 0, WndWidth, WndHeight, 0)
             else SetWindowPos(Handle, HWND_TOP, 0, 0, WndWidth, WndHeight, SWP_NOMOVE or SWP_FRAMECHANGED);
@@ -764,9 +767,8 @@ end;
 function VSEStart: Integer;
 begin
   Result:=StopInitError;
-  if CaptionVer='' then CaptionVer:=Caption+' '+Version;
-  if IsRunning(Caption) then Exit;
-  {$IFDEF VSE_LOG}Log(llInfo, CaptionVer+' started');
+  if IsRunning(InitSettings.Caption) then Exit;
+  {$IFDEF VSE_LOG}Log(llInfo, InitSettings.Caption+' '+InitSettings.Version+' started');
   Log(llInfo, VSECaptVer);{$ENDIF}
   Initializing:=false;
   Fin:=false;
@@ -785,16 +787,16 @@ begin
   if Windows.RegisterClass(WndClass)=0 then
   begin
     {$IFDEF VSE_LOG}Log(llError, 'Failed to register the window class');{$ENDIF}
-    MessageBox(0, 'Failed to register the window class!', PChar(CaptionVer), MB_ICONERROR);
+    MessageBox(0, 'Failed to register the window class!', PChar(InitSettings.Caption), MB_ICONERROR);
     Exit;
   end;
-  Handle:=CreateWindowEx(WS_EX_APPWINDOW or WS_EX_WINDOWEDGE, WndClassName, PChar(Caption),
+  Handle:=CreateWindowEx(WS_EX_APPWINDOW or WS_EX_WINDOWEDGE, WndClassName, PChar(InitSettings.Caption),
     WS_OVERLAPPED or WS_CAPTION or WS_CLIPCHILDREN or WS_CLIPSIBLINGS,
     0, 0, 800, 600, 0, 0, hInstance, nil);
   if Handle=0 then
   begin
     {$IFDEF VSE_LOG}Log(llError, 'Unable to create window');{$ENDIF}
-    MessageBox(0, 'Unable to create window!', PChar(CaptionVer), MB_ICONERROR);
+    MessageBox(0, 'Unable to create window!', PChar(InitSettings.Caption), MB_ICONERROR);
     Exit;
   end;
   SendMessage(Handle, WM_SETICON, 1, LoadIcon(hInstance, 'MAINICON'));

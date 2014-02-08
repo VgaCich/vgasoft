@@ -1,115 +1,160 @@
-//Must be first unit in projects, except of memory manager etc
+//Must be first unit in project, except of memory manager etc
 unit VSEInit;
 
 interface
 
 uses AvL, avlUtils{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
+const
+  SSectionSettings = 'Settings';
+  SNameColorDepth = 'ColorDepth';
+  SNameFullscreen = 'Fullscreen';
+  SNameRefreshRate = 'RefreshRate';
+  SNameResolutionY = 'ResolutionY';
+  SNameResolutionX = 'ResolutionX';
+  SNameVSync = 'VSync';
+
 type
   TInitStates=procedure;
+  TBinding=record
+    Name, Description: string;
+    Key: Byte;
+  end;
+  TInitSettings=record //Engine settings
+    InitStates: TInitStates; //Init states procedure pointer
+    Caption: string; //Engine window caption
+    Version: string; //Application version
+    ResolutionX: Integer; //Horizontal resolution
+    ResolutionY: Integer; //Vertical resolution
+    RefreshRate: Integer; //Screen refresh rate, fullscreen only
+    ColorDepth: Integer; //Color depth
+    Fullscreen: Boolean; //Fullscreen mode
+    VSync: Boolean; //Vertical synchronization
+    Bindings: array of TBinding;
+  end;
+  TSettings=class //Interface to engine's ini file
+  private
+    FFirstRun: Boolean;
+    FIni: TIniFile;
+    function GetBool(const Section, Name: string): Boolean;
+    function GetInt(const Section, Name: string): Integer;
+    function GetStr(const Section, Name: string): string;
+    procedure SetBool(const Section, Name: string; const Value: Boolean);
+    procedure SetInt(const Section, Name: string; const Value: Integer);
+    procedure SetStr(const Section, Name: string; const Value: string);
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function ReadSection(const Section: string): TStringList; //Read section contents to TStringList
+    procedure EraseSection(const Section: string); //Erase section
+    property FirstRun: Boolean read FFirstRun; //True if ini file wasn't exist at time of engine's start
+    property Bool[const Section, Name: string]: Boolean read GetBool write SetBool; //Read/write Boolean value
+    property Int[const Section, Name: string]: Integer read GetInt write SetInt; //Read/write Integer value
+    property Str[const Section, Name: string]: string read GetStr write SetStr; //Read/write String value
+  end;
 
 const
   VSECaptVer='VgaSoft Engine 0.1';
 
-var //Start engine settings
-  InitStates: TInitStates; //Init states procedure pointer
-  Caption: string='VgaSoft Engine'; //Engine window caption
-  Version: string='0.1'; //Application version
-  CaptionVer: string; //Application name with version; default: Caption+' '+Version
-  ResX: Integer=640; //Horizontal resolution
-  ResY: Integer=480; //Vertical resolution
-  Refresh: Integer=0; //Screen refresh rate, fullscreen only
-  Depth: Integer=32; //Color depth
-  Fullscreen: Boolean=false; //Fullscreen mode
-  VSync: Integer=1; //Vertical synchronization
-  //SoundDevice: string='default';
-  Bindings: string='';
+var
+  InitSettings: TInitSettings = (
+    InitStates: nil;
+    Caption: '';
+    Version: '';
+    ResolutionX: 640;
+    ResolutionY: 480;
+    RefreshRate: 0;
+    ColorDepth: 32;
+    Fullscreen: false;
+    VSync: true;
+    Bindings: nil);
+  Settings: TSettings;
 
-procedure LoadINI; //Load settings from ini file
-procedure SaveINI; //Save settings to ini file
-function GetINI: TIniFile; //Return TINiFile for save/read user settings
-function CheckINI: Boolean; //Return true if ini file exists
+procedure SetBindings(Bindings: array of TBinding); //Set BindMan configuration
 
 implementation
 
-const
-  SBind = 'Bind';
-  SSettings = 'Settings';
-
-procedure LoadINI;
+procedure SetBindings(Bindings: array of TBinding);
 var
-  INI: TIniFile;
-  Bind: TStringList;
-begin
-  {$IFDEF VSE_LOG}Log(llInfo, 'Loading settings from INI file');{$ENDIF}
-  INI:=GetINI;
-  try
-    ResX:=INI.ReadInteger(SSettings, 'ResX', ResX);
-    ResY:=INI.ReadInteger(SSettings, 'ResY', ResY);
-    Refresh:=INI.ReadInteger(SSettings, 'Refresh', Refresh);
-    Depth:=INI.ReadInteger(SSettings, 'Depth', Depth);
-    Fullscreen:=INI.ReadBool(SSettings, 'Fullscreen', Fullscreen);
-    VSync:=INI.ReadInteger(SSettings, 'VSync', VSync);
-    //SoundDevice:=INI.ReadString(SSettings, 'SoundDevice', SoundDevice);
-    if INI.SectionExists(SBind) then
-    begin
-      Bind:=TStringList.Create;
-      try
-        INI.ReadSectionValues(SBind, Bind);
-        Bindings:=Bind.Text;
-      finally
-        FAN(Bind);
-      end;
-    end;
-  finally
-    FAN(INI);
-  end;
-end;
-
-procedure SaveINI;
-var
-  INI: TIniFile;
-  Bind: TStringList;
   i: Integer;
-  Name: string;
 begin
-  {$IFDEF VSE_LOG}Log(llInfo, 'Saving settings to INI file');{$ENDIF}
-  INI:=GetINI;
-  try
-    INI.WriteInteger(SSettings, 'ResX', ResX);
-    INI.WriteInteger(SSettings, 'ResY', ResY);
-    INI.WriteInteger(SSettings, 'Refresh', Refresh);
-    INI.WriteInteger(SSettings, 'Depth', Depth);
-    INI.WriteBool(SSettings, 'Fullscreen', Fullscreen);
-    INI.WriteInteger(SSettings, 'VSync', VSync);
-    //INI.WriteString(SSettings, 'SoundDevice', SoundDevice);
-    if Bindings<>'' then
+  SetLength(InitSettings.Bindings, Length(Bindings));
+  for i:=0 to Length(Bindings)-1 do
+    InitSettings.Bindings[i]:=Bindings[i];
+end;
+
+constructor TSettings.Create;
+var
+  IniName: string;
+begin
+  inherited;
+  IniName:=ChangeFileExt(FullExeName, '.ini');
+  FFirstRun:=not FileExists(IniName);
+  FIni:=TIniFile.Create(IniName);
+  if not FFirstRun then
+    with InitSettings do
     begin
-      Bind:=TStringList.Create;
-      try
-        Bind.Text:=Bindings;
-        for i:=0 to Bind.Count-1 do
-        begin
-          Name:=Copy(Bind[i], 1, FirstDelimiter('=', Bind[i])-1);
-          INI.WriteString(SBind, Name, Bind.Values[Name]);
-        end;
-      finally
-        FAN(Bind);
-      end;
+      {$IFDEF VSE_LOG}Log(llInfo, 'Loading settings from ini file');{$ENDIF}
+      ResolutionX:=FIni.ReadInteger(SSectionSettings, SNameResolutionX, ResolutionX);
+      ResolutionY:=FIni.ReadInteger(SSectionSettings, SNameResolutionY, ResolutionY);
+      RefreshRate:=FIni.ReadInteger(SSectionSettings, SNameRefreshRate, RefreshRate);
+      ColorDepth:=FIni.ReadInteger(SSectionSettings, SNameColorDepth, ColorDepth);
+      Fullscreen:=FIni.ReadBool(SSectionSettings, SNameFullscreen, Fullscreen);
+      VSync:=FIni.ReadBool(SSectionSettings, SNameVSync, VSync);
     end;
-  finally
-    FAN(INI);
-  end;
 end;
 
-function GetINI: TIniFile;
+destructor TSettings.Destroy;
 begin
-  Result:=TIniFile.Create(ChangeFileExt(FullExeName, '.ini'));
+  FAN(FIni);
+  inherited;
 end;
 
-function CheckINI: Boolean;
+procedure TSettings.EraseSection(const Section: string);
 begin
-  Result:=FileExists(ChangeFileExt(FullExeName, '.ini'));
+  FIni.EraseSection(Section);
 end;
+
+function TSettings.GetBool(const Section, Name: string): Boolean;
+begin
+  Result:=FIni.ReadBool(Section, Name, false);
+end;
+
+function TSettings.GetInt(const Section, Name: string): Integer;
+begin
+  Result:=FIni.ReadInteger(Section, Name, 0);
+end;
+
+function TSettings.GetStr(const Section, Name: string): string;
+begin
+  Result:=FIni.ReadString(Section, Name, '');
+end;
+
+function TSettings.ReadSection(const Section: string): TStringList;
+begin
+  Result:=TStringList.Create;
+  FIni.ReadSectionValues(Section, Result);
+end;
+
+procedure TSettings.SetBool(const Section, Name: string; const Value: Boolean);
+begin
+  FIni.WriteBool(Section, Name, Value);
+end;
+
+procedure TSettings.SetInt(const Section, Name: string; const Value: Integer);
+begin
+  FIni.WriteInteger(Section, Name, Value);
+end;
+
+procedure TSettings.SetStr(const Section, Name: string; const Value: string);
+begin
+  FIni.WriteString(Section, Name, Value);
+end;
+
+initialization
+  Settings:=TSettings.Create;
+
+finalization
+  FAN(Settings);
 
 end.

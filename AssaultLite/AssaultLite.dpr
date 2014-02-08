@@ -18,28 +18,34 @@ const
             'Это ускорит загрузку игры при следущем запуске, но потребует'#13#10+
             'несколько десятков мегабайт места на вашем жестком диске';
   SUseFullscreen='Запустить игру в полноэкранном режиме?';
+  Bindings: array[0..5] of TBinding = (
+    (Name: 'Fwd'; Description: 'Вперед'; Key: Ord('W')),
+    (Name: 'Bwd'; Description: 'Назад'; Key: Ord('S')),
+    (Name: 'SLeft'; Description: 'Влево'; Key: Ord('A')),
+    (Name: 'SRight'; Description: 'Вправо'; Key: Ord('D')),
+    (Name: 'SpdUp'; Description: 'Быстрее'; Key: VK_SHIFT),
+    (Name: 'SpdDn'; Description: 'Медленнее'; Key: VK_CONTROL));
 
 begin
-  VSEInit.InitStates:=InitStates;
-  Caption:='Assault Lite';
-  Version:='0.1';
-  ResX:=800;
-  ResY:=600;
+  InitSettings.InitStates:=InitStates;
+  InitSettings.Caption:='Assault Lite';
+  InitSettings.Version:='0.1';
+  SetBindings(Bindings);
   CacheDir:=ExePath+'Cache\';
-  if not CheckINI then
+  if Settings.FirstRun then
   begin
-    VSETexMan.UseCache:=MessageDlg(SUseCache, Caption, MB_ICONQUESTION or MB_YESNO)=ID_YES;
-    Fullscreen:=MessageDlg(SUseFullscreen, Caption, MB_ICONQUESTION or MB_YESNO)=ID_YES;
-    if Fullscreen then
+    VSETexMan.UseCache:=MessageDlg(SUseCache, InitSettings.Caption, MB_ICONQUESTION or MB_YESNO)=ID_YES;
+    InitSettings.Fullscreen:=MessageDlg(SUseFullscreen, InitSettings.Caption, MB_ICONQUESTION or MB_YESNO)=ID_YES;
+    if InitSettings.Fullscreen then
     begin
-      ResX:=Screen.Width;
-      ResY:=Screen.Height;
+      InitSettings.ResolutionX:=Screen.Width;
+      InitSettings.ResolutionY:=Screen.Height;
+    end
+    else begin
+      InitSettings.ResolutionX:=800;
+      InitSettings.ResolutionY:=600;
     end;
   end
-  else begin
-    LoadINI;
-    VSETexMan.UseCache:=DirectoryExists(CacheDir);
-  end;
+    else VSETexMan.UseCache:=DirectoryExists(CacheDir);
   VSEStart;
-  SaveINI;
 end.

@@ -38,10 +38,11 @@ uses
 {uFMOD}
 
 const
+  SNameEnableBGM = 'EnableBGM';
 	XM_MEMORY=1;
 	uFMOD_BUFFER_SIZE=262144;
   uFMOD_MixRate = 44100;
-  SSound='Sound';
+  SSectionSound='Sound';
 
 {$L dsufmod.obj}
 function uFMOD_DSPlaySong(lpXM: Pointer; param, fdwSong: Integer;
@@ -50,8 +51,6 @@ function uFMOD_DSPlaySong(lpXM: Pointer; param, fdwSong: Integer;
 {TSound}
 
 constructor TSound.Create;
-var
-  Ini: TIniFile;
 begin
   inherited Create;
   {$IFDEF VSE_LOG}Log(llInfo, 'Sound: Create');{$ENDIF}
@@ -88,25 +87,15 @@ begin
     {$IFDEF VSE_LOG}Log(llError, 'Sound: Cannot create secondary buffer');{$ENDIF}
     FMusicBuffer:=nil;
   end;
-  Ini:=GetINI;
-  try
-    EnableBGM:=Ini.ReadBool(SSound, 'EnableBGM', true);
-  finally
-    FAN(Ini);
-  end;
+  if Settings.FirstRun
+    then Settings.Bool[SSectionSound, SNameEnableBGM]:=true
+    else EnableBGM:=Settings.Bool[SSectionSound, SNameEnableBGM];
 end;
 
 destructor TSound.Destroy;
-var
-  Ini: TIniFile;
 begin
   {$IFDEF VSE_LOG}Log(llInfo, 'Sound: Destroy');{$ENDIF}
-  Ini:=GetINI;
-  try
-    Ini.WriteBool(SSound, 'EnableBGM', EnableBGM);
-  finally
-    FAN(Ini);
-  end;
+  Settings.Bool[SSectionSound, SNameEnableBGM]:=EnableBGM;
   StopMusic;
   FMusicBuffer:=nil;
   FDirectSound:=nil;

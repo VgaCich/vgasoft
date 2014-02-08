@@ -26,7 +26,5 @@ PMEdit.exe: PMEdit\PMEdit.dpr
 STAsm.exe: STAsm\STAsm.dpr
   $(DCC)
 
-BindEdit.exe: BindEdit\BindEdit.dpr
-  $(DCC)
 
 

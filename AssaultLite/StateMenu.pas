@@ -24,8 +24,8 @@ type
   TOptions=class(TGUIForm)
   protected
     FParent: TStateMenu;
-    FLRes, FLRefr, FLDepth, FLCacheSize, FCFullScr, FCVSync, FCEnableBGM, FBToggleCache,
-      FBClearCache, FCurRes, FCurRefr, FDepth: Integer;
+    FLResolution, FLRefreshRate, FLColorDepth, FLCacheSize, FCFullscreen, FCVSync, FCEnableBGM, FBToggleCache,
+      FBClearCache, FCurrentResolution, FCurrentRefreshRate, FColorDepth: Integer;
     FResolutions: TResolutions;
     procedure DrawForm; override;
     procedure ResClick(Btn: PBtn);
@@ -83,51 +83,28 @@ uses VSEInit, VSECore, VSESound;
 
 {TMainMenu}
 
-constructor TMainMenu.Create(Parent: TStateMenu);
 var
-  Btn: TBtn;
+  MainMenuItems: array[0..5] of TMenuItem = (
+    (Caption: 'Новая игра'; Tag: 1),
+    (Caption: 'Продолжить'; Tag: 0),
+    (Caption: 'Настройки'; Tag: 0),
+    (Caption: 'Авторы'; Tag: 0),
+    (Caption: 'Справка'; Tag: 1),
+    (Caption: 'Выход'; Tag: 0));
+
+constructor TMainMenu.Create(Parent: TStateMenu);
 begin
   inherited Create(800, 600, 300, 130, 200, 350, TexMan.FontCreate('Arial', 12, true));
   FParent:=Parent;
   FCaption:='Assault Lite';
-  with Btn do
-  begin
-    Caption:='Новая игра';
-    Tag:=1;
-    Typ:=btPush;
-    X:=30;
-    Y:=50;
-    Width:=140;
-    Height:=30;
-    OnClick:=GameClick;
-    Enabled:=true;
-    AddButton(Btn);
-    Caption:='Продолжить';
-    Tag:=0;
-    Y:=100;
-    Enabled:=false;
-    OnClick:=GameClick;
-    FResumeButton:=AddButton(Btn);
-    Caption:='Настройки';
-    Y:=150;
-    Enabled:=true;
-    OnClick:=OptionsClick;
-    AddButton(Btn);
-    Caption:='Авторы';
-    Tag:=0;
-    Y:=200;
-    OnClick:=TextClick;
-    AddButton(Btn);
-    Caption:='Справка';
-    Tag:=1;
-    Y:=250;
-    OnClick:=TextClick;
-    AddButton(Btn);
-    Caption:='Выход';
-    Y:=300;
-    OnClick:=ExitClick;
-    AddButton(Btn);
-  end;
+  MainMenuItems[0].OnClick:=GameClick;
+  MainMenuItems[1].OnClick:=GameClick;
+  MainMenuItems[2].OnClick:=OptionsClick;
+  MainMenuItems[3].OnClick:=TextClick;
+  MainMenuItems[4].OnClick:=TextClick;
+  MainMenuItems[5].OnClick:=ExitClick;
+  FResumeButton:=CreateMenu(Self, 30, 50, 140, 30, 20, MainMenuItems)[1];
+  Button[FResumeButton].Enabled:=false;
 end;
 
 procedure TMainMenu.KeyEvent(Button: Integer; Event: TKeyEvent);
@@ -195,7 +172,7 @@ begin
     Width:=210;
     Height:=20;
     Caption:='Полный экран';
-    FCFullScr:=AddButton(Btn);
+    FCFullscreen:=AddButton(Btn);
     Y:=230;
     Caption:='Верт. синхр.';
     FCVSync:=AddButton(Btn);
@@ -253,9 +230,9 @@ begin
     Caption:='';
     FLCacheSize:=AddLabel(Lbl);
   end;
-  FLRes:=CreateSelect(Self, 10, 60, 190, 20, ResClick, '-', '+');
-  FLRefr:=CreateSelect(Self, 10, 110, 190, 20, RefrClick, '-', '+');
-  FLDepth:=CreateSelect(Self, 10, 160, 190, 20, DepthClick, '-', '+');
+  FLResolution:=CreateSelect(Self, 10, 60, 190, 20, ResClick, '-', '+');
+  FLRefreshRate:=CreateSelect(Self, 10, 110, 190, 20, RefrClick, '-', '+');
+  FLColorDepth:=CreateSelect(Self, 10, 160, 190, 20, DepthClick, '-', '+');
 end;
 
 destructor TOptions.Destroy;
@@ -275,33 +252,33 @@ procedure TOptions.ReadOptions;
 var
   i: Integer;
 begin
-  Button[FCFullScr].Checked:=Core.Fullscreen;
+  Button[FCFullscreen].Checked:=Core.Fullscreen;
   Button[FCVSync].Checked:=Core.VSync;
   Button[FCEnableBGM].Checked:=Sound.EnableBGM;
-  FDepth:=Core.Depth;
-  FCurRes:=-1;
+  FColorDepth:=Core.ColorDepth;
+  FCurrentResolution:=-1;
   for i:=0 to High(FResolutions) do
-    if (FResolutions[i].Width=Core.ResX) and (FResolutions[i].Height=Core.ResY) then FCurRes:=i;
-  if FCurRes=-1 then
+    if (FResolutions[i].Width=Core.ResolutionX) and (FResolutions[i].Height=Core.ResolutionY) then FCurrentResolution:=i;
+  if FCurrentResolution=-1 then
   begin
-    FCurRes:=Length(FResolutions);
-    SetLength(FResolutions, FCurRes+1);
-    with FResolutions[FCurRes] do
+    FCurrentResolution:=Length(FResolutions);
+    SetLength(FResolutions, FCurrentResolution+1);
+    with FResolutions[FCurrentResolution] do
     begin
-      Width:=Core.ResX;
-      Height:=Core.ResY;
+      Width:=Core.ResolutionX;
+      Height:=Core.ResolutionY;
       SetLength(RefreshRates, 1);
-      RefreshRates[0]:=Core.Refresh;
+      RefreshRates[0]:=Core.RefreshRate;
     end;
   end;
-  FCurRefr:=-1;
-  for i:=0 to High(FResolutions[FCurRes].RefreshRates) do
-    if FResolutions[FCurRes].RefreshRates[i]=Core.Refresh then FCurRefr:=i;
-  if FCurRefr=-1 then
+  FCurrentRefreshRate:=-1;
+  for i:=0 to High(FResolutions[FCurrentResolution].RefreshRates) do
+    if FResolutions[FCurrentResolution].RefreshRates[i]=Core.RefreshRate then FCurrentRefreshRate:=i;
+  if FCurrentRefreshRate=-1 then
   begin
-    FCurRefr:=Length(FResolutions[FCurRes].RefreshRates);
-    SetLength(FResolutions[FCurRes].RefreshRates, FCurRefr+1);
-    FResolutions[FCurRes].RefreshRates[FCurRefr]:=Core.Refresh;
+    FCurrentRefreshRate:=Length(FResolutions[FCurrentResolution].RefreshRates);
+    SetLength(FResolutions[FCurrentResolution].RefreshRates, FCurrentRefreshRate+1);
+    FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate]:=Core.RefreshRate;
   end;
   Lbl[FLCacheSize].Caption:=SCacheSize+SizeToStr(DirSize(CacheDir));
   Button[FBToggleCache].Caption:=CacheState[UseCache];
@@ -310,28 +287,28 @@ end;
 
 procedure TOptions.DrawForm;
 begin
-  Lbl[FLRes].Caption:=Format('%dx%d', [FResolutions[FCurRes].Width, FResolutions[FCurRes].Height]);
-  Lbl[FLRefr].Caption:=IntToStr(FResolutions[FCurRes].RefreshRates[FCurRefr]);
-  Lbl[FLDepth].Caption:=IntToStr(FDepth);
+  Lbl[FLResolution].Caption:=Format('%dx%d', [FResolutions[FCurrentResolution].Width, FResolutions[FCurrentResolution].Height]);
+  Lbl[FLRefreshRate].Caption:=IntToStr(FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate]);
+  Lbl[FLColorDepth].Caption:=IntToStr(FColorDepth);
   inherited DrawForm;
 end;
 
 procedure TOptions.ResClick(Btn: PBtn);
 begin
-  FCurRes:=Max(0, Min(FCurRes+Btn.Tag, High(FResolutions)));
-  FCurRefr:=0;
+  FCurrentResolution:=Max(0, Min(FCurrentResolution+Btn.Tag, High(FResolutions)));
+  FCurrentRefreshRate:=0;
 end;
 
 procedure TOptions.RefrClick(Btn: PBtn);
 begin
-  FCurRefr:=Max(0, Min(FCurRefr+Btn.Tag, High(FResolutions[FCurRes].RefreshRates)));
+  FCurrentRefreshRate:=Max(0, Min(FCurrentRefreshRate+Btn.Tag, High(FResolutions[FCurrentResolution].RefreshRates)));
 end;
 
 procedure TOptions.DepthClick(Btn: PBtn);
 const
   Depth: array[-1..1] of Integer = (16, 0, 32);
 begin
-  FDepth:=Depth[Btn.Tag];
+  FColorDepth:=Depth[Btn.Tag];
 end;
 
 procedure TOptions.ToggleCache(Btn: PBtn);
@@ -363,10 +340,12 @@ end;
 
 procedure TOptions.OKClick(Btn: PBtn);
 begin
-  Core.SetResolution(FResolutions[FCurres].Width, FResolutions[FCurres].Height, FResolutions[FCurres].RefreshRates[FCurRefr], true);
-  Core.Fullscreen:=Button[FCFullScr].Checked;
+  Core.SetResolution(FResolutions[FCurrentResolution].Width,
+                     FResolutions[FCurrentResolution].Height,
+                     FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate],
+                     Button[FCFullscreen].Checked, true);
   Core.VSync:=Button[FCVSync].Checked;
-  Core.Depth:=FDepth;
+  Core.ColorDepth:=FColorDepth;
   Sound.EnableBGM:=Button[FCEnableBGM].Checked;
   FParent.FCurFrm:=FParent.FMainMenu;
 end;

@@ -14,7 +14,7 @@ type
     Age: Byte;
   end;
   TBinding=record
-    Name, Descript: string;
+    Name, Description: string;
     Key: Byte;
     Events: PEventQueue;
   end;
@@ -71,7 +71,7 @@ uses
   VSEInit, VSECore, VSETexMan{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
-  SBindCfg = 'Bind.cfg';
+  SSectionBindings = 'Bindings';
   VK_XBUTTON4=5; //Mouse button 4
   VK_XBUTTON5=6; //Mouse button 5
   VK_MWHEELUP=VK_F23; //Mouse wheel up
@@ -260,39 +260,31 @@ end;
 
 procedure TBindMan.LoadBindings;
 var
-  Binds: TStringList;
+  BindingsList: TStringList;
   S: string;
   i: Integer;
   Idx: Integer;
 begin
-  Binds:=GetFileText(SBindCfg);
-  if not Assigned(Binds) then
-  begin
-    {$IFDEF VSE_LOG}Log(llError, 'BindMan: Cannot load bindings config');{$ENDIF};
-    Exit;
-  end;
-  try
-    SetLength(FBindings, Binds.Count);
-    for i:=0 to Binds.Count-1 do
-      with FBindings[i] do
-      begin
-        S:=Binds[i];
-        Name:=Tok(',', S);
-        Descript:=Tok(',', S);
-        Key:=StrToInt(Tok(',', S));
-        Events:=nil;
-      end;
-    Binds.Text:=VSEInit.Bindings;
-    for i:=0 to Binds.Count-1 do
+  SetLength(FBindings, Length(InitSettings.Bindings));
+  for i:=0 to High(InitSettings.Bindings) do
+    with FBindings[i] do
     begin
-      S:=Copy(Binds[i], 1, FirstDelimiter('=', Binds[i])-1);
+      Name:=InitSettings.Bindings[i].Name;
+      Description:=InitSettings.Bindings[i].Description;
+      Key:=InitSettings.Bindings[i].Key;
+      Events:=nil;
+    end;
+  BindingsList:=Settings.ReadSection(SSectionBindings);
+  try
+     for i:=0 to BindingsList.Count-1 do
+    begin
+      S:=Trim(Copy(BindingsList[i], 1, FirstDelimiter('=', BindingsList[i])-1));
       Idx:=FindBinding(S);
-      if Idx>-1 then FBindings[Idx].Key:=StrToInt(Binds.Values[S]);
+      if Idx>-1 then FBindings[Idx].Key:=StrToInt(BindingsList.Values[S]);
     end;
   finally
-    FAN(Binds);
+    FAN(BindingsList);
   end;
-  {$IFDEF VSE_LOG}Log(llInfo, 'BindMan: Loaded '+IntToStr(Length(FBindings))+' bindings');{$ENDIF};
 end;
 
 procedure TBindMan.MouseEvent(Button: Integer; Event: TMouseEvent);
@@ -382,9 +374,8 @@ procedure TBindMan.SaveBindings;
 var
   i: Integer;
 begin
-  VSEInit.Bindings:='';
   for i:=0 to High(FBindings) do
-    VSEInit.Bindings:=VSEInit.Bindings+FBindings[i].Name+'='+IntToStr(FBindings[i].Key)+#13#10;
+    Settings.Int[SSectionBindings, FBindings[i].Name]:=FBindings[i].Key;
 end;
 
 { TBindManCfgForm }
@@ -472,7 +463,7 @@ begin
       end;
       Continue;
     end;
-    Lbl[FLabels[i]]^.Caption:=BindMan.FBindings[FPage*Length(FLabels)+i].Descript;
+    Lbl[FLabels[i]]^.Caption:=BindMan.FBindings[FPage*Length(FLabels)+i].Description;
     with Button[FButtons[i]]^ do
     begin
       Caption:=KeyToStr(BindMan.FBindings[FPage*Length(FLabels)+i].Key);
@@ -539,7 +530,7 @@ end;
 
 procedure TBindManCfgForm.DefaultClick(Btn: PBtn);
 begin
-  VSEInit.Bindings:='';
+  Settings.EraseSection(SSectionBindings);
   BindMan.LoadBindings;
   FillKeys;
 end;

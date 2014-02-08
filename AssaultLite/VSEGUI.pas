@@ -28,6 +28,12 @@ type
   TBtnStates=(bsHilight, bsPushed, bsTabStop); //Button state - highlighted (mouse over), pushed, selected from keyboard
   TBtnState=set of TBtnStates;
   TVirtScreenAlign=(vsaLeftTop, vsaCenter, vsaRightBottom);
+  TMenuItem=record //Menu item
+    Caption: string; //Item button caption
+    Tag: Integer; //Item button tag
+    OnClick: TGUIOnClick; //Item nutton click event handler
+  end;
+  TMenuItems=array of Integer;
   TGUIForm=class //Form
   private
     FVirtScreenAlign: TVirtScreenAlign;
@@ -58,7 +64,7 @@ type
   public
     constructor Create(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal); //Creates form; VertScr*: virtual screen resolution (all dimensions defined in virtual screen coordinates); X, Y, Width, Height: form bounds; Font: form font
     destructor Destroy; override;
-    function AddButton(Btn: TBtn): Integer;
+    function  AddButton(Btn: TBtn): Integer; //Add button, returns button index
     function  AddLabel(const Lbl: TLbl): Integer; //Add label, returns label index
     procedure AddRect(const Rect: TRect); //Add rectangle (visual frame)
     procedure Draw; //Draw form
@@ -73,7 +79,8 @@ type
     property VirtScreenVAlign: TVirtScreenAlign read FVirtScreenVAlign write FVirtScreenVAlign; //Virtual screen vertical align
   end;
 
-function CreateSelect(Form: TGUIForm; X_, Y_, W, H: Integer; OnChange: TGUIOnClick; const PrevCapt, NextCapt: string): Integer; //Creates select control, returns select state label index; distinguish prev & next buttons in handler by Btn^.Tag (-1 for prev, 1 for next)
+function CreateSelect(Form: TGUIForm; X, Y, Width, Height: Integer; OnChange: TGUIOnClick; const PrevCaption, NextCaption: string): Integer; //Creates select control, returns select state label index; distinguish prev & next buttons in handler by Btn^.Tag (-1 for prev, 1 for next)
+function CreateMenu(Form: TGUIForm; X, Y, BtnWidth, BtnHeight, BtnSpacing: Integer; Items: array of TMenuItem): TMenuItems; //Creates menu from buttons, returns butttons' indexes
 
 implementation
 
@@ -162,15 +169,15 @@ procedure TGUIForm.Update;
 var
   Cursor: TPoint;
 begin
-  FVSWider:=FVirtScrW/FVirtScrH>Core.ResX/Core.ResY;
+  FVSWider:=FVirtScrW/FVirtScrH>Core.ResolutionX/Core.ResolutionY;
   if FVSWider then
   begin
-    FVSScale:=Core.ResX/FVirtScrW;
-    FVSDelta:=(Core.ResY/FVSScale-FVirtScrH)/2;
+    FVSScale:=Core.ResolutionX/FVirtScrW;
+    FVSDelta:=(Core.ResolutionY/FVSScale-FVirtScrH)/2;
   end
   else begin
-    FVSScale:=Core.ResY/FVirtScrH;
-    FVSDelta:=(Core.ResX/FVSScale-FVirtScrW)/2;
+    FVSScale:=Core.ResolutionY/FVirtScrH;
+    FVSDelta:=(Core.ResolutionX/FVSScale-FVirtScrW)/2;
   end;
   GetCursorPos(Cursor);
   MapCursor(Cursor);
@@ -421,38 +428,53 @@ begin
       end;
 end;
 
-function CreateSelect(Form: TGUIForm; X_, Y_, W, H: Integer; OnChange: TGUIOnClick; const PrevCapt, NextCapt: string): Integer;
+function CreateSelect(Form: TGUIForm; X, Y, Width, Height: Integer; OnChange: TGUIOnClick; const PrevCaption, NextCaption: string): Integer;
 var
   Lbl: TLbl;
   Btn: TBtn;
 begin
-  with Btn do
+  Btn.Typ:=btPush;
+  Btn.X:=X;
+  Btn.Y:=Y;
+  Btn.Width:=Height;
+  Btn.Height:=Height;
+  Btn.OnClick:=OnChange;
+  Btn.Enabled:=true;
+  Btn.Caption:=PrevCaption;
+  Btn.Tag:=-1;
+  Form.AddButton(Btn);
+  Btn.X:=X+Width-Height;
+  Btn.Caption:=NextCaption;
+  Btn.Tag:=1;
+  Form.AddButton(Btn);
+  Lbl.X:=X+Height;
+  Lbl.Y:=Y+(Height-TexMan.TextHeight(Form.FFont)) div 2;
+  Lbl.Width:=Width-2*Height;
+  Lbl.Align:=laCenter;
+  Lbl.Color:=Integer($FF00B200);
+  Result:=Form.AddLabel(Lbl);
+  Form.AddRect(Rect(X+Height, Y, X+Width-Height, Y+Height));
+end;
+
+function CreateMenu(Form: TGUIForm; X, Y, BtnWidth, BtnHeight, BtnSpacing: Integer; Items: array of TMenuItem): TMenuItems;
+var
+  Btn: TBtn;
+  i: Integer;
+begin
+  SetLength(Result, Length(Items));
+  Btn.Typ:=btPush;
+  Btn.X:=X;
+  Btn.Width:=BtnWidth;
+  Btn.Height:=BtnHeight;
+  Btn.Enabled:=true;
+  for i:=0 to High(Items) do
   begin
-    Typ:=btPush;
-    Y:=Y_;
-    Width:=H;
-    Height:=H;
-    OnClick:=OnChange;
-    Enabled:=true;
-    X:=X_;
-    Caption:=PrevCapt;
-    Tag:=-1;
-    Form.AddButton(Btn);
-    X:=X+W-H;
-    Caption:=NextCapt;
-    Tag:=1;
-    Form.AddButton(Btn);
+    Btn.Y:=Y+i*(BtnHeight+BtnSpacing);
+    Btn.Caption:=Items[i].Caption;
+    Btn.Tag:=Items[i].Tag;
+    Btn.OnClick:=Items[i].OnClick;
+    Result[i]:=Form.AddButton(Btn);
   end;
-  with Lbl do
-  begin
-    X:=X_+H;
-    Y:=Y_+(H-TexMan.TextHeight(Form.FFont)) div 2;
-    Width:=W-2*H;
-    Align:=laCenter;
-    Color:=Integer($FF00B200);
-    Result:=Form.AddLabel(Lbl);
-  end;
-  Form.AddRect(Rect(X_+H, Y_, X_+W-H, Y_+H));
 end;
 
 end.

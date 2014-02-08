@@ -68,7 +68,7 @@ var
   i: Integer;
 begin
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
-  glePerspectiveMatrix(60, Core.ResX, Core.ResY);
+  glePerspectiveMatrix(60, Core.ResolutionX, Core.ResolutionY);
   glMatrixMode(GL_PROJECTION);
   Camera.CalcVertex;
   Camera.SetPos;
