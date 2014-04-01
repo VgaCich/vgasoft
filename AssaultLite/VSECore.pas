@@ -130,7 +130,7 @@ procedure LogException(Comment: string);
 begin
   Comment:=Format('Exception "%s" at $%s with message "%s" %s', [string(ExceptObject.ClassName), IntToHex(Cardinal(ExceptAddr), 8), Exception(ExceptObject).Message, Comment]);
   {$IFDEF VSE_LOG}Log(llError, Comment);{$ENDIF}
-  {$IFNDEF VSE_DEBUG}MessageBox(Handle, PChar(Comment), PChar(CaptionVer), MB_ICONERROR){$ENDIF}
+  {$IFNDEF VSE_DEBUG}MessageBox(Handle, PChar(Comment), PChar(InitSettings.Caption), MB_ICONERROR){$ENDIF}
 end;
 
 procedure UpdateFPS(uID, uMsg, dwUser, dw1, dw2: Cardinal); stdcall;

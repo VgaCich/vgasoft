@@ -88,8 +88,8 @@ begin
     FMusicBuffer:=nil;
   end;
   if Settings.FirstRun
-    then Settings.Bool[SSectionSound, SNameEnableBGM]:=true
-    else EnableBGM:=Settings.Bool[SSectionSound, SNameEnableBGM];
+    then Settings.Bool[SSectionSound, SNameEnableBGM]:=true;
+  EnableBGM:=Settings.Bool[SSectionSound, SNameEnableBGM];
 end;
 
 destructor TSound.Destroy;
