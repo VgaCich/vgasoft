@@ -43,7 +43,7 @@ begin
   LogRaw(llInfo, 'GL_VENDOR='+string(glGetString(GL_VENDOR)));
   LogRaw(llInfo, 'GL_RENDERER='+string(glGetString(GL_RENDERER)));
   LogRaw(llInfo, 'GL_VERSION='+string(glGetString(GL_VERSION)));
-  LogRaw(llInfo, 'GL_EXTENSIONS='+string(glGetString(GL_EXTENSIONS)));
+  LogRaw(llInfo, 'GL_EXTENSIONS='+glExtensionsString);
   LogRaw(llInfo, 'VSync control support: '+BoolToStr(WGL_EXT_swap_control));
   LogRaw(llInfo, 'Multitexturing support: '+BoolToStr(GL_ARB_multitexture));
   LogRaw(llInfo, 'FBO support: '+BoolToStr(GL_EXT_framebuffer_object));

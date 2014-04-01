@@ -26,7 +26,6 @@ type
     FResolutionY: Cardinal;
     FRefreshRate: Cardinal;
     FColorDepth: Cardinal;
-    FVSync: Integer;
     FFramesCount, FFPS, FFPSTimer, FPreviousUpdate, FUpdInt, FUpdOverloadCount, FUpdOverloadThreshold: Cardinal;
     FPerformanceFrequency: Int64;
     FStates: array of TGameState;
@@ -193,14 +192,13 @@ begin
   FRefreshRate:=InitSettings.RefreshRate;
   FColorDepth:=InitSettings.ColorDepth;
   Fullscreen:=InitSettings.Fullscreen;
-  VSync:=InitSettings.VSync;
-  if (FVSync<>0) and (FVSync<>1) then FVSync:=1;
   if FResolutionX<MinResolutionX then FResolutionX:=MinResolutionX;
   if FResolutionY<MinResolutionY then FResolutionY:=MinResolutionY;
   if FRefreshRate=0 then FRefreshRate:=gleGetCurrentResolution.RefreshRate;
   FDC:=GetDC(FHandle);
   FRC:=gleSetPix(FDC, FColorDepth);
   if FRC=0 then raise Exception.Create('Unable to set rendering context');
+  VSync:=InitSettings.VSync;
   Sound:=TSound.Create;
   TexMan:=TTexMan.Create;
   BindMan:=TBindMan.Create;
@@ -301,8 +299,8 @@ begin
       {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Draw');{$ENDIF}
       {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
     end;
-    if WGL_EXT_swap_control and (FVSync<>wglGetSwapIntervalEXT)
-      then wglSwapIntervalEXT(FVSync);
+    //if WGL_EXT_swap_control and (FVSync<>wglGetSwapIntervalEXT)
+    //  then wglSwapIntervalEXT(FVSync);
     SwapBuffers(FDC);
     Inc(FFramesCount);
   end;
@@ -596,14 +594,15 @@ end;
 
 function TCore.GetVSync: Boolean;
 begin
-  Result:=FVSync<>0;
+  Result:=false;
+  if WGL_EXT_swap_control then Result:=wglGetSwapIntervalEXT<>0;
 end;
 
 procedure TCore.SetVSync(Value: Boolean);
 const
   VSync: array[Boolean] of Integer=(0, 1);
 begin
-  FVSync:=VSync[Value];
+  if WGL_EXT_swap_control then wglSwapIntervalEXT(VSync[Value]);
 end;
 
 procedure TCore.SetState(Value: Cardinal);

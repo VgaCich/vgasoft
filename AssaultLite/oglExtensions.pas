@@ -8,6 +8,7 @@ uses
 type
   GLHandleARB = Integer;
 
+function CheckExtension(const Ext: string): Boolean;
 procedure ReadExtensions;
 
 // Процедурки и константы отсутствующие в стандартном OpenGL.pas
@@ -104,6 +105,7 @@ const
   procedure glCopyTexImage2D(target: GLEnum; level: GLint; internalFormat: GLEnum; x, y: GLint; width, height: GLsizei; border: GLint); stdcall; external opengl32;
 
 var
+  glExtensionsString: string;
 // VSync
   WGL_EXT_swap_control  : Boolean;
   wglSwapIntervalEXT    : function(interval: GLint): Boolean; stdcall;
@@ -178,47 +180,41 @@ var
 
 implementation
 
+function CheckExtension(const Ext: string): Boolean;
+begin
+  Result := Pos(Ext, glExtensionsString) <> 0;
+end;
+
 procedure ReadExtensions;
 begin
-// Получаем адреса дополнительных процедур OpenGL
+  glExtensionsString := glGetString(GL_EXTENSIONS);
+
+  // Получаем адреса дополнительных процедур OpenGL
   glGetIntegerv(GL_MAX_TEXTURE_UNITS_ARB, @glMaxTextureUnits);
   glGetIntegerv(GL_MAX_TEXTURE_SIZE, @glMaxTextureSize);
   glGetIntegerv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, @glMaxAnisotropy);
 
-  //extension := glGetString(GL_EXTENSIONS);
- // Итак, нормальные люди (не извращенцы) которым
- // глубоко плевать на скорость запуска их приложений (игр)
- // производят поиск расширений стандартным методом
- // через строку GL_EXTENSIONS
- // Этот метод может съесть до нескольких секунд (проверено)
- // Эту "ерунду" я не смог пропусть, и сделал своё чёрное дело...
- // пробуем получить адрес процедуры принадлежащей нужному нам расширению
- // в случае успеха (<> nil) расширение существует и наоборот...
- // 1439 мс VS 229 мс на проверке 4 расширений :)
-
- // Управление вертикальной синхронизацией
-  wglSwapIntervalEXT := wglGetProcAddress('wglSwapIntervalEXT');
-  if @wglSwapIntervalEXT <> nil then
+  // Управление вертикальной синхронизацией
+  WGL_EXT_swap_control := CheckExtension('WGL_EXT_swap_control');
+  if WGL_EXT_swap_control then
   begin
-    WGL_EXT_swap_control  := True;
+    wglSwapIntervalEXT    := wglGetProcAddress('wglSwapIntervalEXT');
     wglGetSwapIntervalEXT := wglGetProcAddress('wglGetSwapIntervalEXT');
-  end
-  else WGL_EXT_swap_control:=false;
+  end;
 
   // Мультитекстурирование
-  glActiveTextureARB := wglGetProcAddress('glActiveTextureARB');
-  if @glActiveTextureARB <> nil then
+  GL_ARB_multitexture := CheckExtension('GL_ARB_multitexture');
+  if GL_ARB_multitexture then
   begin
-    GL_ARB_multitexture := True;
+    glActiveTextureARB       := wglGetProcAddress('glActiveTextureARB');
     glClientActiveTextureARB := wglGetProcAddress('glClientActiveTextureARB');
-  end
-  else GL_ARB_multitexture:=false;
+  end;
 
   // рендер в текстуру
-  glGenRenderbuffersEXT := wglGetProcAddress('glGenRenderbuffersEXT');
-  if @glGenRenderbuffersEXT <> nil then
+  GL_EXT_framebuffer_object := CheckExtension('GL_EXT_framebuffer_object');
+  if GL_EXT_framebuffer_object then
   begin
-    GL_EXT_framebuffer_object    := True;
+    glGenRenderbuffersEXT        := wglGetProcAddress('glGenRenderbuffersEXT');
     glDeleteRenderbuffersEXT     := wglGetProcAddress('glDeleteRenderbuffersEXT');
     glBindRenderbufferEXT        := wglGetProcAddress('glBindRenderbufferEXT');
     glRenderbufferStorageEXT     := wglGetProcAddress('glRenderbufferStorageEXT');
@@ -228,14 +224,13 @@ begin
     glFramebufferTexture2DEXT    := wglGetProcAddress('glFramebufferTexture2DEXT');
     glFramebufferRenderbufferEXT := wglGetProcAddress('glFramebufferRenderbufferEXT');
     glCheckFramebufferStatusEXT  := wglGetProcAddress('glCheckFramebufferStatusEXT');
-  end
-  else GL_EXT_framebuffer_object:=false;
+  end;
 
   // шейдеры
-  glDeleteObjectARB := wglGetProcAddress('glDeleteObjectARB');
-  if @glDeleteObjectARB <> nil then
+  GL_ARB_shading_language_100 := CheckExtension('GL_ARB_shading_language_100');
+  if GL_ARB_shading_language_100 then
   begin
-    GL_ARB_shading_language_100:= True;
+    glDeleteObjectARB         := wglGetProcAddress('glDeleteObjectARB');
     glCreateProgramObjectARB  := wglGetProcAddress('glCreateProgramObjectARB');
     glCreateShaderObjectARB   := wglGetProcAddress('glCreateShaderObjectARB');
     glShaderSourceARB         := wglGetProcAddress('glShaderSourceARB');
@@ -261,14 +256,12 @@ begin
     glValidateProgramARB := wglGetProcAddress('glValidateProgramARB');
 
     glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS_ARB, @glMaxTextureImageUnits);
-  end
-  else GL_ARB_shading_language_100:=false;
+  end;
 
   // VBO :)
-  glBindBufferARB := wglGetProcAddress('glBindBufferARB');
-  if @glBindBufferARB <> nil then
+  GL_ARB_vertex_buffer_object := CheckExtension('GL_ARB_vertex_buffer_object');
+  if GL_ARB_vertex_buffer_object then
   begin
-    GL_ARB_vertex_buffer_object := True;
     glBindBufferARB    := wglGetProcAddress('glBindBufferARB');
     glDeleteBuffersARB := wglGetProcAddress('glDeleteBuffersARB');
     glGenBuffersARB    := wglGetProcAddress('glGenBuffersARB');
@@ -276,8 +269,7 @@ begin
     glBufferSubDataARB := wglGetProcAddress('glBufferSubDataARB');
     glMapBufferARB     := wglGetProcAddress('glMapBufferARB');
     glUnmapBufferARB   := wglGetProcAddress('glUnmapBufferARB');
-  end
-  else GL_ARB_vertex_buffer_object:=false;
+  end;
 end;
 
 end.
