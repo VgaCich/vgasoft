@@ -114,6 +114,7 @@ end;
 
 destructor TStateStart.Destroy;
 begin
+  FAN(FLoadThread);
   inherited Destroy;
 end;
 

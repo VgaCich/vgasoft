@@ -12,9 +12,12 @@ const
   StopNormal=0; //Engine stopped normally
   //Critical error
   StopInitError=1; //Cannot initialize engine
-  StopUserException=2; //Engine stopped due to unhandled exception in user code
-  StopDisplayModeError=3; //Engine stopped due to error when setting display mode
-  StopUserError=4; //Engine stopped by user code due to error
+  StopInternalError=2; //Internal engine error
+  StopUserException=3; //Engine stopped due to unhandled exception in user code
+  StopDisplayModeError=4; //Engine stopped due to error when setting display mode
+  StopUserError=5; //Engine stopped by user code due to error
+  StopCodeNames: array[StopNormal..StopUserError] of string =
+    ('Normal', 'Init Error', 'Internal Error', 'User Exception', 'Display Mode Error', 'User Error');
 
 type
   TCore=class
@@ -119,6 +122,12 @@ var
   Mutex: Integer=0;
   VSEStopState: Integer=StopNormal;
 
+procedure LogErrorAndShowMessage(Msg: string);
+begin
+  {$IFDEF VSE_LOG}Log(llError, Msg);{$ENDIF}
+  MessageBox(0, PChar(Msg), PChar(InitSettings.Caption), MB_ICONERROR);
+end;
+
 function GetCursorPos(var Cursor: TPoint): Boolean;
 begin
   Result:=Windows.GetCursorPos(Cursor);
@@ -176,6 +185,7 @@ begin
   FAN(TexMan);
   FAN(Sound);
   FAN(BindMan);
+  if FFullscreen then gleGoBack;
   wglMakeCurrent(FDC, 0);
   wglDeleteContext(FRC);
   if FDC>0 then ReleaseDC(FHandle, FDC);
@@ -191,18 +201,19 @@ begin
   FResolutionY:=InitSettings.ResolutionY;
   FRefreshRate:=InitSettings.RefreshRate;
   FColorDepth:=InitSettings.ColorDepth;
-  Fullscreen:=InitSettings.Fullscreen;
+  FFullscreen:=InitSettings.Fullscreen;
   if FResolutionX<MinResolutionX then FResolutionX:=MinResolutionX;
   if FResolutionY<MinResolutionY then FResolutionY:=MinResolutionY;
   if FRefreshRate=0 then FRefreshRate:=gleGetCurrentResolution.RefreshRate;
   FDC:=GetDC(FHandle);
   FRC:=gleSetPix(FDC, FColorDepth);
   if FRC=0 then raise Exception.Create('Unable to set rendering context');
-  VSync:=InitSettings.VSync;
   Sound:=TSound.Create;
   TexMan:=TTexMan.Create;
   BindMan:=TBindMan.Create;
   {$IFDEF VSE_LOG}LogSysInfo;{$ENDIF}
+  SetResolution(FResolutionX, FResolutionY, FRefreshRate, FFullscreen, false);
+  VSync:=InitSettings.VSync;
   glShadeModel(GL_SMOOTH);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
@@ -228,156 +239,179 @@ var
   T, i, UpdTime: Cardinal;
   Cur: TPoint;
 begin
-  GetKeyboardState(FKeyState);
-  BindMan.Update;
-  if FPaused then Exit;
-  if GetForegroundWindow<>FHandle then
-  begin
-    {$IFDEF VSE_LOG}Log(llInfo, 'Window minimized');{$ENDIF}
-    FMinimized:=True;
-    if FFullscreen then
+  try
+    GetKeyboardState(FKeyState);
+    BindMan.Update;
+    if FPaused then Exit;
+    if GetForegroundWindow<>FHandle then
     begin
-      gleGoBack;
-      SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
-    end;
-    FPaused:=not SendNotify(snMinimize);
-    if FPaused then
-    begin
-      if FNeedSwitch
-        then State:=FSwitchTo;
-      {TODO: Pause subsystems like sound}
-      if not FFullscreen
-        then SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
-      Exit;
-    end;
-  end;
-  if FNeedSwitch
-    then State:=FSwitchTo;
-  Sound.Update;
-  if FPreviousUpdate=0 then FPreviousUpdate:=Time;
-  T:=Time-FPreviousUpdate;
-  FPreviousUpdate:=FPreviousUpdate+T-(T mod FUpdInt);
-  if FCurState<>nil then
-  begin
-    if FMouseCapture and not FMinimized then
-    begin
-      Windows.GetCursorPos(Cur);
-      Cur.X:=Cur.X-FResolutionX div 2;
-      Cur.Y:=Cur.Y-FResolutionY div 2;
-      SetCursorPos(FResolutionX div 2, FResolutionY div 2);
-      try
-        FCurState.MouseEvent(0, meMove, Cur.X, Cur.Y);
-      except
-        {$IFDEF VSE_LOG}LogException(Format('in state %s.MouseEvent(0, %s, %d, %d)', [FCurState.Name, MouseEventNames[meMove], Cur.X, Cur.Y]));{$ENDIF}
-        {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
-      end;
-    end;
-    for i:=1 to T div FUpdInt do
-    begin
-      UpdTime:=Time;
-      try
-        FCurState.Update;
-      except
-        {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Update');{$ENDIF}
-        {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
-      end;
-      if Time-UpdTime>FUpdInt then
+      {$IFDEF VSE_LOG}Log(llInfo, 'Window minimized');{$ENDIF}
+      FMinimized:=True;
+      if FFullscreen then
       begin
-        Inc(FUpdOverloadCount);
-        if FUpdOverloadCount>FUpdOverloadThreshold then
-          if not SendNotify(snUpdateOverload) then
-          begin
-            {$IFDEF VSE_LOG}Log(llWarning, 'Update overload in state "'+FCurState.Name+'"');{$ENDIF}
-            ResetUpdateTimer;
-          end;
-      end
-        else if FUpdOverloadCount>0 then Dec(FUpdOverloadCount);
+        gleGoBack;
+        SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+      end;
+      FPaused:=not SendNotify(snMinimize);
+      if FPaused then
+      begin
+        if FNeedSwitch
+          then State:=FSwitchTo;
+        {TODO: Pause subsystems like sound}
+        if not FFullscreen
+          then SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+        Exit;
+      end;
     end;
-    try
-      FCurState.Draw;
-    except
-      {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Draw');{$ENDIF}
-      {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+    if FNeedSwitch
+      then State:=FSwitchTo;
+    Sound.Update;
+    if FPreviousUpdate=0 then FPreviousUpdate:=Time;
+    T:=Time-FPreviousUpdate;
+    FPreviousUpdate:=FPreviousUpdate+T-(T mod FUpdInt);
+    if FCurState<>nil then
+    begin
+      if FMouseCapture and not FMinimized then
+      begin
+        Windows.GetCursorPos(Cur);
+        Cur.X:=Cur.X-FResolutionX div 2;
+        Cur.Y:=Cur.Y-FResolutionY div 2;
+        SetCursorPos(FResolutionX div 2, FResolutionY div 2);
+        try
+          FCurState.MouseEvent(0, meMove, Cur.X, Cur.Y);
+        except
+          {$IFDEF VSE_LOG}LogException(Format('in state %s.MouseEvent(0, %s, %d, %d)', [FCurState.Name, MouseEventNames[meMove], Cur.X, Cur.Y]));{$ENDIF}
+          {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+        end;
+      end;
+      for i:=1 to T div FUpdInt do
+      begin
+        UpdTime:=Time;
+        try
+          FCurState.Update;
+        except
+          {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Update');{$ENDIF}
+          {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+        end;
+        if Time-UpdTime>FUpdInt then
+        begin
+          Inc(FUpdOverloadCount);
+          if FUpdOverloadCount>FUpdOverloadThreshold then
+            if not SendNotify(snUpdateOverload) then
+            begin
+              {$IFDEF VSE_LOG}Log(llWarning, 'Update overload in state "'+FCurState.Name+'"');{$ENDIF}
+              ResetUpdateTimer;
+            end;
+        end
+          else if FUpdOverloadCount>0 then Dec(FUpdOverloadCount);
+      end;
+      try
+        FCurState.Draw;
+      except
+        {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Draw');{$ENDIF}
+        {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+      end;
+      SwapBuffers(FDC);
+      Inc(FFramesCount);
     end;
-    //if WGL_EXT_swap_control and (FVSync<>wglGetSwapIntervalEXT)
-    //  then wglSwapIntervalEXT(FVSync);
-    SwapBuffers(FDC);
-    Inc(FFramesCount);
+  except
+    {$IFDEF VSE_LOG}LogException('in TCore.Update');{$ENDIF}
+    StopEngine(StopInternalError);
   end;
 end;
 
 procedure TCore.Resume;
 begin
   {$IFDEF VSE_LOG}Log(llInfo, 'Window maximized');{$ENDIF}
-  if FFullscreen then gleGoFullscreen(ResolutionX, ResolutionY, RefreshRate, FColorDepth);
-  FMinimized:=false;
-  if FPaused then ResetUpdateTimer;
-  FPaused:=false;
-  SendNotify(snMaximize);
+  try
+    if FFullscreen then gleGoFullscreen(ResolutionX, ResolutionY, RefreshRate, FColorDepth);
+    FMinimized:=false;
+    if FPaused then ResetUpdateTimer;
+    FPaused:=false;
+    SendNotify(snMaximize);
+  except
+    {$IFDEF VSE_LOG}LogException('in TCore.Resume');{$ENDIF}
+    StopEngine(StopInternalError);
+  end;
 end;
 
 procedure TCore.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 var
   P: TPoint;
 begin
-  if (Event=meWheel) and not Fullscreen then
-  begin
-    P:=Point(X, Y);
-    ScreenToClient(Handle, P);
-    X:=P.X;
-    Y:=P.Y;
-  end;
-  if Event=meDown
-    then SetCapture(FHandle)
-    else if Event=meUp
-      then ReleaseCapture;
-  if (FMouseCapture and (Event=meMove)) or FPaused then Exit;
-  if Event in [meDown, meUp, meWheel] then BindMan.MouseEvent(Button, Event);
-  if FCurState<>nil then
   try
-    FCurState.MouseEvent(Button, Event, X, Y);
+    if (Event=meWheel) and not Fullscreen then
+    begin
+      P:=Point(X, Y);
+      ScreenToClient(Handle, P);
+      X:=P.X;
+      Y:=P.Y;
+    end;
+    if Event=meDown
+      then SetCapture(FHandle)
+      else if Event=meUp
+        then ReleaseCapture;
+    if (FMouseCapture and (Event=meMove)) or FPaused then Exit;
+    if Event in [meDown, meUp, meWheel] then BindMan.MouseEvent(Button, Event);
+    if FCurState<>nil then
+    try
+      FCurState.MouseEvent(Button, Event, X, Y);
+    except
+      {$IFDEF VSE_LOG}LogException(Format('in state %s.MouseEvent(%d, %s, %d, %d)', [FCurState.Name, Button, MouseEventNames[Event], X, Y]));{$ENDIF}
+      {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+    end;
   except
-    {$IFDEF VSE_LOG}LogException(Format('in state %s.MouseEvent(%d, %s, %d, %d)', [FCurState.Name, Button, MouseEventNames[Event], X, Y]));{$ENDIF}
-    {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+    {$IFDEF VSE_LOG}LogException(Format('in TCore.MouseEvent(%d, %s, %d, %d)', [Button, MouseEventNames[Event], X, Y]));{$ENDIF}
+    StopEngine(StopInternalError);
   end;
 end;
 
 procedure TCore.KeyEvent(Button: Integer; Event: TKeyEvent);
 begin
-  if FPaused then Exit;
-  {$IFDEF VSE_ESC_EXIT}
-  if (Button=VK_ESCAPE) and (Event=keUp) then
-  begin
-    StopEngine;
-    Exit;
-  end;
-  {$ENDIF}
-  {$IFDEF VSE_USE_SNAPSHOT_KEY}
-  if (Button=VK_SNAPSHOT) and (Event=keUp) then
-  begin
-    MakeScreenshot('Screen');
-    Exit;
-  end;
-  {$ENDIF}
-  BindMan.KeyEvent(Button, Event);
-  if FCurState<>nil then
   try
-    FCurState.KeyEvent(Button, Event);
+    if FPaused then Exit;
+    {$IFDEF VSE_ESC_EXIT}
+    if (Button=VK_ESCAPE) and (Event=keUp) then
+    begin
+      StopEngine;
+      Exit;
+    end;
+    {$ENDIF}
+    {$IFDEF VSE_USE_SNAPSHOT_KEY}
+    if (Button=VK_SNAPSHOT) and (Event=keUp) then
+    begin
+      MakeScreenshot('Screen');
+      Exit;
+    end;
+    {$ENDIF}
+    BindMan.KeyEvent(Button, Event);
+    if FCurState<>nil then
+    try
+      FCurState.KeyEvent(Button, Event);
+    except
+      {$IFDEF VSE_LOG}LogException(Format('in state %s.KeyEvent(%d, %s)', [FCurState.Name, Button, KeyEventNames[Event]]));{$ENDIF}
+      {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+    end;
   except
-    {$IFDEF VSE_LOG}LogException(Format('in state %s.KeyEvent(%d, %s)', [FCurState.Name, Button, KeyEventNames[Event]]));{$ENDIF}
-    {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+    {$IFDEF VSE_LOG}LogException(Format('in TCore.KeyEvent(%d, %s)', [Button, KeyEventNames[Event]]));{$ENDIF}
+    StopEngine(StopInternalError);
   end;
 end;
 
 procedure TCore.CharEvent(C: Char);
 begin
-  if FPaused then Exit;
-  if FCurState<>nil then
   try
-    FCurState.CharEvent(C);
+    if FPaused then Exit;
+    if FCurState<>nil then
+    try
+      FCurState.CharEvent(C);
+    except
+      {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.CharEvent(#'+IntToStr(Ord(C))+')');{$ENDIF}
+      {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+    end;
   except
-    {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.CharEvent("'+C+'")');{$ENDIF}
-    {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+    {$IFDEF VSE_LOG}LogException('in TCore.CharEvent(#'+IntToStr(Ord(C))+')');{$ENDIF}
+    StopEngine(StopInternalError);
   end;
 end;
 
@@ -397,7 +431,7 @@ end;
 
 procedure TCore.StopEngine(StopState: Integer);
 begin
-  {$IFDEF VSE_LOG}LogF(llInfo, 'Stopping engine with code %d', [StopState]);{$ENDIF}
+  {$IFDEF VSE_LOG}LogF(llInfo, 'Stopping engine with code %d (%s)', [StopState, StopCodeNames[StopState]]);{$ENDIF}
   VSEStopState:=StopState;
   PostMessage(Handle, WM_CLOSE, 0, 0);
 end;
@@ -500,7 +534,7 @@ begin
   begin
     if not gleGoFullscreen(ResolutionX, ResolutionY, RefreshRate, FColorDepth) then
     begin
-      {$IFDEF VSE_LOG}Log(llError, 'Unable to set resolution! Choose lower resolution or refresh rate');{$ENDIF}
+      {$IFDEF VSE_LOG}LogF(llError, 'Unable to set resolution %dx%d@%d', [ResolutionX, ResolutionY, RefreshRate]);{$ENDIF}
       if CanReset
         then SetResolution(OldResX, OldResY, OldRefresh, false)
         else begin
@@ -678,29 +712,26 @@ begin
         try
           Core:=TCore.Create(Handle);
           Core.StartEngine;
+          {$IFDEF VSE_LOG}Log(llInfo, 'Engine created');{$ENDIF}
         except
           {$IFDEF VSE_LOG}LogException('while initializing engine');{$ENDIF}
           VSEStopState:=StopInitError;
           SendMessage(Handle, WM_CLOSE, 0, 0);
         end;
-        {$IFDEF VSE_LOG}Log(llInfo, 'Engine created');{$ENDIF}
-        Core.SetResolution(Core.ResolutionX, Core.ResolutionY, Core.RefreshRate, false);
         {$IFDEF VSE_LOG}Log(llInfo, 'States initialization');{$ENDIF}
         if Assigned(InitSettings.InitStates) then
           try
             InitSettings.InitStates;
+            {$IFDEF VSE_LOG}Log(llInfo, 'States initialized');{$ENDIF}
           except
             {$IFDEF VSE_LOG}LogException('in InitStates');{$ENDIF}
             Core.StopEngine(StopUserException);
           end
           else begin
-            {$IFDEF VSE_LOG}Log(llError, 'InitStates() not initialized');{$ENDIF}
-            MessageBox(Handle, 'InitStates() not initialized', PChar(InitSettings.Caption), MB_ICONERROR);
-            VSEStopState:=1;
+            LogErrorAndShowMessage('InitStates() not initialized');
             Core.StopEngine(StopInitError);
             Exit;
           end;
-        {$IFDEF VSE_LOG}Log(llInfo, 'States initialized');{$ENDIF}
         Core.FPaused:=false;
       end;
     WM_KEYUP: Core.KeyEvent(wParam, keUp);
@@ -719,20 +750,25 @@ begin
     WM_DESTROY:
       begin
         {$IFDEF VSE_LOG}Log(llInfo, 'Destroying engine');{$ENDIF}
-        if Assigned(Core) and Core.Fullscreen then gleGoBack;
-        FAN(Core);
+        try
+          FAN(Core);
+          {$IFDEF VSE_LOG}Log(llInfo, 'Engine destroyed');{$ENDIF}
+        except
+          {$IFDEF VSE_LOG}LogException('while destroying engine');{$ENDIF}
+          VSEStopState:=StopInternalError;
+        end;
         Quitting:=true;
-        {$IFDEF VSE_LOG}Log(llInfo, 'Engine destroyed');{$ENDIF}
-        Result:=0;
         PostQuitMessage(VSEStopState);
+        Result:=0;
       end;
     WM_QUERYENDSESSION:
       begin
+        {$IFDEF VSE_LOG}Log(llInfo, 'Received WM_QUERYENDSESSION');{$ENDIF}
         Core.StopEngine;
         Result:=1;
       end;
     WM_SIZE:
-      begin
+      try
         if Assigned(Core) then begin
           if Core.Fullscreen then
           begin
@@ -749,6 +785,9 @@ begin
             else SetWindowPos(Handle, HWND_TOP, 0, 0, WndWidth, WndHeight, SWP_NOMOVE or SWP_FRAMECHANGED);
         end;
         Result:=0;
+      except
+        {$IFDEF VSE_LOG}LogException('while resizing window');{$ENDIF}
+        {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
       end;
     else
       Result:=DefWindowProc(hWnd, Msg, wParam, lParam);
@@ -785,8 +824,7 @@ begin
   end;    
   if Windows.RegisterClass(WndClass)=0 then
   begin
-    {$IFDEF VSE_LOG}Log(llError, 'Failed to register the window class');{$ENDIF}
-    MessageBox(0, 'Failed to register the window class!', PChar(InitSettings.Caption), MB_ICONERROR);
+    LogErrorAndShowMessage('Failed to register the window class');
     Exit;
   end;
   Handle:=CreateWindowEx(WS_EX_APPWINDOW or WS_EX_WINDOWEDGE, WndClassName, PChar(InitSettings.Caption),
@@ -794,34 +832,42 @@ begin
     0, 0, 800, 600, 0, 0, hInstance, nil);
   if Handle=0 then
   begin
-    {$IFDEF VSE_LOG}Log(llError, 'Unable to create window');{$ENDIF}
-    MessageBox(0, 'Unable to create window!', PChar(InitSettings.Caption), MB_ICONERROR);
+    LogErrorAndShowMessage('Unable to create window');
     Exit;
   end;
   SendMessage(Handle, WM_SETICON, 1, LoadIcon(hInstance, 'MAINICON'));
   ShowWindow(Handle, SW_SHOW);
-  while not Fin do
-  begin
-    if PeekMessage(Msg, 0, 0, 0, PM_REMOVE) then
+  try
+    while not Fin do
     begin
-      if (Msg.message=WM_QUIT)
-        then Fin:=true
-      else begin
-        TranslateMessage(Msg);
-        DispatchMessage(Msg);
-      end;
-    end
-    else
-      if Core<>nil then
+      if PeekMessage(Msg, 0, 0, 0, PM_REMOVE) then
       begin
-        if Core.Minimized and (GetForegroundWindow=Handle)
-          then Core.Resume;
-        if Core.Paused
-          then Sleep(50)
-          else Core.Update;
-      end;
+        if (Msg.message=WM_QUIT)
+          then Fin:=true
+        else begin
+          TranslateMessage(Msg);
+          DispatchMessage(Msg);
+        end;
+      end
+      else
+        if Core<>nil then
+        begin
+          if Core.Minimized and (GetForegroundWindow=Handle)
+            then Core.Resume;
+          if Core.Paused
+            then Sleep(50)
+            else Core.Update;
+        end;
+    end;
+    Result:=Msg.wParam;
+  except
+    {$IFDEF VSE_LOG}LogException('in main loop');{$ENDIF}
+    Result:=StopInternalError;
   end;
-  Result:=Msg.wParam;
+  if Result<>StopNormal then
+  begin
+    LogF(llInfo, 'Engine stopped with error code %d (%s)', [Result, StopCodeNames[Result]]);
+  end;
   UnregisterClass(WndClassName, hInstance);
 end;
 
