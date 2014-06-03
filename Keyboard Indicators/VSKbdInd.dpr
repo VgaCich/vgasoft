@@ -1,7 +1,7 @@
 program VSKbdInd;
 
 uses
-  Windows, Messages, TrayIcon, CPUGraph, avlOneInstance, MenuIDs;
+  SysSfIni, Windows, Messages, TrayIcon, CPUGraph, avlOneInstance, MenuIDs;
   
 {$R *.res}
 {$R Tray.res}

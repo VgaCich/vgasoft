@@ -74,8 +74,8 @@ begin
   SelectObject(FIconDC, FIconPen);
   for i:=0 to GraphLength-1 do
   begin
-    MoveToEx(FIconDC, i, GraphHeight, nil);
-    LineTo(FIconDC, i, GraphHeight-(GraphHeight*FGraphData[(FCurIndex+i) mod GraphLength]+50) div 100);
+    MoveToEx(FIconDC, i, GraphHeight-(GraphHeight*FGraphData[(FCurIndex+i) mod GraphLength]+50) div 100, nil);
+    LineTo(FIconDC, i, GraphHeight);
   end;
   with IconInfo do
   begin
