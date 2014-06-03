@@ -1,39 +1,42 @@
 program VSKbdInd;
 
 uses
-  Windows, Messages, TaskBar, avlOneInstance, MenuIDs;
+  Windows, Messages, TrayIcon, CPUGraph, avlOneInstance, MenuIDs;
   
 {$R *.res}
 {$R Tray.res}
 
 const
-  WM_TASKBAR = WM_APP+1;
-  TrayIconID = 0;
   CRLF = #13#10;
   ClassName = 'VSKeyboardIndicatorsWnd';
-  AboutText = 'VgaSoft Keyboard Indicators 1.1'+CRLF+CRLF+
-              'Copyright '#169' VgaSoft, 2012-2013'+CRLF+
-              'vgasoft@gmail.com';
+  AboutText = 'VgaSoft Keyboard Indicators 1.2'+CRLF+CRLF+
+              'Copyright '#169' VgaSoft, 2012-2014'+CRLF+
+              'http://vgasoft.googlecode.com';
   AboutIcon = 'MAINICON';
   RegRunKey = 'Software\Microsoft\Windows\CurrentVersion\Run';
   RegRunValueName = 'VSKbdInd';
 
 resourcestring
   AboutCaption = 'About';
+  CPUIconHint = 'CPU Load: %d%%'+CRLF+
+                'RAM: %d/%d MB free';
   TrayIconHint = 'Num Lock: %s'+CRLF+
                  'Caps Lock: %s'+CRLF+
                  'Scroll Lock: %s';
   LEDOn = 'On';
   LEDOff = 'Off';
-  NextWPHotKey = '0'; //Hotkey for Win7's "Next desktop background", =IntToStr((MOD_ALT|MOD_CONTROL|MOD_SHIFT shl 8) or VK_xxx)
+  NextWPHotKey = 'NextWPHotKey=0'; //Hotkey for Win7's "Next desktop background", =IntToStr((MOD_ALT|MOD_CONTROL|MOD_SHIFT shl 8) or VK_xxx)
+  CPUGraphColor = 'CPUGraphColor=0'; //Color for CPU load graph in tray, 0=disabled
 
 var
   hWnd: THandle;
   WndClass: TWndClass;
   Msg: TMsg;
   TaskBarCreated, OldKeyState: Integer;
-  TrayIconCreated: Boolean = false;
   HextWPHotKeyID: Word;
+  MainIcon, CPUIcon: TTrayIcon;
+  CPULoadGraph: TCPULoadGraph;
+  CPUGraphCounter: Cardinal;
 
 function Format(const Format: string; const Args: array of const): string;
 var
@@ -62,6 +65,13 @@ var
   E: Integer;
 begin
   Val(S, Result, E);
+end;
+
+function GetOption(const Option: string): Integer;
+begin
+  Result:=Pos('=', Option);
+  if Result > 0
+    then Result:=StrToInt(Copy(Option, Result+1, MaxInt));
 end;
 
 procedure ShowAboutDialog;
@@ -149,12 +159,6 @@ begin
   DestroyMenu(Menu);
 end;
 
-procedure CreateTrayIcon;
-begin
-  TrayIconCreated:=TaskBarAddIcon(hWnd, TrayIconID, LoadIcon(hInstance, 'TR000'), WM_TASKBAR, '');
-  OldKeyState:=-1;
-end;
-
 procedure UpdateTrayIcon;
 
   function KeyStateToStr(Key: Integer): string;
@@ -173,16 +177,23 @@ procedure UpdateTrayIcon;
 
 var
   KeyState: Integer;
-  Hint, IconName: string;
 begin
-  if not TrayIconCreated then CreateTrayIcon;
   KeyState:=((GetKeyState(VK_NUMLOCK) and 1) shl 2) or ((GetKeyState(VK_CAPITAL) and 1) shl 1) or (GetKeyState(VK_SCROLL) and 1);
   if KeyState<>OldKeyState then
   begin
-    Hint:=Format(TrayIconHint, [KeyStateToStr(VK_NUMLOCK), KeyStateToStr(VK_CAPITAL), KeyStateToStr(VK_SCROLL)]);
-    IconName:='TR'+KeyStateToChar(VK_NUMLOCK)+KeyStateToChar(VK_CAPITAL)+KeyStateToChar(VK_SCROLL);
-    TaskBarModifyIcon(hWnd, TrayIconID, NIF_ICON or NIF_TIP, LoadIcon(hInstance, PAnsiChar(IconName)), PAnsiChar(Hint));
+    MainIcon.Tip:=Format(TrayIconHint, [KeyStateToStr(VK_NUMLOCK), KeyStateToStr(VK_CAPITAL), KeyStateToStr(VK_SCROLL)]);
+    MainIcon.Icon:=LoadIcon(hInstance, PAnsiChar('TR'+KeyStateToChar(VK_NUMLOCK)+KeyStateToChar(VK_CAPITAL)+KeyStateToChar(VK_SCROLL)));
+    MainIcon.Update;
     OldKeyState:=KeyState;
+  end;
+  Inc(CPUGraphCounter);
+  if Assigned(CPULoadGraph) and (CPUGraphCounter mod 2 = 0) then
+  begin
+    CPULoadGraph.Update;
+    DestroyIcon(CPUIcon.Icon);
+    CPUIcon.Icon:=CPULoadGraph.GetIcon;
+    CPUIcon.Tip:=Format(CPUIconHint, [CPULoadGraph.GetCurrentLoad, CPULoadGraph.GetFreeRAM, CPULoadGraph.GetTotalRAM]);
+    CPUIcon.Update;
   end;
 end;
 
@@ -190,7 +201,7 @@ function WindowProc(hWnd: THandle; uMsg, wParam, lParam: Integer): Integer;
   stdcall; export;
 begin
   Result:=0;
-  if uMsg=TaskBarCreated then CreateTrayIcon;
+  if uMsg=TaskBarCreated then RecreateTrayIcons;
   case uMsg of
     WM_COMMAND:
       case wParam of
@@ -205,17 +216,15 @@ begin
         SendMessage(hWnd, $04E7, 0, 0);
       end;
     WM_TASKBAR:
-      case wParam of
-        TrayIconID:
-          case lParam of
-            WM_RBUTTONDOWN: PopupMenu(hWnd);
-          end;
+      case lParam of
+        WM_RBUTTONDOWN: PopupMenu(hWnd);
       end;
     WM_TIMER: UpdateTrayIcon;
     WM_DESTROY:
       begin
         KillTimer(hWnd, 1);
-        TaskBarDeleteIcon(hWnd, TrayIconID);
+        MainIcon.Free;
+        CPUIcon.Free;
         PostQuitMessage(0);
         Exit;
       end;
@@ -244,14 +253,21 @@ begin
     MessageBox(0, 'CreateWindow failed', nil, ID_OK);
     Exit;
   end;
-  CreateTrayIcon;
+  MainIcon:=TTrayIcon.Create(hWnd);
+  OldKeyState:=-1;
   ShowWindow(hWnd, SW_HIDE);
-  if NextWPHotKey <> '0' then
+  if GetOption(NextWPHotKey) <> 0 then
   begin
     HextWPHotKeyID:=GlobalAddAtom('vs.kbdind.hotkey.nextwallpaper');
     if HextWPHotKeyID<>0
-      then RegisterHotKey(hWnd, HextWPHotKeyID, Hi(StrToInt(NextWPHotKey)), Lo(StrToInt(NextWPHotKey)));
+      then RegisterHotKey(hWnd, HextWPHotKeyID, Hi(GetOption(NextWPHotKey)), Lo(GetOption(NextWPHotKey)));
   end;
+  if GetOption(CPUGraphColor) <> 0 then
+    try
+      CPULoadGraph:=TCPULoadGraph.Create(hWnd, GetOption(CPUGraphColor));
+      CPUIcon:=TTrayIcon.Create(hWnd);
+    except
+    end;
   SetTimer(hWnd, 1, 500, nil);
   while GetMessage(Msg, 0, 0, 0) do begin
     TranslateMessage(Msg);
@@ -262,4 +278,5 @@ begin
     UnregisterHotKey(hWnd, HextWPHotKeyID);
     GlobalDeleteAtom(HextWPHotKeyID);
   end;
+  CPULoadGraph.Free;
 end.
