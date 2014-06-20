@@ -66,7 +66,7 @@ end;
 
 procedure TTrayIcon.CreateIcon;
 begin
-  FData.uFlags:=FData.uFlags or NIF_MESSAGE;
+  FData.uFlags:=FData.uFlags or NIF_MESSAGE or NIF_ICON or NIF_TIP;
   if Shell_NotifyIcon(NIM_ADD, @FData) then
   begin
     FData.uFlags:=0;

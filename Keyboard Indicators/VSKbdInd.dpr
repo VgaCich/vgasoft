@@ -9,7 +9,7 @@ uses
 const
   CRLF = #13#10;
   ClassName = 'VSKeyboardIndicatorsWnd';
-  AboutText = 'VgaSoft Keyboard Indicators 1.2'+CRLF+CRLF+
+  AboutText = 'VgaSoft Keyboard Indicators 1.2.1'+CRLF+CRLF+
               'Copyright '#169' VgaSoft, 2012-2014'+CRLF+
               'http://vgasoft.googlecode.com';
   AboutIcon = 'MAINICON';
