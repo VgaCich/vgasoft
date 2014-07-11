@@ -9,7 +9,7 @@ uses
 const
   CRLF = #13#10;
   ClassName = 'VSKeyboardIndicatorsWnd';
-  AboutText = 'VgaSoft Keyboard Indicators 1.2.1'+CRLF+CRLF+
+  AboutText = 'VgaSoft Keyboard Indicators 1.3'+CRLF+CRLF+
               'Copyright '#169' VgaSoft, 2012-2014'+CRLF+
               'http://vgasoft.googlecode.com';
   AboutIcon = 'MAINICON';
@@ -26,6 +26,7 @@ resourcestring
   LEDOn = 'On';
   LEDOff = 'Off';
   NextWPHotKey = 'NextWPHotKey=0'; //Hotkey for Win7's "Next desktop background", =IntToStr((MOD_ALT|MOD_CONTROL|MOD_SHIFT shl 8) or VK_xxx)
+  KillForegroundProcessHotKey = 'KillForegroundProcessHotKey=0'; //Hotkey for killing foreground process, =IntToStr((MOD_ALT|MOD_CONTROL|MOD_SHIFT shl 8) or VK_xxx)
   CPUGraphColor = 'CPUGraphColor=0'; //Color for CPU load graph in tray, 0=disabled
 
 var
@@ -33,7 +34,7 @@ var
   WndClass: TWndClass;
   Msg: TMsg;
   TaskBarCreated, OldKeyState: Integer;
-  HextWPHotKeyID: Word;
+  NextWPHotKeyID, KillForemostProcessHotKeyID: Word;
   MainIcon, CPUIcon: TTrayIcon;
   CPULoadGraph: TCPULoadGraph;
   CPUGraphCounter: Cardinal;
@@ -72,6 +73,15 @@ begin
   Result:=Pos('=', Option);
   if Result > 0
     then Result:=StrToInt(Copy(Option, Result+1, MaxInt));
+end;
+
+function GetOptionName(const Option: string): string;
+var
+  Count: Integer;
+begin
+  Count:=Pos('=', Option);
+  if Count > 0
+    then Result:=Copy(Option, 1, Count-1);
 end;
 
 procedure ShowAboutDialog;
@@ -134,7 +144,7 @@ begin
   RegCloseKey(Key);
 end;
 
-procedure PopupMenu(hWnd: THandle);
+procedure PopupMainTrayMenu(hWnd: THandle);
 var
   Menu: hMenu;
   TrayMenu: hMenu;
@@ -210,14 +220,22 @@ begin
         ID_AUTOSTART: SetAutostartState(not GetAutostartState);
       end;
     WM_HOTKEY:
-      if wParam=HextWPHotKeyID then
+      if wParam = NextWPHotKeyID then
       begin
         hWnd:=FindWindow('SystemTray_Main', nil);
         SendMessage(hWnd, $04E7, 0, 0);
-      end;
+      end
+      else if wParam = KillForemostProcessHotKeyID then
+        if KillForemostProcess
+          then MessageBeep(MB_ICONEXCLAMATION)
+          else MessageBeep(MB_ICONHAND);
     WM_TASKBAR:
       case lParam of
-        WM_RBUTTONDOWN: PopupMenu(hWnd);
+        WM_RBUTTONDOWN:
+          if wParam = MainIcon.ID
+            then PopupMainTrayMenu(hWnd)
+          else if wParam = CPUIcon.ID
+            then PopupMainTrayMenu(hWnd);
       end;
     WM_TIMER: UpdateTrayIcon;
     WM_DESTROY:
@@ -230,6 +248,25 @@ begin
       end;
   end;
   Result:=DefWindowProc(hWnd, uMsg, wParam, lParam);
+end;
+
+procedure SetHotKey(var ID: Word; const Option: string);
+begin
+  if GetOption(Option) <> 0 then
+  begin
+    ID:=GlobalAddAtom(PChar('vs.kbdind.' + GetOptionName(Option)));
+    if ID<>0
+      then RegisterHotKey(hWnd, ID, Hi(GetOption(Option)), Lo(GetOption(Option)));
+  end;
+end;
+
+procedure FreeHotKey(ID: Word);
+begin
+  if ID <> 0 then
+  begin
+    UnregisterHotKey(hWnd, ID);
+    GlobalDeleteAtom(ID);
+  end;
 end;
 
 begin
@@ -256,12 +293,8 @@ begin
   MainIcon:=TTrayIcon.Create(hWnd);
   OldKeyState:=-1;
   ShowWindow(hWnd, SW_HIDE);
-  if GetOption(NextWPHotKey) <> 0 then
-  begin
-    HextWPHotKeyID:=GlobalAddAtom('vs.kbdind.hotkey.nextwallpaper');
-    if HextWPHotKeyID<>0
-      then RegisterHotKey(hWnd, HextWPHotKeyID, Hi(GetOption(NextWPHotKey)), Lo(GetOption(NextWPHotKey)));
-  end;
+  SetHotKey(NextWPHotKeyID, NextWPHotKey);
+  SetHotKey(KillForemostProcessHotKeyID, KillForegroundProcessHotKey);
   if GetOption(CPUGraphColor) <> 0 then
     try
       CPULoadGraph:=TCPULoadGraph.Create(hWnd, GetOption(CPUGraphColor));
@@ -273,10 +306,7 @@ begin
     TranslateMessage(Msg);
     DispatchMessage(Msg);
   end;
-  if HextWPHotKeyID <> 0 then
-  begin
-    UnregisterHotKey(hWnd, HextWPHotKeyID);
-    GlobalDeleteAtom(HextWPHotKeyID);
-  end;
+  FreeHotKey(NextWPHotKeyID);
+  FreeHotKey(KillForemostProcessHotKeyID);
   CPULoadGraph.Free;
 end.

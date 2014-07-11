@@ -2,7 +2,7 @@ unit CPUGraph;
 
 interface
 
-uses Windows, SysInfoAPI;
+uses Windows, Messages, SysInfoAPI;
 
 const
   GraphLength = 16;
@@ -30,6 +30,9 @@ type
     function GetTotalRAM: Integer;
     function GetFreeRAM: Integer;
   end;
+
+function KillProcess(PID: DWORD): Boolean;
+function KillForemostProcess: Boolean;
 
 implementation
 
@@ -133,6 +136,33 @@ end;
 function TCPULoadGraph.GetTotalRAM: Integer;
 begin
   Result:=(FMemoryStatus.ullTotalPhys+655360) div 1048576;
+end;
+
+function KillProcess(PID: DWORD): Boolean;
+var
+  Process: THandle;
+begin
+  Result:=false;
+  Process:=OpenProcess(PROCESS_QUERY_INFORMATION or PROCESS_TERMINATE, false, PID);
+  if Process <> 0 then
+  begin
+    Result:=TerminateProcess(Process, 0);
+    CloseHandle(Process);
+  end;
+end;
+
+function KillForemostProcess: Boolean;
+var
+  hWnd: THandle;
+  PID, ExplorerPID: DWORD;
+begin
+  Result:=false;
+  hWnd:=GetForegroundWindow;
+  GetWindowThreadProcessId(hWnd, PID);
+  GetWindowThreadProcessId(FindWindow('Progman', 'Program Manager'), ExplorerPID);
+  if (PID = ExplorerPID) or
+     (PID = GetCurrentProcessId) then Exit;
+  Result:=KillProcess(PID);
 end;
 
 end.
