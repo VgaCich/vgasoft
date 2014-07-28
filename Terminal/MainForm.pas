@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, ShellAPI, SysUtils, Variants, Classes, Graphics, Controls,
   Forms, Dialogs, StdCtrls, ComCtrls, Menus, XPMan, COMPort, ExtCtrls, IniFiles,
-  Registry;
+  Registry, VistaAltFixUnit;
 
 type
   TSettingsItem = record
@@ -45,6 +45,7 @@ type
     MISSNowhere: TMenuItem;
     MISSIniFile: TMenuItem;
     MISSRegistry: TMenuItem;
+    VistaAltFix: TVistaAltFix;
     procedure BtnConnectClick(Sender: TObject);
     procedure CBBitRateChange(Sender: TObject);
     procedure CBDataBitsChange(Sender: TObject);
@@ -93,8 +94,8 @@ const
   CaptionSend = 'Send: ';
   AboutCaption = 'About ';
   CRLF = #13#10;
-  AboutText = 'VgaSoft Terminal 1.1'+CRLF+CRLF+
-              'Copyright '#169' VgaSoft, 2013'+CRLF+
+  AboutText = 'VgaSoft Terminal 1.1b'+CRLF+CRLF+
+              'Copyright '#169' VgaSoft, 2013-2014'+CRLF+
               'vgasoft@gmail.com';
   AboutIcon = 'MAINICON';
   BitRatesList: array[0..14] of TSettingsItem = (

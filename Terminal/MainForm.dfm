@@ -274,6 +274,10 @@ object FormMain: TFormMain
     Interval = 50
     OnTimer = RecvTimerTimer
     Left = 24
+    Top = 208
+  end
+  object VistaAltFix: TVistaAltFix
+    Left = 24
     Top = 160
   end
 end
