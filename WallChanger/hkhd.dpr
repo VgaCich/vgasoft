@@ -172,7 +172,7 @@ begin
   WM_TIMER:
     if (UpdateInterval>0) and (GetTickCount>LastUpdate+UpdateInterval) then
     begin
-      LastUpdate:=GetTickCount;
+      LastUpdate:=LastUpdate+UpdateInterval;
       ChangeWallpaper;
     end;
   WM_DESTROY:
