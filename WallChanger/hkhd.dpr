@@ -5,8 +5,8 @@ uses
 
 var
   hWnd: THandle;
-  LastUpdate: Cardinal;
   UpdateInterval: Cardinal = 0;
+  UpdateLock: Cardinal = 0;
   KeyDef: Word;
   KeyChg: Word;
   KeyDefID, KeyChgID: Word;
@@ -71,7 +71,6 @@ begin
     ReadLn(F, KeyDef);
     ReadLn(F, KeyChg);
     ReadLn(F, DefWP);
-    UpdateInterval:=UpdateInterval*1000;
   finally
     CloseFile(F);
   end;
@@ -147,6 +146,14 @@ begin
   end;
 end;
 
+function GetTime: Integer;
+var
+  Time: TSystemTime;
+begin
+  GetLocalTime(Time);
+  Result:=Time.wHour*3600+Time.wMinute*60+Time.wSecond;
+end;
+
 function WindowProc(hWnd: THandle; uMsg, wParam, lParam: Integer): Integer; stdcall; export;
 begin
   Result := 0;
@@ -154,12 +161,12 @@ begin
   WM_USER:
     begin
       LoadSettings;
-      if wParam and 1 <> 0
-        then LastUpdate:=GetTickCount;
-      if wParam and 2 <> 0 then
-      begin
-        RemoveHotKeys;
-        SetHotKeys;
+      case wParam of
+        1: ; //Interval updated
+        2: begin //Hotkeys updated
+          RemoveHotKeys;
+          SetHotKeys;
+        end;
       end;
     end;
   WM_HOTKEY:
@@ -170,11 +177,13 @@ begin
         then ChangeWallpaper;
     end;
   WM_TIMER:
-    if (UpdateInterval>0) and (GetTickCount>LastUpdate+UpdateInterval) then
-    begin
-      LastUpdate:=LastUpdate+UpdateInterval;
-      ChangeWallpaper;
-    end;
+    if UpdateLock>0
+      then Dec(UpdateLock)
+      else if (UpdateInterval>0) and (GetTime mod UpdateInterval < 10) then
+      begin
+        ChangeWallpaper;
+        UpdateLock:=15;
+      end;
   WM_DESTROY:
     begin
       PostQuitMessage(0);
@@ -210,7 +219,6 @@ begin
   KeyDefID:=GlobalAddAtom('vs.hkhd.hotkey.setdefaultwallpaper');
   KeyChgID:=GlobalAddAtom('vs.hkhd.hotkey.changewallpaper');
   LoadSettings;
-  LastUpdate:=GetTickCount;
   SetHotKeys;
   while GetMessage(Msg, 0, 0, 0) do begin
     TranslateMessage(Msg);
