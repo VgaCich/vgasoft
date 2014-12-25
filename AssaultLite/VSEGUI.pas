@@ -179,7 +179,7 @@ begin
     FVSScale:=Core.ResolutionY/FVirtScrH;
     FVSDelta:=(Core.ResolutionX/FVSScale-FVirtScrW)/2;
   end;
-  GetCursorPos(Cursor);
+  Cursor:=Core.MouseCursor;
   MapCursor(Cursor);
   FLastActive:=FActive;
   FActive:=BtnAt(Cursor);

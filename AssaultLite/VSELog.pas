@@ -13,7 +13,7 @@ procedure LogRaw(Level: TLogLevel; const S: string);
 procedure LogAssert(Condition: Boolean; const Msg: string); //Add message if Condition=false
 
 var
-  LogLevel: TLogLevel=llInfo; //Minimal level of message, that will pass to log
+  LogLevel: TLogLevel=llInfo; //Minimal level of message, that will be passed to log
 
 implementation
 

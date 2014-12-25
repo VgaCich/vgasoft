@@ -618,11 +618,11 @@ end;
 
 procedure TPMBTransform.Apply;
 begin
-  glTranslate(TranslateX, TranslateY, TranslateZ);
-  glRotate(RadToDeg(Roll), 0, 0, -1);
-  glRotate(RadToDeg(Pitch), 1, 0, 0);
-  glRotate(RadToDeg(Yaw), 0, 1, 0);
   glScale(ScaleX, ScaleY, ScaleZ);
+  glRotate(RadToDeg(Yaw), 0, 1, 0);
+  glRotate(RadToDeg(Pitch), 1, 0, 0);
+  glRotate(RadToDeg(Roll), 0, 0, -1);
+  glTranslate(TranslateX, TranslateY, TranslateZ);
 end;
 
 procedure TPMBTransform.Apply(var VA: TVertexArray);

@@ -123,11 +123,11 @@ begin
   FMatrix:=MatrixE;
   with Transform do
   begin
-    Translate(TranslateX/512, TranslateY/512, TranslateZ/512);
-    Rotate(BDegToRad*Roll, 0, 0, -1);
-    Rotate(BDegToRad*Pitch, 1, 0, 0);
-    Rotate(BDegToRad*Yaw, 0, 1, 0);
     Scale(ScaleX/512, ScaleY/512, ScaleZ/512);
+    Rotate(BDegToRad*Yaw, 0, 1, 0);
+    Rotate(BDegToRad*Pitch, 1, 0, 0);
+    Rotate(BDegToRad*Roll, 0, 0, -1);
+    Translate(TranslateX/512, TranslateY/512, TranslateZ/512);
   end;
   FDefMatrix:=FMatrix;
 end;
@@ -174,7 +174,7 @@ begin
     RMat[1, 1]:=Y*Y*NC+C;
     RMat[2, 1]:=Y*Z*NC-X*S;
     RMat[0, 2]:=X*Z*NC-Y*S;
-    RMat[1, 3]:=Y*Z*NC+X*S;
+    RMat[1, 2]:=Y*Z*NC+X*S;
     RMat[2, 2]:=Z*Z*NC+C;
   end;
   Mul(RMat);
@@ -232,8 +232,6 @@ begin
     while ChunkEnd>Data.Position do
       if not ReadChunk(Data, VertexBuffer, IndexBuffer)
         then raise Exception.Create(SPriModelObjectCreateCannotLoadMo);
-    if not FVertLoaded or (IndexBuffer.Size=0) or (FMaterialID=0)
-      then raise Exception.Create(SPriModelObjectCreateCannotLoadMo);
     FIndexBuffer:=TArrayBuffer.Create;
     FIndexBuffer.SetData(IndexBuffer.Memory, IndexBuffer.Size);
   finally
@@ -256,12 +254,15 @@ procedure TPriModelObject.Draw;
 var
   i: Integer;
 begin
-  FModel.Materials[FMaterialID].Apply;
+  if FMaterialID <> 0 then FModel.Materials[FMaterialID].Apply;
   glPushMatrix;
   FTransform.Apply;
-  FIndexBuffer.Bind(GL_ELEMENT_ARRAY_BUFFER_ARB);
-  glDrawElements(GL_TRIANGLES, FIndexBuffer.Size div SizeOf(Word), GL_UNSIGNED_SHORT, FIndexBuffer.Data);
-  FIndexBuffer.Unbind;
+  if FVertLoaded and (FIndexBuffer.Size>0) then
+  begin
+    FIndexBuffer.Bind(GL_ELEMENT_ARRAY_BUFFER_ARB);
+    glDrawElements(GL_TRIANGLES, FIndexBuffer.Size div SizeOf(Word), GL_UNSIGNED_SHORT, FIndexBuffer.Data);
+    FIndexBuffer.Unbind;
+  end;
   for i:=0 to High(FObjects) do FObjects[i].Draw;
   glPopMatrix;
 end;
@@ -295,11 +296,7 @@ begin
       begin
         Index:=Length(FObjects);
         SetLength(FObjects, Index+1);
-        try
-          FObjects[Index]:=TPriModelObject.Create(FModel, Data, VertexBuffer);
-        except
-          Exit;
-        end;
+        FObjects[Index]:=TPriModelObject.Create(FModel, Data, VertexBuffer);
       end;
     ChunkObjectPrimitive:
       try
@@ -785,21 +782,13 @@ begin
       begin
         Index:=Length(FObjects);
         SetLength(FObjects, Index+1);
-        try
-          FObjects[Index]:=TPriModelObject.Create(Self, Data, VertexBuffer);
-        except
-          Exit;
-        end;
+        FObjects[Index]:=TPriModelObject.Create(Self, Data, VertexBuffer);
       end;
     ChunkMaterial:
       begin
         Index:=Length(FMaterials);
         SetLength(FMaterials, Index+1);
-        try
-          FMaterials[Index]:=TPriModelMaterial.Create(Self, Data);
-        except
-          Exit;
-        end;
+        FMaterials[Index]:=TPriModelMaterial.Create(Self, Data);
       end;
     else
       raise Exception.CreateFmt(SPriModelReadChunkUnknownChunkAt, [ChunkID, ChunkEnd-ChunkSize]);

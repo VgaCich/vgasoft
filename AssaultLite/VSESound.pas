@@ -39,8 +39,8 @@ uses
 
 const
   SNameEnableBGM = 'EnableBGM';
-	XM_MEMORY=1;
-	uFMOD_BUFFER_SIZE=262144;
+  XM_MEMORY=1;
+  uFMOD_BUFFER_SIZE=262144;
   uFMOD_MixRate = 44100;
   SSectionSound='Sound';
 

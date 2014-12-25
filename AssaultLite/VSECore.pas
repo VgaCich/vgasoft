@@ -43,6 +43,7 @@ type
     procedure SetState(Value: Cardinal);
     function  GetKeyPressed(Index: Byte): Boolean;
     procedure SetMouseCapture(Value: Boolean);
+    function  GetMouseCursor: TPoint;
     function  GetTime: Cardinal;
   protected
     procedure StartEngine;
@@ -85,6 +86,7 @@ type
     property Paused: Boolean read FPaused; //Engine paused
     property KeyPressed[Index: Byte]: Boolean read GetKeyPressed; //True if Key pressed
     property MouseCapture: Boolean read FMouseCapture write SetMouseCapture; //Mouse capture mode
+    property MouseCursor: TPoint read GetMouseCursor; //Mouse cursor coordinates relative to engine window
     property Time: Cardinal read GetTime; //Current time in ms
     property State: Cardinal read FState write SetState; //Current state index
     property CurState: TGameState read FCurState; //Current state object
@@ -95,7 +97,6 @@ type
   end;
 
 function VSEStart: Integer; //Start engine, returns engine stop code
-function GetCursorPos(var Cursor: TPoint): Boolean; //Windows.GetCursorPos override, returns cursor position inside of engine window
 procedure LogException(Comment: string); //Writes current exception info to log, followed by Comment. Call only in except block
 
 var
@@ -115,10 +116,6 @@ const
   WM_XBUTTONUP=$20C;
 
 var
-  WndClass: TWndClass;
-  Handle: THandle;
-  Msg: TMsg;
-  Fin, Initializing, Quitting: Boolean;
   Mutex: Integer=0;
   VSEStopState: Integer=StopNormal;
 
@@ -126,12 +123,6 @@ procedure LogErrorAndShowMessage(Msg: string);
 begin
   {$IFDEF VSE_LOG}Log(llError, Msg);{$ENDIF}
   MessageBox(0, PChar(Msg), PChar(InitSettings.Caption), MB_ICONERROR);
-end;
-
-function GetCursorPos(var Cursor: TPoint): Boolean;
-begin
-  Result:=Windows.GetCursorPos(Cursor);
-  ScreenToClient(Handle, Cursor);
 end;
 
 procedure LogException(Comment: string);
@@ -149,7 +140,6 @@ end;
 
 constructor TCore.Create(WndHandle: THandle);
 begin
-  Initializing:=true;
   inherited Create;
   FPaused:=true;
   FMinimized:=false;
@@ -165,7 +155,6 @@ begin
   FPreviousUpdate:=0;
   FUpdOverloadCount:=0;
   FUpdOverloadThreshold:=DefaultOverloadThreshold;
-  Initializing:=false;
 end;
 
 destructor TCore.Destroy;
@@ -214,6 +203,15 @@ begin
   {$IFDEF VSE_LOG}LogSysInfo;{$ENDIF}
   SetResolution(FResolutionX, FResolutionY, FRefreshRate, FFullscreen, false);
   VSync:=InitSettings.VSync;
+  {$IFDEF VSE_LOG}Log(llInfo, 'States initialization');{$ENDIF}
+  if not Assigned(InitSettings.InitStates) then raise Exception.Create('InitStates() are NULL');
+  try
+    InitSettings.InitStates;
+    {$IFDEF VSE_LOG}Log(llInfo, 'States initialized');{$ENDIF}
+  except
+    {$IFDEF VSE_LOG}LogException('in InitStates');{$ENDIF}
+    Core.StopEngine(StopUserException);
+  end;
   glShadeModel(GL_SMOOTH);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
@@ -222,6 +220,7 @@ begin
   glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
   glEnable(GL_NORMALIZE);
   FFPSTimer:=timeSetEvent(1000, 0, @UpdateFPS, 0, TIME_PERIODIC);
+  FPaused:=false;
 end;
 
 procedure TCore.SaveSettings;
@@ -237,7 +236,7 @@ end;
 procedure TCore.Update;
 var
   T, i, UpdTime: Cardinal;
-  Cur: TPoint;
+  Cursor: TPoint;
 begin
   try
     GetKeyboardState(FKeyState);
@@ -273,14 +272,14 @@ begin
     begin
       if FMouseCapture and not FMinimized then
       begin
-        Windows.GetCursorPos(Cur);
-        Cur.X:=Cur.X-FResolutionX div 2;
-        Cur.Y:=Cur.Y-FResolutionY div 2;
+        GetCursorPos(Cursor);
+        Cursor.X:=Cursor.X-FResolutionX div 2;
+        Cursor.Y:=Cursor.Y-FResolutionY div 2;
         SetCursorPos(FResolutionX div 2, FResolutionY div 2);
         try
-          FCurState.MouseEvent(0, meMove, Cur.X, Cur.Y);
+          FCurState.MouseEvent(0, meMove, Cursor.X, Cursor.Y);
         except
-          {$IFDEF VSE_LOG}LogException(Format('in state %s.MouseEvent(0, %s, %d, %d)', [FCurState.Name, MouseEventNames[meMove], Cur.X, Cur.Y]));{$ENDIF}
+          {$IFDEF VSE_LOG}LogException(Format('in state %s.MouseEvent(0, %s, %d, %d)', [FCurState.Name, MouseEventNames[meMove], Cursor.X, Cursor.Y]));{$ENDIF}
           {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
         end;
       end;
@@ -690,6 +689,12 @@ begin
   end;
 end;
 
+function TCore.GetMouseCursor: TPoint;
+begin
+  GetCursorPos(Result);
+  ScreenToClient(FHandle, Result);
+end;
+
 function TCore.GetTime: Cardinal;
 var
   T: Int64;
@@ -706,33 +711,20 @@ begin
   case (Msg) of
     WM_ACTIVATE:
       begin
-        if Initializing or Quitting or (Core<>nil) then Exit;
-        {$IFDEF VSE_LOG}Log(llInfo, 'Creating engine');
-        {$IFDEF VSE_DEBUG}Log(llInfo, 'Debug mode');{$ENDIF}{$ENDIF}
-        try
-          Core:=TCore.Create(Handle);
-          Core.StartEngine;
-          {$IFDEF VSE_LOG}Log(llInfo, 'Engine created');{$ENDIF}
-        except
-          {$IFDEF VSE_LOG}LogException('while initializing engine');{$ENDIF}
-          VSEStopState:=StopInitError;
-          SendMessage(Handle, WM_CLOSE, 0, 0);
-        end;
-        {$IFDEF VSE_LOG}Log(llInfo, 'States initialization');{$ENDIF}
-        if Assigned(InitSettings.InitStates) then
+        if not Assigned(Core) then
+        begin
+          {$IFDEF VSE_LOG}Log(llInfo, 'Creating engine');
+          {$IFDEF VSE_DEBUG}Log(llInfo, 'Debug mode');{$ENDIF}{$ENDIF}
           try
-            InitSettings.InitStates;
-            {$IFDEF VSE_LOG}Log(llInfo, 'States initialized');{$ENDIF}
+            Core:=TCore.Create(hWnd);
+            Core.StartEngine;
+            {$IFDEF VSE_LOG}Log(llInfo, 'Engine created');{$ENDIF}
           except
-            {$IFDEF VSE_LOG}LogException('in InitStates');{$ENDIF}
-            Core.StopEngine(StopUserException);
-          end
-          else begin
-            LogErrorAndShowMessage('InitStates() not initialized');
-            Core.StopEngine(StopInitError);
-            Exit;
+            {$IFDEF VSE_LOG}LogException('while initializing engine');{$ENDIF}
+            VSEStopState:=StopInitError;
+            SendMessage(hWnd, WM_CLOSE, 0, 0);
           end;
-        Core.FPaused:=false;
+        end;
       end;
     WM_KEYUP: Core.KeyEvent(wParam, keUp);
     WM_KEYDOWN: Core.KeyEvent(wParam, keDown);
@@ -757,7 +749,6 @@ begin
           {$IFDEF VSE_LOG}LogException('while destroying engine');{$ENDIF}
           VSEStopState:=StopInternalError;
         end;
-        Quitting:=true;
         PostQuitMessage(VSEStopState);
         Result:=0;
       end;
@@ -781,8 +772,8 @@ begin
           end;
           gleResizeWnd(Core.ResolutionX, Core.ResolutionY);
           if Core.Fullscreen
-            then SetWindowPos(Handle, HWND_TOPMOST, 0, 0, WndWidth, WndHeight, 0)
-            else SetWindowPos(Handle, HWND_TOP, 0, 0, WndWidth, WndHeight, SWP_NOMOVE or SWP_FRAMECHANGED);
+            then SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, WndWidth, WndHeight, 0)
+            else SetWindowPos(hWnd, HWND_TOP, 0, 0, WndWidth, WndHeight, SWP_NOMOVE or SWP_FRAMECHANGED);
         end;
         Result:=0;
       except
@@ -803,14 +794,17 @@ begin
 end;
 
 function VSEStart: Integer;
+var
+  WndClass: TWndClass;
+  Handle: THandle;
+  Msg: TMsg;
+  Fin: Boolean;
 begin
   Result:=StopInitError;
   if IsRunning(InitSettings.Caption) then Exit;
   {$IFDEF VSE_LOG}Log(llInfo, InitSettings.Caption+' '+InitSettings.Version+' started');
   Log(llInfo, VSECaptVer);{$ENDIF}
-  Initializing:=false;
   Fin:=false;
-  Quitting:=false;
   ZeroMemory(@WndClass, SizeOf(WndClass));
   with WndClass do
   begin
