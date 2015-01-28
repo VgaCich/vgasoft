@@ -6759,28 +6759,38 @@ end;
 
 function Win32Type: String; //28.07.03
 const                      //20.10.03
- WinName = 'Microsoft Windows ';
+ WinName = 'Microsoft Windows';
 { Win32Types : array[1..7] of String = ('95', '95 OSR2',
-  '98 SE', 'ME', 'NT', '2000', 'XP');}  
+  '98 SE', 'ME', 'NT', '2000', 'XP');}
 begin
- if Win32Platform = 1 then
+  if Win32Platform = 1 then
   begin  //Win9x
-   if (Win32MajorVersion = 4) and (Win32MinorVersion = 0) and (Win32BuildNumber = 1111) then
-    Win32Type := WinName + '95 OSR2' {Win32Types[2]} else Win32Type := WinName + '95' {Win32Types[1]} ;
-   if (Win32MajorVersion = 4) and (Win32MinorVersion =10) and (Win32BuildNumber <= 1998) then
-    Win32Type := WinName + '98' {Win32Types[3]};
-   if (Win32MajorVersion = 4) and (Win32MinorVersion =10) and (Win32BuildNumber = 2222) then
-    Win32Type := WinName + '98 SE' {Win32Types[3]};
-   if (Win32MajorVersion = 4) and (Win32MinorVersion =90) and (Win32BuildNumber = 3000) then
-    Win32Type := WinName + 'ME' {Win32Types[4]};
+   Result := WinName;
+   if (Win32MajorVersion = 4) and (Win32MinorVersion = 0) and (Win32BuildNumber = 1111)
+    then Result := WinName + ' 95 OSR2'
+    else Result := WinName + ' 95';
+   if (Win32MajorVersion = 4) and (Win32MinorVersion =10) and (Win32BuildNumber <= 1998)
+    then Result := WinName + ' 98';
+   if (Win32MajorVersion = 4) and (Win32MinorVersion =10) and (Win32BuildNumber = 2222)
+    then Result := WinName + ' 98 SE';
+   if (Win32MajorVersion = 4) and (Win32MinorVersion =90)
+    then Result := WinName + ' ME';
   end
  else
   begin  //WinNT
-   if Win32MajorVersion<5 then Win32Type := WinName + 'NT' {Win32Types[5]};
-   if (Win32MajorVersion = 5) and (Win32MinorVersion = 0) and (Win32BuildNumber = 2195) then
-    Win32Type := WinName + '2000' {Win32Types[6]};
-   if (Win32MajorVersion = 5) and (Win32MinorVersion = 1) and (Win32BuildNumber = 2600) then
-    Win32Type := WinName + 'XP' {Win32Types[7]};
+   Result := Result + ' NT';
+   if (Win32MajorVersion = 5) and (Win32MinorVersion = 0)
+    then Result := WinName + ' 2000';
+   if (Win32MajorVersion = 5) and (Win32MinorVersion = 1)
+    then Result := WinName + ' XP';
+   if (Win32MajorVersion = 6) and (Win32MinorVersion = 0)
+    then Result := WinName + ' Vista';
+   if (Win32MajorVersion = 6) and (Win32MinorVersion = 1)
+    then Result := WinName + ' 7';
+   if (Win32MajorVersion = 6) and (Win32MinorVersion = 2)
+    then Result := WinName + ' 8';
+   if (Win32MajorVersion = 6) and (Win32MinorVersion = 3)
+    then Result := WinName + ' 8.1';
   end;
   if Win32CSDVersion <> '' then Result := Result + ' ' + Win32CSDVersion ;
 end;

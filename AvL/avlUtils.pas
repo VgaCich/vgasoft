@@ -61,6 +61,7 @@ function IntToStrLZ(I, Len: Integer): string;
 function ANSI2OEM(const S: string): string;
 procedure GetPrivilege(const Privilege: string);
 function ExecAndWait(const CmdLine: string): Boolean;
+function GUIDToString(const GUID: TGUID): string;
 
 implementation
 
@@ -460,7 +461,7 @@ function Tok(const Sep: string; var S: string): string;
     Result:=false;
     for i:=1 to Length(S) do
     begin
-      if C=Copy(S, i, 1) then
+      if C=S[i] then
       begin
         Result:=true;
         Exit;
@@ -720,6 +721,12 @@ begin
     end;
   WaitForSingleObject(PI.hProcess, infinite);
   Result:=true;
+end;
+
+function GUIDToString(const GUID: TGUID): string;
+begin
+  with GUID do Result:=Format('{%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x}',
+    [D1, D2, D3, D4[0], D4[1], D4[2], D4[3], D4[4], D4[5], D4[6], D4[7]]);
 end;
 
 end.
