@@ -50,7 +50,7 @@ var
 
 const
   SLoad='Загрузка...';
-  SRVSE='Reduced VS Engine';
+  SRVSE='reduced VS Engine';
   STitle='Assault Lite';
 
 {TLoadThread} //I'm don't sure that is correct... May be a source of AV's

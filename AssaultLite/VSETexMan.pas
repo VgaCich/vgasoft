@@ -165,7 +165,6 @@ const
 var
   i: Integer;
 begin
-  Result:=0;
   if ImageData.Stride>ImageDataRowSize(ImageData) then
     for i:=1 to ImageData.Height-1 do
       Move(IncPtr(ImageData.Pixels, i*ImageData.Stride)^, IncPtr(ImageData.Pixels, i*ImageDataRowSize(ImageData))^, ImageDataRowSize(ImageData));

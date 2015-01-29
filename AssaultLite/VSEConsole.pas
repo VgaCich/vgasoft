@@ -328,7 +328,7 @@ begin
       if not FOnExecute(Self, Command) then Exit;
     except
       {$IFDEF VSE_LOG}LogException('in Console.OnExecute handler');{$ENDIF}
-      {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+      {$IFNDEF VSE_DEBUG}Core.StopEngine(StopUserException);{$ENDIF}
     end;
 end;
 

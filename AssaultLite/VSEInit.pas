@@ -54,7 +54,7 @@ type
   end;
 
 const
-  VSECaptVer='VgaSoft Engine 0.1';
+  VSECaptVer='reduced VS Engine 0.1';
 
 var
   InitSettings: TInitSettings = (

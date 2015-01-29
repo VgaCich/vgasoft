@@ -21,6 +21,7 @@ const
   StopUserError=5; //Engine stopped by user code due to error
   StopCodeNames: array[StopNormal..StopUserError] of string =
     ('Normal', 'Init Error', 'Internal Error', 'User Exception', 'Display Mode Error', 'User Error');
+  SCoreRevision: string = '$Rev$';
 
 type
   TCore=class
@@ -129,9 +130,12 @@ begin
 end;
 
 procedure LogException(Comment: string);
+var
+  Handle: THandle;
 begin
   Comment:=Format('Exception "%s" at $%s with message "%s" %s', [string(ExceptObject.ClassName), IntToHex(Cardinal(ExceptAddr), 8), Exception(ExceptObject).Message, Comment]);
   {$IFDEF VSE_LOG}Log(llError, Comment);{$ENDIF}
+  if Assigned(Core) then Handle:=Core.Handle else Handle:=0; 
   {$IFNDEF VSE_DEBUG}MessageBox(Handle, PChar(Comment), PChar(InitSettings.Caption), MB_ICONERROR){$ENDIF}
 end;
 
@@ -177,7 +181,7 @@ begin
   FAN(TexMan);
   FAN(Sound);
   FAN(BindMan);
-  FAN(Console);
+  {$IFDEF VSE_CONSOLE}FAN(Console);{$ENDIF}
   if FFullscreen then gleGoBack;
   wglMakeCurrent(FDC, 0);
   wglDeleteContext(FRC);
@@ -780,7 +784,7 @@ begin
         Result:=0;
       except
         {$IFDEF VSE_LOG}LogException('while resizing window');{$ENDIF}
-        {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
+        {$IFNDEF VSE_DEBUG}Core.StopEngine(StopInternalError);{$ENDIF}
       end;
     else
       Result:=DefWindowProc(hWnd, Msg, wParam, lParam);
@@ -805,7 +809,7 @@ begin
   Result:=StopInitError;
   if IsRunning(InitSettings.Caption) then Exit;
   {$IFDEF VSE_LOG}Log(llInfo, InitSettings.Caption+' '+InitSettings.Version+' started');
-  Log(llInfo, VSECaptVer);{$ENDIF}
+  Log(llInfo, VSECaptVer+' (core '+SCoreRevision+')');{$ENDIF}
   Fin:=false;
   ZeroMemory(@WndClass, SizeOf(WndClass));
   with WndClass do
@@ -860,10 +864,12 @@ begin
     {$IFDEF VSE_LOG}LogException('in main loop');{$ENDIF}
     Result:=StopInternalError;
   end;
+  {$IFDEF VSE_LOG}
   if Result<>StopNormal then
   begin
     LogF(llInfo, 'Engine stopped with error code %d (%s)', [Result, StopCodeNames[Result]]);
   end;
+  {$ENDIF}
   UnregisterClass(WndClassName, hInstance);
 end;
 

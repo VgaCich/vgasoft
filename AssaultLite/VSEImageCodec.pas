@@ -79,7 +79,6 @@ var
   EncCLSID: TGUID;
   EncParams: TEncoderParameters;
   PEncParams: PEncoderParameters;
-  i: Integer;
 begin
   Result := false;
   if ImageData.Stride = 0 then ImageData.Stride := ImageDataRowSize(ImageData);
