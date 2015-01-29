@@ -7,6 +7,7 @@ uses
   VSEImageCodec, SynTex, VSEMemPak;
 
 type
+  TRTTMethod=(rttCopy, rttFBO); //Render-to-Texture method - CopyTexture (slow), FrameBuffer Object
   TTexture=record //internally used
     ID: Cardinal;
     Name: string;
@@ -20,7 +21,6 @@ type
     Bold: Boolean;
     Name: string;
   end;
-  TRTTMethod=(rttCopy, rttFBO); //Render-to-Texture method - CopyTexture (slow), FrameBuffer Object
   TRTTInfo=record //internally used
     Method: TRTTMethod;
     FBO, RBODepth, Color, Depth: Cardinal;
@@ -59,7 +59,7 @@ type
     function  FontCreate(Name: string; Size: Integer; Bold: Boolean=false): Cardinal; //Create font; Name - font name, Size - font size, Bold - normal/bold font; returns font ID
     procedure RebuildFonts; //Rebuild font textures for current screen resolution
     procedure TextOut(Font: Cardinal; X, Y: Single; const Text: string); //Draw text; Font - font ID, X, Y - coordinates of left upper corner of text, Text - text for draw
-    function TextWidth(Font: Cardinal; const Text: string): Integer;
+    function  TextWidth(Font: Cardinal; const Text: string): Integer; //Length of space, needed for drawing text
     function  TextHeight(Font: Cardinal): Integer; //Height of space, needed for drawing text
     {properties}
     property RTTMethod: TRTTMethod read FRTTMethod write FRTTMethod; //Method, used for RTT; default: autodetect

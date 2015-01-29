@@ -27,7 +27,7 @@ procedure SaveImageData(const ImageData: TImageData; Stream: TStream); // Save r
 function LoadImageData(var ImageData: TImageData; Stream: TStream): Boolean; // Load raw image data from stream
 function ImageDataRowSize(const ImageData: TImageData): Integer; // Size of image row in bytes
 procedure InitImageData(var ImageData: TImageData); // Initializes TImageData structure
-procedure FreeImageData(var ImageData: TImageData); // Frees TImageData structore
+procedure FreeImageData(var ImageData: TImageData); // Frees TImageData structure
 
 implementation
 
@@ -36,6 +36,9 @@ implementation
 const
   BitDepth: array[TPixelFormat] of Integer = (8, 24, 32, 32);
   PixelFormat: array[TPixelFormat] of Integer = (PixelFormat8bppIndexed, PixelFormat24bppRGB, 0, PixelFormat32bppARGB);
+
+type
+  TSaveFunction = function(Bitmap, UserData: Pointer; EncCLSID: PGUID; EncParams: PEncoderParameters): TStatus;
 
 function GetEncoderCLSID(const Format: string): TGUID;
 var
@@ -69,7 +72,7 @@ begin
   end;
 end;
 
-function SaveImageToFile(ImageData: TImageData; const FileName: string; ImageFormat: TImageFormat; Quality: Cardinal = 0): Boolean;
+function SaveImage(ImageData: TImageData; SaveFunction: TSaveFunction; UserData: Pointer; ImageFormat: TImageFormat; Quality: Cardinal): Boolean;
 var
   Status: TStatus;
   Bitmap: Pointer;
@@ -83,7 +86,7 @@ begin
   Status := GdipCreateBitmapFromScan0(ImageData.Width, ImageData.Height, ImageData.Stride, PixelFormat[ImageData.PixelFormat], ImageData.Pixels, Bitmap);
   if Status <> Ok then
   begin
-    {$IFDEF VSE_LOG}LogF(llError, 'SaveImageToFile("%s"): can''t create GDI+ bitmap (Status=%d)', [FileName, Integer(Status)]);{$ENDIF}
+    {$IFDEF VSE_LOG}LogF(llError, 'SaveImage: can''t create GDI+ bitmap (Status=%d)', [Integer(Status)]);{$ENDIF}
     Exit;
   end;
   try
@@ -92,7 +95,7 @@ begin
     EncCLSID := GetEncoderCLSID(ImageFormatMime[ImageFormat]);
     if EncCLSID.D1 = 0 then
     begin
-      {$IFDEF VSE_LOG}LogF(llError, 'SaveImageToFile("%s"): GDI+ encoder for %s is not available', [FileName, ImageFormatMime[ImageFormat]]);{$ENDIF}
+      {$IFDEF VSE_LOG}LogF(llError, 'SaveImage: GDI+ encoder for %s is not available', [ImageFormatMime[ImageFormat]]);{$ENDIF}
       Exit;
     end;
     if Quality > 0 then
@@ -108,10 +111,10 @@ begin
       PEncParams := @EncParams;
     end
       else PEncParams := nil;
-    Status := GdipSaveImageToFile(Bitmap, PWideChar(WideString(FileName)), @EncCLSID, PEncParams);
+    Status := SaveFunction(Bitmap, UserData, @EncCLSID, PEncParams);
     if Status <> Ok then
     begin
-      {$IFDEF VSE_LOG}LogF(llError, 'SaveImageToFile("%s"): can''t save image to file (Status=%d)', [FileName, Integer(Status)]);{$ENDIF}
+      {$IFDEF VSE_LOG}LogF(llError, 'SaveImage: can''t save image (Status=%d)', [Integer(Status)]);{$ENDIF}
       Exit;
     end;
     Result := true;
@@ -120,52 +123,95 @@ begin
   end;
 end;
 
-function SaveImageToStream(ImageData: TImageData; Stream: TStream; ImageFormat: TImageFormat; Quality: Cardinal = 0): Boolean;
+function SaveToFileFunction(Bitmap, UserData: Pointer; EncCLSID: PGUID; EncParams: PEncoderParameters): TStatus;
+begin
+  Result := GdipSaveImageToFile(Bitmap, UserData, EncCLSID, EncParams);
+end;
+
+function SaveImageToFile(ImageData: TImageData; const FileName: string; ImageFormat: TImageFormat; Quality: Cardinal = 0): Boolean;
+begin
+  Result := SaveImage(ImageData, SaveToFileFunction, PWideChar(WideString(FileName)), ImageFormat, Quality);
+  {$IFDEF VSE_LOG}if not Result then LogF(llError, 'SaveImageToFile("%s"): failed', [FileName]);{$ENDIF}
+end;
+
+function SaveToStreamFunction(Bitmap, UserData: Pointer; EncCLSID: PGUID; EncParams: PEncoderParameters): TStatus;
 var
-  Status: TStatus;
-  Bitmap: Pointer;
-  EncCLSID: TGUID;
-  EncParams: TEncoderParameters;
-  PEncParams: PEncoderParameters;
-  i: Integer;
   StreamAdapter: IStream;
 begin
+  TIStreamAdapter.Create(TStream(UserData)).GetInterface(IStream, StreamAdapter);
+  Result := GdipSaveImageToStream(Bitmap, StreamAdapter, EncCLSID, EncParams);
+end;
+
+function SaveImageToStream(ImageData: TImageData; Stream: TStream; ImageFormat: TImageFormat; Quality: Cardinal = 0): Boolean;
+begin
+  Result := SaveImage(ImageData, SaveToStreamFunction, Pointer(Stream), ImageFormat, Quality);
+  {$IFDEF VSE_LOG}if not Result then Log(llError, 'SaveImageToStream: failed');{$ENDIF}
+end;
+
+function LoadImage(Bitmap: Pointer; Status: TStatus; out ImageData: TImageData): Boolean;
+var
+  BitmapData: TBitmapData;
+  i, PixFormat, PalSize: Integer;
+  Palette: TColorPalette256;
+  Rect: TGPRect;
+begin
   Result := false;
-  if ImageData.Stride = 0 then ImageData.Stride := ImageDataRowSize(ImageData);
-  Status := GdipCreateBitmapFromScan0(ImageData.Width, ImageData.Height, ImageData.Stride, PixelFormat[ImageData.PixelFormat], ImageData.Pixels, Bitmap);
   if Status <> Ok then
   begin
-    {$IFDEF VSE_LOG}LogF(llError, 'SaveImageToStream: can''t create GDI+ bitmap (Status=%d)', [Integer(Status)]);{$ENDIF}
+    {$IFDEF VSE_LOG}LogF(llError, 'LoadImage: can''t create GDI+ bitmap (Status=%d)', [Integer(Status)]);{$ENDIF}
     Exit;
   end;
   try
-    if ImageData.PixelFormat = pfGS8bit then GdipSetImagePalette(Bitmap, GSPalette);
-    GdipImageRotateFlip(Bitmap, RotateNoneFlipY);
-    EncCLSID := GetEncoderCLSID(ImageFormatMime[ImageFormat]);
-    if EncCLSID.D1 = 0 then
+    with ImageData do
     begin
-      {$IFDEF VSE_LOG}LogF(llError, 'SaveImageToStream: GDI+ encoder for %s is not available', [ImageFormatMime[ImageFormat]]);{$ENDIF}
-      Exit;
-    end;
-    if Quality > 0 then
-    begin
-      EncParams.Count := 1;
-      with EncParams.Parameter[0] do
-      begin
-        Guid := EncoderQuality;
-        NumberOfValues := 1;
-        Type_ := EncoderParameterValueTypeLong;
-        Value := @Quality;
+      if GdipGetImageWidth(Bitmap, Width) <> Ok then Exit;
+      if GdipGetImageHeight(Bitmap, Height) <> Ok then Exit;
+      if GdipGetImagePixelFormat(Bitmap, PixFormat) <> Ok then Exit;
+      case (PixFormat and $FF00) shr 8 of
+        1, 4, 8: PixelFormat := pfGS8bit;
+        16, 24: PixelFormat := pfBGR24bit;
+        32: PixelFormat := pfBGRA32bit;
+        else Exit;
       end;
-      PEncParams := @EncParams;
-    end
-      else PEncParams := nil;
-    TIStreamAdapter.Create(Stream).GetInterface(IStream, StreamAdapter);
-    Status := GdipSaveImageToStream(Bitmap, StreamAdapter, @EncCLSID, PEncParams);
+      if PixFormat and PixelFormatIndexed <> 0 then
+      begin
+        if GdipGetImagePaletteSize(Bitmap, PalSize) <> Ok then Exit;
+        if GdipGetImagePalette(Bitmap, Palette, Min(PalSize, SizeOf(Palette))) <> Ok then Exit;
+        with Palette do
+          for i := 0 to Count - 1 do
+            if Entries[i] <> Entries[i] or ((Entries[i] shl 8) and $00FFFF00) then
+            begin
+              PixelFormat := pfBGR24bit;
+              Break;
+            end;
+      end;
+    end;
+    with Rect do
+    begin
+      X := 0;
+      Y := 0;
+      Width := ImageData.Width;
+      Height := ImageData.Height;
+    end;
+    ZeroMemory(@BitmapData, SizeOf(BitmapData));
+    Status := GdipBitmapLockBits(Bitmap, Rect, ImageLockModeRead, PixelFormat[ImageData.PixelFormat], @BitmapData);
+    if (Status = InvalidParameter) and (ImageData.PixelFormat = pfGS8bit) then
+    begin
+      {$IFDEF VSE_LOG}Log(llWarning, 'LoadImage: can''t lock bitmap data as GS8, retrying locking as BGR24');{$ENDIF}
+      ImageData.PixelFormat := pfBGR24bit;
+      Status := GdipBitmapLockBits(Bitmap, Rect, ImageLockModeRead, PixelFormat[ImageData.PixelFormat], @BitmapData);
+    end;
     if Status <> Ok then
     begin
-      {$IFDEF VSE_LOG}LogF(llError, 'SaveImageToStream: can''t save image to stream (Status=%d)', [Integer(Status)]);{$ENDIF}
+      {$IFDEF VSE_LOG}LogF(llError, 'LoadImage: can''t lock bitmap data (Status=%d)', [Integer(Status)]);{$ENDIF}
       Exit;
+    end;
+    try
+      ImageData.Stride := Abs(BitmapData.Stride);
+      ReallocMem(ImageData.Pixels, ImageData.Stride * ImageData.Height);
+      Move(BitmapData.Scan0^, ImageData.Pixels^, ImageData.Stride * ImageData.Height);
+    finally
+      GdipBitmapUnlockBits(Bitmap, @BitmapData);
     end;
     Result := true;
   finally
@@ -176,153 +222,23 @@ end;
 function LoadImageFromFile(const FileName: string; out ImageData: TImageData): Boolean;
 var
   Bitmap: Pointer;
-  BitmapData: TBitmapData;
-  i, PixFormat, PalSize: Integer;
-  Palette: TColorPalette256;
-  Rect: TGPRect;
   Status: TStatus;
 begin
-  Result := false;
   Status := GdipCreateBitmapFromFile(PWideChar(WideString(FileName)), Bitmap);
-  if Status <> Ok then
-  begin
-    {$IFDEF VSE_LOG}LogF(llError, 'LoadImageFromFile("%s"): can''t create GDI+ bitmap (Status=%d)', [FileName, Integer(Status)]);{$ENDIF}
-    Exit;
-  end;
-  try
-    with ImageData do
-    begin
-      if GdipGetImageWidth(Bitmap, Width) <> Ok then Exit;
-      if GdipGetImageHeight(Bitmap, Height) <> Ok then Exit;
-      if GdipGetImagePixelFormat(Bitmap, PixFormat) <> Ok then Exit;
-      case (PixFormat and $FF00) shr 8 of
-        1, 4, 8: PixelFormat := pfGS8bit;
-        16, 24: PixelFormat := pfBGR24bit;
-        32: PixelFormat := pfBGRA32bit;
-        else Exit;
-      end;
-      if PixFormat and PixelFormatIndexed <> 0 then
-      begin
-        if GdipGetImagePaletteSize(Bitmap, PalSize) <> Ok then Exit;
-        if GdipGetImagePalette(Bitmap, Palette, Min(PalSize, SizeOf(Palette))) <> Ok then Exit;
-        with Palette do
-          for i := 0 to Count - 1 do
-            if Entries[i] <> Entries[i] or ((Entries[i] shl 8) and $00FFFF00) then
-            begin
-              PixelFormat := pfBGR24bit;
-              Break;
-            end;
-      end;
-    end;
-    with Rect do
-    begin
-      X := 0;
-      Y := 0;
-      Width := ImageData.Width;
-      Height := ImageData.Height;
-    end;
-    ZeroMemory(@BitmapData, SizeOf(BitmapData));
-    Status := GdipBitmapLockBits(Bitmap, Rect, ImageLockModeRead, PixelFormat[ImageData.PixelFormat], @BitmapData);
-    if (Status = InvalidParameter) and (ImageData.PixelFormat = pfGS8bit) then
-    begin
-      {$IFDEF VSE_LOG}LogF(llWarning, 'LoadImageFromFile("%s"): can''t lock bitmap data as GS8, retrying locking as BGR24', [FileName]);{$ENDIF}
-      ImageData.PixelFormat := pfBGR24bit;
-      Status := GdipBitmapLockBits(Bitmap, Rect, ImageLockModeRead, PixelFormat[ImageData.PixelFormat], @BitmapData);
-    end;
-    if Status <> Ok then
-    begin
-      {$IFDEF VSE_LOG}LogF(llError, 'LoadImageFromFile("%s"): can''t lock bitmap data (Status=%d)', [FileName, Integer(Status)]);{$ENDIF}
-      Exit;
-    end;
-    try
-      ImageData.Stride := Abs(BitmapData.Stride);
-      ReallocMem(ImageData.Pixels, ImageData.Stride * ImageData.Height);
-      Move(BitmapData.Scan0^, ImageData.Pixels^, ImageData.Stride * ImageData.Height);
-    finally
-      GdipBitmapUnlockBits(Bitmap, @BitmapData);
-    end;
-    Result := true;
-  finally
-    {$IFDEF VSE_LOG}if not Result then LogF(llError, 'LoadImageFromFile("%s"): image loading failed (Status=%d)', [FileName, Integer(Status)]);{$ENDIF}
-    GdipDisposeImage(Bitmap);
-  end;
+  Result := LoadImage(Bitmap, Status, ImageData);
+  {$IFDEF VSE_LOG}if not Result then LogF(llError, 'LoadImageFromFile("%s"): failed', [FileName]);{$ENDIF}
 end;
 
 function LoadImageFromStream(Stream: TStream; out ImageData: TImageData): Boolean;
 var
   Bitmap: Pointer;
-  BitmapData: TBitmapData;
-  i, PixFormat, PalSize: Integer;
-  Palette: TColorPalette256;
-  Rect: TGPRect;
   Status: TStatus;
   StreamAdapter: IStream;
 begin
-  Result := false;
   TIStreamAdapter.Create(Stream).GetInterface(IStream, StreamAdapter);
   Status := GdipCreateBitmapFromStream(StreamAdapter, Bitmap);
-  if Status <> Ok then
-  begin
-    {$IFDEF VSE_LOG}LogF(llError, 'LoadImageFromStream: can''t create GDI+ bitmap (Status=%d)', [Integer(Status)]);{$ENDIF}
-    Exit;
-  end;
-  try
-    with ImageData do
-    begin
-      if GdipGetImageWidth(Bitmap, Width) <> Ok then Exit;
-      if GdipGetImageHeight(Bitmap, Height) <> Ok then Exit;
-      if GdipGetImagePixelFormat(Bitmap, PixFormat) <> Ok then Exit;
-      case (PixFormat and $FF00) shr 8 of
-        1, 4, 8: PixelFormat := pfGS8bit;
-        16, 24: PixelFormat := pfBGR24bit;
-        32: PixelFormat := pfBGRA32bit;
-        else Exit;
-      end;
-      if PixFormat and PixelFormatIndexed <> 0 then
-      begin
-        if GdipGetImagePaletteSize(Bitmap, PalSize) <> Ok then Exit;
-        if GdipGetImagePalette(Bitmap, Palette, Min(PalSize, SizeOf(Palette))) <> Ok then Exit;
-        with Palette do
-          for i := 0 to Count - 1 do
-            if Entries[i] <> Entries[i] or ((Entries[i] shl 8) and $00FFFF00) then
-            begin
-              PixelFormat := pfBGR24bit;
-              Break;
-            end;
-      end;
-    end;
-    with Rect do
-    begin
-      X := 0;
-      Y := 0;
-      Width := ImageData.Width;
-      Height := ImageData.Height;
-    end;
-    ZeroMemory(@BitmapData, SizeOf(BitmapData));
-    Status := GdipBitmapLockBits(Bitmap, Rect, ImageLockModeRead, PixelFormat[ImageData.PixelFormat], @BitmapData);
-    if (Status = InvalidParameter) and (ImageData.PixelFormat = pfGS8bit) then
-    begin
-      {$IFDEF VSE_LOG}Log(llWarning, 'LoadImageFromStream: can''t lock bitmap data as GS8, retrying locking as BGR24');{$ENDIF}
-      ImageData.PixelFormat := pfBGR24bit;
-      Status := GdipBitmapLockBits(Bitmap, Rect, ImageLockModeRead, PixelFormat[ImageData.PixelFormat], @BitmapData);
-    end;
-    if Status <> Ok then
-    begin
-      {$IFDEF VSE_LOG}LogF(llError, 'LoadImageFromStream: can''t lock bitmap data (Status=%d)', [Integer(Status)]);{$ENDIF}
-      Exit;
-    end;
-    try
-      ImageData.Stride := Abs(BitmapData.Stride);
-      ReallocMem(ImageData.Pixels, ImageData.Stride * ImageData.Height);
-      Move(BitmapData.Scan0^, ImageData.Pixels^, ImageData.Stride * ImageData.Height);
-    finally
-      GdipBitmapUnlockBits(Bitmap, @BitmapData);
-    end;
-    Result := true;
-  finally
-    {$IFDEF VSE_LOG}if not Result then LogF(llError, 'LoadImageFromStream: image loading failed (Status=%d)', [Integer(Status)]);{$ENDIF}
-    GdipDisposeImage(Bitmap);
-  end;
+  Result := LoadImage(Bitmap, Status, ImageData);
+  {$IFDEF VSE_LOG}if not Result then Log(llError, 'LoadImageFromStream: failed');{$ENDIF}
 end;
 
 procedure SaveImageData(const ImageData: TImageData; Stream: TStream);
