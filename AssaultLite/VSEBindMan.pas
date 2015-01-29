@@ -33,7 +33,7 @@ type
     constructor Create; //internally used
     destructor Destroy; override; //internally used
     procedure MouseEvent(Button: Integer; Event: TMouseEvent); //internally used
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent); //internally used
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent);
     procedure Update; //internally used
     procedure ResetEvents; //internally used
     function  GetBindKeyName(const BindName: string): string; //Get name of binded to BindName key
@@ -55,7 +55,7 @@ type
     constructor Create(VirtScrW, VirtScrH, X, Y, Width, Height: Integer; Font: Cardinal; const DefaultCapt, CloseCapt: string);
     destructor Destroy; override;
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     property  OnClose: TOnEvent read FOnClose write FOnClose; //Triggered at click on 'close' button
   end;
 
@@ -68,7 +68,7 @@ var
 implementation
 
 uses
-  VSEInit, VSECore, VSETexMan{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+  VSEInit, VSECore, VSETexMan{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
   SSectionBindings = 'Bindings';
@@ -207,7 +207,9 @@ begin
                                       ((Key=VK_MWHEELDOWN) and not FScrollStateUp))
           then Result:=true;
       end
-        else Result:=Core.KeyPressed[Key];
+        else
+        {$IFDEF VSE_CONSOLE}if not Console.Active or (Key in [VK_LBUTTON, VK_RBUTTON, VK_MBUTTON, VK_XBUTTON4, VK_XBUTTON5]) then{$ENDIF}
+          Result:=Core.KeyPressed[Key];
     end;
 end;
 
@@ -236,7 +238,7 @@ begin
     else Result:=''; 
 end;
 
-procedure TBindMan.KeyEvent(Button: Integer; Event: TKeyEvent);
+procedure TBindMan.KeyEvent(Key: Integer; Event: TKeyEvent);
 const
   EvMap: array[keDown..keUp] of TBindEvent = (beDown, beUp);
 var
@@ -244,8 +246,8 @@ var
   Ev: PEventQueue;
 begin
   for i:=0 to High(FBindings) do
-    with FBindings[i] do
-      if Key=Button then
+    if FBindings[i].Key=Key then
+      with FBindings[i] do
       begin
         if Assigned(Events) then
         begin
@@ -394,7 +396,7 @@ begin
   FPages:=High(BindMan.FBindings) div Max(Length(FLabels), 1);
   with Btn do
   begin
-    Typ:=btPush;
+    Type_:=btPush;
     X:=2*FWidth div 3;
     Width:=FWidth-X-10;
     Height:=BHeight;
@@ -478,24 +480,24 @@ begin
   Btn^.Caption:='???';
 end;
 
-procedure TBindManCfgForm.KeyEvent(Button: Integer; Event: TKeyEvent);
+procedure TBindManCfgForm.KeyEvent(Key: Integer; Event: TKeyEvent);
 begin
   if FActive>-1 then
   begin
-    if Event<>keDown then Exit;
-    if Button=VK_ESCAPE then
+    if Event<>keUp then Exit;
+    if Key=VK_ESCAPE then
     begin
       FActive:=-1;
       FillKeys;
     end
-      else if Button=VK_BACK
+      else if Key=VK_BACK
         then SetKey(0)
-        else SetKey(Button);
+        else SetKey(Key);
   end
   else begin
-    if (Event=keDown) and (Button=VK_ESCAPE)
+    if (Event=keUp) and (Key=VK_ESCAPE)
       then CloseClick(nil)
-      else inherited KeyEvent(Button, Event);
+      else inherited KeyEvent(Key, Event);
   end;
 end;
 

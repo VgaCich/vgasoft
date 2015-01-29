@@ -12,7 +12,7 @@ type
   TGUIOnClick=procedure(Btn: PBtn) of object;
   TBtn=record //Button
     Caption: string; //Button caption
-    Typ: TBtnType; //Button type
+    Type_: TBtnType; //Button type
     X, Y, Width, Height, Group, Tag: Integer; //X, Y, Width, Height: button bounds; Group: radio button group; Tag: custom information
     OnClick: TGUIOnClick; //Button click event handler, don't override if Typ=btCheck or Typ=btRadio
     Checked, Enabled: Boolean; //Checked: true if check box or radio button checked; Enabled: enable button
@@ -70,7 +70,7 @@ type
     procedure Draw; //Draw form
     procedure Update; //dynamic; //Update form
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); dynamic; //Process mouse event
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent); dynamic; //Process keyboard event
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent); dynamic;
     procedure CharEvent(C: Char); dynamic; //Process char event
     property Button[Index: Integer]: PBtn read GetButton; //Buttons array
     property Lbl[Index: Integer]: PLbl read GetLabel; //Labels array
@@ -119,8 +119,8 @@ function TGUIForm.AddButton(Btn: TBtn): Integer;
 begin
   Result:=Length(FButtons);
   SetLength(FButtons, Result+1);
-  if Btn.Typ=btCheck then Btn.OnClick:=CheckClick;
-  if Btn.Typ=btRadio then Btn.OnClick:=RadioClick;
+  if Btn.Type_=btCheck then Btn.OnClick:=CheckClick;
+  if Btn.Type_=btRadio then Btn.OnClick:=RadioClick;
   FButtons[Result]:=Btn;
 end;
 
@@ -151,12 +151,14 @@ var
   i: Integer;
 begin
   glPushMatrix;
-  glPushAttrib(GL_ENABLE_BIT);
+  glPushAttrib(GL_ENABLE_BIT or GL_LINE_BIT or GL_LIGHTING_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT);
   if FVSWider
     then gleOrthoMatrix2(0, DeltaLeft[FVirtScreenVAlign]*FVSDelta, FVirtScrW, FVirtScrH+DeltaRight[FVirtScreenVAlign]*FVSDelta)
     else gleOrthoMatrix2(DeltaLeft[FVirtScreenAlign]*FVSDelta, 0, FVirtScrW+DeltaRight[FVirtScreenAlign]*FVSDelta, FVirtScrH);
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_LIGHTING);
+  glEnable(GL_LINE_SMOOTH);
+  glEnable(GL_COLOR_MATERIAL);
   DrawForm;
   for i:=0 to High(FRects) do DrawRect(FRects[i]);
   for i:=0 to High(FLabels) do DrawLabel(FLabels[i]);
@@ -212,22 +214,17 @@ begin
   end;
 end;
 
-procedure TGUIForm.KeyEvent(Button: Integer; Event: TKeyEvent);
+procedure TGUIForm.KeyEvent(Key: Integer; Event: TKeyEvent);
 begin
   if (Event=keDown) then
   begin
-    case Button of
+    case Key of
       VK_TAB: if Core.KeyPressed[VK_SHIFT]
         then Dec(FTabStop)
         else Inc(FTabStop);
       VK_UP: Dec(FTabStop);
       VK_DOWN: Inc(FTabStop);
-      VK_SPACE: if FButtons[FTabStop].Enabled and Assigned(FButtons[FTabStop].OnClick) then
-        begin
-          FButtons[FTabStop].OnClick(@FButtons[FTabStop]);
-          Exit;
-        end;
-      VK_SHIFT:;
+      VK_SHIFT, VK_SPACE:;
       else begin
         FTabStop:=-1;
         Exit;
@@ -235,7 +232,13 @@ begin
     end;
     if FTabStop<0 then FTabStop:=High(FButtons);
     if FTabStop>High(FButtons) then FTabStop:=0;
-  end;
+  end
+    else
+      if (Key=VK_SPACE) and FButtons[FTabStop].Enabled and Assigned(FButtons[FTabStop].OnClick) then
+        begin
+          FButtons[FTabStop].OnClick(@FButtons[FTabStop]);
+          Exit;
+        end;
 end;
 
 procedure TGUIForm.CharEvent(C: Char);
@@ -246,20 +249,20 @@ end;
 procedure TGUIForm.PaintRect(Rect: TRect);
 begin
   glBegin(GL_LINE_LOOP);
-    glVertex2f(FX+Rect.Left, FY+Rect.Top);
-    glVertex2f(FX+Rect.Right, FY+Rect.Top);
-    glVertex2f(FX+Rect.Right, FY+Rect.Bottom);
-    glVertex2f(FX+Rect.Left, FY+Rect.Bottom);
+    glVertex(FX+Rect.Left, FY+Rect.Top);
+    glVertex(FX+Rect.Right, FY+Rect.Top);
+    glVertex(FX+Rect.Right, FY+Rect.Bottom);
+    glVertex(FX+Rect.Left, FY+Rect.Bottom);
   glEnd;
 end;
 
 procedure TGUIForm.FillRect(Rect: TRect);
 begin
   glBegin(GL_QUADS);
-    glVertex2f(FX+Rect.Left, FY+Rect.Top);
-    glVertex2f(FX+Rect.Right, FY+Rect.Top);
-    glVertex2f(FX+Rect.Right, FY+Rect.Bottom);
-    glVertex2f(FX+Rect.Left, FY+Rect.Bottom);
+    glVertex(FX+Rect.Left, FY+Rect.Top);
+    glVertex(FX+Rect.Right, FY+Rect.Top);
+    glVertex(FX+Rect.Right, FY+Rect.Bottom);
+    glVertex(FX+Rect.Left, FY+Rect.Bottom);
   glEnd;
 end;
 
@@ -268,6 +271,7 @@ begin
   glBlendFunc(GL_ONE, GL_ZERO);
   glLineWidth(1);
   glEnable(GL_LINE_SMOOTH);
+  glEnable(GL_COLOR_MATERIAL);
   glColor3f(0.5, 1, 0.5);
   FillRect(Rect(0, 0, FWidth, FHeight));
   glColor3f(0, 0.9, 0.5);
@@ -283,9 +287,9 @@ var
   TextX, TextY: Integer;
   Text: string;
 begin
-//  glLineWidth(1);
   glEnable(GL_LINE_SMOOTH);
-  case Btn.Typ of
+  glEnable(GL_COLOR_MATERIAL);
+  case Btn.Type_ of
     btPush:
       begin
         glLineWidth(2);
@@ -300,7 +304,7 @@ begin
           else glColor3f(0, 1, 0);
         if not Btn.Enabled then glColor3f(0.3, 1, 0.3);
         PaintRect(Rect(Btn.X, Btn.Y, TextX, TextY));
-        TextX:=Max((Btn.Width-TexMan.TextLen(FFont, Btn.Caption)) div 2, 0);
+        TextX:=Max((Btn.Width-TexMan.TextWidth(FFont, Btn.Caption)) div 2, 0);
         TextY:=(Btn.Height-TexMan.TextHeight(FFont)) div 2;
         if bsPushed in State
           then glColor3f(0, 1, 0)
@@ -328,7 +332,7 @@ begin
       end;
   end;
   Text:=Btn.Caption;
-  while (Text<>'') and (TexMan.TextLen(FFont, Text)+TextX>Btn.Width) do Delete(Text, Length(Text), 1);
+  while (Text<>'') and (TexMan.TextWidth(FFont, Text)+TextX>Btn.Width) do Delete(Text, Length(Text), 1);
   if not Btn.Enabled then glColor3f(0.3, 1, 0.3);
   TexMan.TextOut(FFont, FX+Btn.X+TextX, FY+Btn.Y+TextY, Text);
   if bsTabStop in State then
@@ -345,6 +349,7 @@ procedure TGUIForm.DrawRect(const Rect: TRect);
 begin
   glLineWidth(1);
   glEnable(GL_LINE_SMOOTH);
+  glEnable(GL_COLOR_MATERIAL);
   glColor3f(0, 1, 0);
   PaintRect(Rect);
 end;
@@ -358,11 +363,11 @@ begin
   begin
     gleColor(Color);
     Text:=Caption;
-    while (Text<>'') and (TexMan.TextLen(FFont, Text)>Width) do Delete(Text, Length(Text), 1);
+    while (Text<>'') and (TexMan.TextWidth(FFont, Text)>Width) do Delete(Text, Length(Text), 1);
     case Align of
       laLeft: TextX:=X;
-      laCenter: TextX:=X+(Width-TexMan.TextLen(FFont, Text)) div 2;
-      laRight: TextX:=X+Width-TexMan.TextLen(FFont, Text);
+      laCenter: TextX:=X+(Width-TexMan.TextWidth(FFont, Text)) div 2;
+      laRight: TextX:=X+Width-TexMan.TextWidth(FFont, Text);
     end;
     TexMan.TextOut(FFont, FX+TextX, FY+Y, Text);
   end;
@@ -396,7 +401,7 @@ var
   i: Integer;
 begin
   for i:=0 to High(FButtons) do
-    if (FButtons[i].Typ=btRadio) and (FButtons[i].Group=Btn^.Group)
+    if (FButtons[i].Type_=btRadio) and (FButtons[i].Group=Btn^.Group)
       then FButtons[i].Checked:=false;
   Btn^.Checked:=true;
 end;
@@ -433,7 +438,7 @@ var
   Lbl: TLbl;
   Btn: TBtn;
 begin
-  Btn.Typ:=btPush;
+  Btn.Type_:=btPush;
   Btn.X:=X;
   Btn.Y:=Y;
   Btn.Width:=Height;
@@ -462,7 +467,7 @@ var
   i: Integer;
 begin
   SetLength(Result, Length(Items));
-  Btn.Typ:=btPush;
+  Btn.Type_:=btPush;
   Btn.X:=X;
   Btn.Width:=BtnWidth;
   Btn.Height:=BtnHeight;

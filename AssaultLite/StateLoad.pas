@@ -25,7 +25,6 @@ type
     procedure Draw; override;
     procedure Update; override;
     function  Activate: Cardinal; override;
-    procedure Deactivate; override;
     function  SysNotify(Notify: TSysNotify): Boolean; override;
     property LevelName: string read FLevelName write FLevelName;
   end;
@@ -49,14 +48,16 @@ procedure TStateLoad.Draw;
 var
   S: string;
 begin
+  inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
   S:=Format(SLoad, [FLevelName, FStageName]);
-  TexMan.TextOut(FFont, 400-TexMan.TextLen(FFont, S)/2, 500, S);
-  TexMan.TextOut(FFont, 400-TexMan.TextLen(FFont, STitle)/2, 250, STitle);
+  TexMan.TextOut(FFont, 400-TexMan.TextWidth(FFont, S)/2, 500, S);
+  TexMan.TextOut(FFont, 400-TexMan.TextWidth(FFont, STitle)/2, 250, STitle);
 end;
 
 procedure TStateLoad.Update;
 begin
+  inherited;
   if Assigned(FLoadStage) then
   begin
     FLoadStage;
@@ -66,19 +67,15 @@ end;
 
 function TStateLoad.Activate: Cardinal;
 begin
+  Result:=inherited Activate;
+  glColor3f(0, 1, 0);
   SetStage(Delay, '');
-  Result:=50;
-end;
-
-procedure TStateLoad.Deactivate;
-begin
-
 end;
 
 function TStateLoad.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result:=inherited SysNotify(Notify);
-  if Notify=snMinimize then Result:=true;
+  if (Notify=snMinimize) or (Notify=snConsoleActive) then Result:=true;
 end;
 
 function TStateLoad.GetName: string;

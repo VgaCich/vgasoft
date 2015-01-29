@@ -3,7 +3,8 @@ unit VSETexMan;
 interface
 
 uses
-  Windows, AvL, avlUtils, avlMath, OpenGL, oglExtensions, VSEOpenGLExt, SynTex, VSEMemPak;
+  Windows, AvL, avlUtils, avlMath, OpenGL, oglExtensions, VSEOpenGLExt,
+  VSEImageCodec, SynTex, VSEMemPak;
 
 type
   TTexture=record //internally used
@@ -34,7 +35,7 @@ type
     FRTTs: array of TRTTInfo;
     FTexCache: string;
     FRTTMethod: TRTTMethod;
-    {$IFDEF VSE_LOG}FNoLogLostTex: Boolean;{$ENDIF}
+    FDontLogLostTex: Boolean;
     procedure CreateFontTex(Font: Cardinal);
   public
     constructor Create; //internally used
@@ -43,7 +44,9 @@ type
     procedure ClearCache; //Clear texture cache
     procedure Store(Sender: TObject; const Reg: TSynTexRegister; TexSize: Integer; const Name: string); //SynTex interacting
     function  Load(Sender: TObject; var Reg: TSynTexRegister; TexSize: Integer; const Name: string): Boolean; //SynTex interacting
-    function  AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal; //Add texture from memory
+    //function  AddTexture(const Name: string; Stream: TStream; Clamp, MipMap: Boolean): Cardinal; overload;  //Add texture from stream
+    function  AddTexture(const Name: string; const ImageData: TImageData; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from TImageData
+    function  AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from memory
     function  GetTex(Name: string): Cardinal; //Get texture ID by texture name
     procedure Bind(ID: Cardinal; Channel: Integer = 0); //Set current texture in specified texture channel
     procedure Unbind(Channel: Integer = 0); //Remove texture from specified texture channel
@@ -56,7 +59,7 @@ type
     function  FontCreate(Name: string; Size: Integer; Bold: Boolean=false): Cardinal; //Create font; Name - font name, Size - font size, Bold - normal/bold font; returns font ID
     procedure RebuildFonts; //Rebuild font textures for current screen resolution
     procedure TextOut(Font: Cardinal; X, Y: Single; const Text: string); //Draw text; Font - font ID, X, Y - coordinates of left upper corner of text, Text - text for draw
-    function  TextLen(Font: Cardinal; const Text: string): Integer; //Length of space, needed for drawing text
+    function TextWidth(Font: Cardinal; const Text: string): Integer;
     function  TextHeight(Font: Cardinal): Integer; //Height of space, needed for drawing text
     {properties}
     property RTTMethod: TRTTMethod read FRTTMethod write FRTTMethod; //Method, used for RTT; default: autodetect
@@ -110,33 +113,31 @@ end;
 
 function TTexMan.LoadCache: Boolean;
 var
-  Lst: TStringList;
-  i: Integer;
-  TexFile: TMemoryStream;
-  Size: Integer;
+  SR: TSearchRec;
+  ImageData: TImageData;
+  TexFile: TFileStream;
 begin
   Result:=false;
-  if UseCache and FileExists(FTexCache+'Tex.lst') then
+  InitImageData(ImageData);
+  if UseCache and (DirSize(CacheDir)>0) then
   begin
-    {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: Found texture cache; loading');{$ENDIF}
-    Lst:=TStringList.Create;
-    try
-      Lst.LoadFromFile(FTexCache+'Tex.lst');
-      for i:=0 to Lst.Count-1 do
-      begin
-        TexFile:=TMemoryStream.Create;
+    {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: found texture cache; loading');{$ENDIF}
+    if FindFirst(FTexCache+'*', 0, SR)=0 then
+      repeat
+        TexFile:=TFileStream.Create(FTexCache+SR.Name, fmOpenRead);
         try
-          TexFile.LoadFromFile(FTexCache+Lst[i]);
-          TexFile.Read(Size, 4);
-          Store(nil, TSynTexRegister(IncPtr(TexFile.Memory, 4)), Size, Lst[i]);
+          if not LoadImageData(ImageData, TexFile) then
+          begin
+            {$IFDEF VSE_LOG}Log(llError, 'TexMan: can''t load texture '+SR.Name+' from cache');{$ENDIF}
+          end;
+          AddTexture(SR.Name, ImageData, false, true);
         finally
           FAN(TexFile);
         end;
-      end;
-      Result:=true;
-    finally
-      FAN(Lst);
-    end;
+      until FindNext(SR)<>0;
+    FindClose(SR);
+    FreeImageData(ImageData);
+    Result:=true;
   end;
 end;
 
@@ -145,13 +146,39 @@ begin
   DeleteDir(FTexCache);
 end;
 
+(*function TTexMan.AddTexture(const Name: string; Stream: TStream; Clamp, MipMap: Boolean): Cardinal;
+var
+  ImageData: TImageData;
+begin
+  ImageData.Pixels := nil;
+  if LoadImageFromStream(Stream, ImageData)
+    then Result:=AddTexture(Name, ImageData, Clamp, MipMap)
+    else Result:=0;
+  {$IFDEF VSE_LOG}if Result=0 then Log(llError, 'TexMan: can''t load texture '+Name+' from stream');{$ENDIF}
+  FreeImageData(ImageData);
+end;*)
+
+function TTexMan.AddTexture(const Name: string; const ImageData: TImageData; Clamp, MipMap: Boolean): Cardinal;
+const
+  Comp: array[TPixelFormat] of GLenum = (GL_LUMINANCE8, GL_RGB8, GL_RGBA8, GL_RGBA8);
+  Format: array[TPixelFormat] of GLenum = (GL_LUMINANCE, GL_BGR, GL_RGBA, GL_BGRA);
+var
+  i: Integer;
+begin
+  Result:=0;
+  if ImageData.Stride>ImageDataRowSize(ImageData) then
+    for i:=1 to ImageData.Height-1 do
+      Move(IncPtr(ImageData.Pixels, i*ImageData.Stride)^, IncPtr(ImageData.Pixels, i*ImageDataRowSize(ImageData))^, ImageDataRowSize(ImageData));
+  Result:=AddTexture(Name, ImageData.Pixels, ImageData.Width, ImageData.Height, Comp[ImageData.PixelFormat], Format[ImageData.PixelFormat], Clamp, MipMap);
+end;
+
 function TTexMan.AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal;
 begin
-  {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: Adding texture '+Name);{$ENDIF}
+  {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: adding texture '+Name);{$ENDIF}
   Name:=UpperCase(Name);
-  {$IFDEF VSE_LOG}FNoLogLostTex:=true;{$ENDIF}
+  {$IFDEF VSE_LOG}FDontLogLostTex:=true;{$ENDIF}
   Result:=GetTex(Name);
-  {$IFDEF VSE_LOG}FNoLogLostTex:=false;{$ENDIF}
+  {$IFDEF VSE_LOG}FDontLogLostTex:=false;{$ENDIF}
   if Result=0 then
   begin
     if FCount=High(FTextures) then SetLength(FTextures, Length(FTextures)+TexCapDelta);
@@ -186,28 +213,29 @@ end;
 
 procedure TTexMan.Store(Sender: TObject; const Reg: TSynTexRegister; TexSize: Integer; const Name: string);
 var
-  TexFile: TMemoryStream;
-  LstFile: TFileStream;
+  TexFile: TFileStream;
+  ImageData: TImageData;
 begin
+  //InitImageData(ImageData);
+  with ImageData do
+  begin
+    Width:=TexSize;
+    Height:=TexSize;
+    Stride:=TexSize*SizeOf(TRGBA);
+    PixelFormat:=pfRGBA32bit;
+    Pixels:=@Reg[0];
+  end;
   if UseCache and Assigned(Sender) then
   begin
-    {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: Caching texture '+Name);{$ENDIF}
-    TexFile:=TMemoryStream.Create;
+    {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: caching texture '+Name);{$ENDIF}
+    TexFile:=TFileStream.Create(FTexCache+Name, fmCreate or fmOpenWrite);
     try
-      TexFile.Write(TexSize, 4);
-      TexFile.Write(Reg[0], TexSize*TexSize*SizeOf(TRGBA));
-      TexFile.SaveToFile(FTexCache+Name);
-      if FileExists(FTexCache+'Tex.lst')
-        then LstFile:=TFileStream.Create(FTexCache+'Tex.lst', fmOpenWrite)
-        else LstFile:=TFileStream.Create(FTexCache+'Tex.lst', fmCreate);
-      LstFile.Seek(0, soFromEnd);
-      LstFile.Write((Name+#13#10)[1], Length(Name)+2);
+      SaveImageData(ImageData, TexFile);
     finally
       FAN(TexFile);
-      FAN(LstFile);
     end;
   end;
-  AddTexture(Name, @Reg[0], TexSize, TexSize, GL_RGBA8, GL_RGBA, false, true);
+  AddTexture(Name, ImageData, false, true);
 end;
 
 function TTexMan.Load(Sender: TObject; var Reg: TSynTexRegister; TexSize: Integer; const Name: string): Boolean;
@@ -219,7 +247,7 @@ begin
   ID:=GetTex(Name);
   if ID=0 then
   begin
-    {$IFDEF VSE_LOG}Log(llError, 'TexMan: cannot load texture '+Name+' for SynTex: texture not exists');{$ENDIF}
+    {$IFDEF VSE_LOG}Log(llError, 'TexMan: can''t load texture '+Name+' for SynTex: texture not exists');{$ENDIF}
     Exit;
   end;
   glBindTexture(GL_TEXTURE_2D, ID);
@@ -228,9 +256,10 @@ begin
   glGetTexLevelParameter(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPONENTS, PGLInt(@ID));
   if (W<>TexSize) or (H<>TexSize) or (ID<>GL_RGBA8) then
   begin
-    {$IFDEF VSE_LOG}Log(llError, 'TexMan: cannot load texture '+Name+' for SynTex: incorrect texture format');{$ENDIF}
+    {$IFDEF VSE_LOG}Log(llError, 'TexMan: can''t load texture '+Name+' for SynTex: incorrect texture format');{$ENDIF}
     Exit;
   end;
+  glPixelStore(GL_PACK_ALIGNMENT, 1);
   glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, @Reg[0]);
   Result:=true;
 end;
@@ -247,15 +276,15 @@ begin
       Result:=FTextures[i].ID;
       Exit;
     end;
-  {$IFDEF VSE_LOG}if not FNoLogLostTex
-    then Log(llError, 'TexMan.GetTex('+Name+'): cannot find texture');{$ENDIF}
+  {$IFDEF VSE_LOG}if not FDontLogLostTex
+    then Log(llError, 'TexMan: can''t find texture '+Name);{$ENDIF}
 end;
 
 procedure TTexMan.Bind(ID: Cardinal; Channel: Integer);
 begin
   if not (Channel in [0..FMaxChannel]) then
   begin
-    {$IFDEF VSE_LOG}LogF(llError, 'TexMan: cannot bind texture %d to channel %d', [ID, Channel]);{$ENDIF}
+    {$IFDEF VSE_LOG}LogF(llError, 'TexMan: can''t bind texture %d to channel %d', [ID, Channel]);{$ENDIF}
     Exit;
   end;
   glActiveTextureARB(GL_TEXTURE0_ARB+Channel);
@@ -267,7 +296,7 @@ procedure TTexMan.Unbind(Channel: Integer);
 begin
   if not (Channel in [0..FMaxChannel]) then
   begin
-    {$IFDEF VSE_LOG}LogF(llError, 'TexMan: cannot unbind texture from channel %d', [Channel]);{$ENDIF}
+    {$IFDEF VSE_LOG}LogF(llError, 'TexMan: can''t unbind texture from channel %d', [Channel]);{$ENDIF}
     Exit;
   end;
   glActiveTextureARB(GL_TEXTURE0_ARB+Channel);
@@ -437,6 +466,7 @@ begin
     for i:=0 to FontTexSize*FontTexSize-1 do
       Data[i]:=Pix[i*3];
     glBindTexture(GL_TEXTURE_2D, Tex);
+    glPixelStore(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, FontTexSize, FontTexSize, 0, GL_ALPHA, GL_UNSIGNED_BYTE, Data);
     Height:=0;
     for i:=0 to 255 do
@@ -511,6 +541,7 @@ begin
   glDisable(GL_LIGHTING);
   glEnable(GL_ALPHA_TEST);
   glEnable(GL_BLEND);
+  glEnable(GL_COLOR_MATERIAL);
   glAlphaFunc(GL_GEQUAL, 0.1);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -524,7 +555,7 @@ begin
   glPopAttrib;
 end;
 
-function TTexMan.TextLen(Font: Cardinal; const Text: string): Integer;
+function TTexMan.TextWidth(Font: Cardinal; const Text: string): Integer;
 var
   i: Integer;
 begin

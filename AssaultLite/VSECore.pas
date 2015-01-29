@@ -1,10 +1,13 @@
 unit VSECore;
 
+//TODO: edit all log messages
+
 interface
 
 uses
-  Windows, Messages, MMSystem, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions,
-  VSEInit, VSEGameStates{$IFDEF VSE_LOG}, VSELog, VSESysInfo{$ENDIF};
+  Windows, Messages, MMSystem, AvL, avlMath, avlUtils, OpenGL, VSEOpenGLExt,
+  oglExtensions, VSEInit, VSEGameStates, VSEImageCodec
+  {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog, VSESysInfo{$ENDIF};
 
 const
   InvalidState = $FFFFFFFF; //Non-existing state index
@@ -51,7 +54,7 @@ type
     procedure Update;
     procedure Resume;
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent);
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent);
     procedure CharEvent(C: Char);
     function  SendNotify(Notify: TSysNotify): Boolean;
   public
@@ -70,7 +73,7 @@ type
     {Misc.}
     function  KeyRepeat(Key: Byte; Rate: Integer; var KeyVar: Cardinal): Boolean; //Returns true if Key pressed, but no more often then Rate; KeyVar - counter for rate limiting
     procedure SetResolution(ResolutionX, ResolutionY, RefreshRate: Cardinal; Fullscreen: Boolean; CanReset: Boolean = true);  //Set resolution ResX*ResY@Refresh; CanReset: return to previous resolution if fail
-    procedure MakeScreenshot(Name: string; Numerate: Boolean = true); //Makes screenshot in exe folder; Name: screentshot file name; Numerate: append counter to name
+    procedure MakeScreenshot(Name: string; Format: TImageFormat; Numerate: Boolean = true); //Makes screenshot in exe folder; Name: screentshot file name; Format: screenshot file format; Numerate: append counter to name
     procedure ResetUpdateTimer; //Reset update timer and clear pending updates
     ///
     property Handle: THandle read FHandle; //Engine window handle
@@ -174,6 +177,7 @@ begin
   FAN(TexMan);
   FAN(Sound);
   FAN(BindMan);
+  FAN(Console);
   if FFullscreen then gleGoBack;
   wglMakeCurrent(FDC, 0);
   wglDeleteContext(FRC);
@@ -186,22 +190,20 @@ end;
 
 procedure TCore.StartEngine;
 begin
-  FResolutionX:=InitSettings.ResolutionX;
-  FResolutionY:=InitSettings.ResolutionY;
-  FRefreshRate:=InitSettings.RefreshRate;
+  //FFullscreen:=InitSettings.Fullscreen;
+  if InitSettings.ResolutionX<MinResolutionX then InitSettings.ResolutionX:=MinResolutionX;
+  if InitSettings.ResolutionY<MinResolutionY then InitSettings.ResolutionY:=MinResolutionY;
+  if InitSettings.RefreshRate=0 then InitSettings.RefreshRate:=gleGetCurrentResolution.RefreshRate;
   FColorDepth:=InitSettings.ColorDepth;
-  FFullscreen:=InitSettings.Fullscreen;
-  if FResolutionX<MinResolutionX then FResolutionX:=MinResolutionX;
-  if FResolutionY<MinResolutionY then FResolutionY:=MinResolutionY;
-  if FRefreshRate=0 then FRefreshRate:=gleGetCurrentResolution.RefreshRate;
   FDC:=GetDC(FHandle);
   FRC:=gleSetPix(FDC, FColorDepth);
   if FRC=0 then raise Exception.Create('Unable to set rendering context');
+  {$IFDEF VSE_CONSOLE}Console:=TConsole.Create;{$ENDIF}
   Sound:=TSound.Create;
   TexMan:=TTexMan.Create;
   BindMan:=TBindMan.Create;
   {$IFDEF VSE_LOG}LogSysInfo;{$ENDIF}
-  SetResolution(FResolutionX, FResolutionY, FRefreshRate, FFullscreen, false);
+  SetResolution(InitSettings.ResolutionX, InitSettings.ResolutionY, InitSettings.RefreshRate, InitSettings.Fullscreen, false);
   VSync:=InitSettings.VSync;
   {$IFDEF VSE_LOG}Log(llInfo, 'States initialization');{$ENDIF}
   if not Assigned(InitSettings.InitStates) then raise Exception.Create('InitStates() are NULL');
@@ -240,6 +242,7 @@ var
 begin
   try
     GetKeyboardState(FKeyState);
+    {$IFDEF VSE_CONSOLE}Console.Update;{$ENDIF}
     BindMan.Update;
     if FPaused then Exit;
     if GetForegroundWindow<>FHandle then
@@ -276,6 +279,7 @@ begin
         Cursor.X:=Cursor.X-FResolutionX div 2;
         Cursor.Y:=Cursor.Y-FResolutionY div 2;
         SetCursorPos(FResolutionX div 2, FResolutionY div 2);
+        {$IFDEF VSE_CONSOLE}if not Console.Active or SendNotify(snConsoleActive) then{$ENDIF}
         try
           FCurState.MouseEvent(0, meMove, Cursor.X, Cursor.Y);
         except
@@ -283,6 +287,7 @@ begin
           {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
         end;
       end;
+      {$IFDEF VSE_CONSOLE}if not Console.Active or SendNotify(snConsoleActive) then{$ENDIF}
       for i:=1 to T div FUpdInt do
       begin
         UpdTime:=Time;
@@ -310,9 +315,10 @@ begin
         {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Draw');{$ENDIF}
         {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
       end;
-      SwapBuffers(FDC);
-      Inc(FFramesCount);
     end;
+    {$IFDEF VSE_CONSOLE}Console.Draw;{$ENDIF}
+    SwapBuffers(FDC);
+    Inc(FFramesCount);
   except
     {$IFDEF VSE_LOG}LogException('in TCore.Update');{$ENDIF}
     StopEngine(StopInternalError);
@@ -350,7 +356,7 @@ begin
       then SetCapture(FHandle)
       else if Event=meUp
         then ReleaseCapture;
-    if (FMouseCapture and (Event=meMove)) or FPaused then Exit;
+    if (FMouseCapture and (Event=meMove)) or FPaused {$IFDEF VSE_CONSOLE}or (Console.Active and not SendNotify(snConsoleActive)){$ENDIF} then Exit;
     if Event in [meDown, meUp, meWheel] then BindMan.MouseEvent(Button, Event);
     if FCurState<>nil then
     try
@@ -365,34 +371,38 @@ begin
   end;
 end;
 
-procedure TCore.KeyEvent(Button: Integer; Event: TKeyEvent);
+procedure TCore.KeyEvent(Key: Integer; Event: TKeyEvent);
 begin
   try
     if FPaused then Exit;
     {$IFDEF VSE_ESC_EXIT}
-    if (Button=VK_ESCAPE) and (Event=keUp) then
+    if (Key=VK_ESCAPE) and (Event=keUp) then
     begin
       StopEngine;
       Exit;
     end;
     {$ENDIF}
     {$IFDEF VSE_USE_SNAPSHOT_KEY}
-    if (Button=VK_SNAPSHOT) and (Event=keUp) then
+    if (Key=VK_SNAPSHOT) and (Event=keUp) then
     begin
-      MakeScreenshot('Screen');
+      MakeScreenshot(ChangeFileExt(ExtractFileName(ExeName), '')+'_screenshot', ifPNG);
       Exit;
     end;
     {$ENDIF}
-    BindMan.KeyEvent(Button, Event);
+    {$IFDEF VSE_CONSOLE}
+    Console.KeyEvent(Key, Event);
+    if Console.Active then Exit;
+    {$ENDIF}
+    BindMan.KeyEvent(Key, Event);
     if FCurState<>nil then
     try
-      FCurState.KeyEvent(Button, Event);
+      FCurState.KeyEvent(Key, Event);
     except
-      {$IFDEF VSE_LOG}LogException(Format('in state %s.KeyEvent(%d, %s)', [FCurState.Name, Button, KeyEventNames[Event]]));{$ENDIF}
+      {$IFDEF VSE_LOG}LogException(Format('in state %s.KeyEvent(%d, %s)', [FCurState.Name, Key, KeyEventNames[Event]]));{$ENDIF}
       {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
     end;
   except
-    {$IFDEF VSE_LOG}LogException(Format('in TCore.KeyEvent(%d, %s)', [Button, KeyEventNames[Event]]));{$ENDIF}
+    {$IFDEF VSE_LOG}LogException(Format('in TCore.KeyEvent(%d, %s)', [Key, KeyEventNames[Event]]));{$ENDIF}
     StopEngine(StopInternalError);
   end;
 end;
@@ -401,6 +411,10 @@ procedure TCore.CharEvent(C: Char);
 begin
   try
     if FPaused then Exit;
+    {$IFDEF VSE_CONSOLE}
+    Console.CharEvent(C);
+    if Console.Active then Exit;
+    {$ENDIF}
     if FCurState<>nil then
     try
       FCurState.CharEvent(C);
@@ -520,6 +534,7 @@ procedure TCore.SetResolution(ResolutionX, ResolutionY, RefreshRate: Cardinal; F
 var
   OldResX, OldResY, OldRefresh: Cardinal;
 begin
+  //TODO: Переделать нахуй
   OldResX:=FResolutionX;
   OldResY:=FResolutionY;
   OldRefresh:=FRefreshRate;
@@ -546,54 +561,40 @@ begin
   TexMan.RebuildFonts;
 end;
 
-procedure TCore.MakeScreenshot(Name: string; Numerate: Boolean = true);
+procedure TCore.MakeScreenshot(Name: string; Format: TImageFormat; Numerate: Boolean = true);
 var
-  F: TFileStream;
-  Pix: Pointer;
-  BMPFH: TBitmapFileHeader;
-  BMPIH: TBitmapInfoHeader;
-  i: Integer;
+  ImageData: TImageData;
+  i, Quality: Integer;
 begin
   if Numerate then
   begin
     for i:=0 to 99 do
-      if (i=99) or not FileExists(ExePath+Name+IntToStrLZ(i, 2)+'.bmp') then
+      if (i=99) or not FileExists(ExePath+Name+IntToStrLZ(i, 2)+ImageFormatExtension[Format]) then
       begin
-        Name:=ExePath+Name+IntToStrLZ(i, 2)+'.bmp';
+        Name:=ExePath+Name+IntToStrLZ(i, 2)+ImageFormatExtension[Format];
         Break;
       end;
   end
-    else Name:=ExePath+Name+'.bmp';
-  GetMem(Pix, FResolutionX*FResolutionY*3);
+    else Name:=ExePath+Name+ImageFormatExtension[Format];
+  //InitImageData(ImageData);
+  with ImageData do
+  begin
+    Width := FResolutionX;
+    Height := FResolutionY;
+    Stride := Ceil(Width * 3 / 4) * 4;
+    PixelFormat := pfBGR24bit;
+    GetMem(Pixels, Height * Stride);
+  end;
   try
-    glReadPixels(0, 0, FResolutionX, FResolutionY, GL_BGR, GL_UNSIGNED_BYTE, Pix);
-    F:=TFileStream.Create(Name, fmCreate);
-    with BMPFH, BMPIH do
-    begin
-      bfType:=$4D42;
-      bfSize:=FResolutionX*FResolutionY*3+SizeOf(BMPFH)+SizeOf(BMPIH);
-      bfReserved1:=0;
-      bfReserved2:=0;
-      bfOffBits:=SizeOf(BMPFH)+SizeOf(BMPIH);
-      biSize:=SizeOf(BMPIH);
-      biWidth:=FResolutionX;
-      biHeight:=FResolutionY;
-      biPlanes:=1;
-      biBitCount:=24;
-      biCompression:=0;
-      biSizeImage:=FResolutionX*FResolutionY*3;
-      biXPelsPerMeter:=0;
-      biYPelsPerMeter:=0;
-      biClrUsed:=0;
-      biClrImportant:=0;
-    end;
-    F.Write(BMPFH, SizeOf(BMPFH));
-    F.Write(BMPIH, SizeOf(BMPIH));
-    F.Write(Pix^, FResolutionX*FResolutionY*3);
-    {$IFDEF VSE_LOG}Log(llInfo, 'Screenshot saved to "'+Name+'"');{$ENDIF}
+    glPixelStore(GL_PACK_ALIGNMENT, 4);
+    glReadPixels(0, 0, FResolutionX, FResolutionY, GL_BGR, GL_UNSIGNED_BYTE, ImageData.Pixels);
+    if Format = ifJPEG
+      then Quality := 85
+      else Quality := 0;
+    if SaveImageToFile(ImageData, Name, Format, Quality) then
+      {$IFDEF VSE_LOG}Log(llInfo, 'Screenshot saved to "'+Name+'"') else Log(llError, 'Can''t save screenshot'){$ENDIF};
   finally
-    FreeMem(Pix);
-    FAN(F);
+    FreeImageData(ImageData);
   end;
 end;
 
@@ -606,6 +607,7 @@ end;
 
 procedure TCore.SetFullscreen(Value: Boolean);
 begin
+  //TODO: Переделать нахуй
   if FFullscreen=Value then Exit;
   FFullscreen:=Value;
   if Value

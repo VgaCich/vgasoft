@@ -1,5 +1,7 @@
 unit VSELog;
 
+{$IFNDEF VSE_LOG}{$ERROR Please don't include VSELog unit without VSE_LOG defined}{$ENDIF}
+
 interface
 
 uses Windows, AvL, avlSyncObjs, avlUtils;
@@ -9,11 +11,12 @@ type
 
 procedure Log(Level: TLogLevel; const S: string); //Add message to log
 procedure LogF(Level: TLogLevel; const Fmt: string; const Args: array of const); //Add message to log, Format version
-procedure LogRaw(Level: TLogLevel; const S: string);
+procedure LogRaw(Level: TLogLevel; const S: string; const Prefix: string = '');
 procedure LogAssert(Condition: Boolean; const Msg: string); //Add message if Condition=false
 
 var
-  LogLevel: TLogLevel=llInfo; //Minimal level of message, that will be passed to log
+  LogLevel: TLogLevel = llInfo; //Minimal level of message, that will be passed to log
+  LogOnUpdate: procedure(Level: TLogLevel; const S: string) = nil; //used by VSEConsole
 
 implementation
 
@@ -41,9 +44,12 @@ var
   procedure WriteBuffer;
   begin
     LogBufferLock.Acquire;
-    Buffer:=LogBuffer;
-    LogBuffer:='';
-    LogBufferLock.Release;
+    try
+      Buffer:=LogBuffer;
+      LogBuffer:='';
+    finally
+      LogBufferLock.Release;
+    end;
     LogFile.Write(Buffer[1], Length(Buffer));
     FlushFileBuffers(LogFile.Handle);
   end;
@@ -82,20 +88,23 @@ var
   Time, Delta: Cardinal;
 begin
   LogBufferLock.Acquire;
-  Time:=GetTickCount;
-  Delta:=Time-LastEvent;
-  LastEvent:=Time;
-  Time:=Time-LogStart;
-  LogBufferLock.Release;
+  try
+    Time:=GetTickCount;
+    Delta:=Time-LastEvent;
+    LastEvent:=Time;
+    Time:=Time-LogStart;
+  finally
+    LogBufferLock.Release;
+  end;
   TimeStamp:=Format('[%02d:%02d:%02d.%03d (+%d ms)] ', [Time div 3600000, Time mod 3600000 div 60000, Time mod 60000 div 1000, Time mod 1000, Delta]);
   case Level of
-    llInfo, llAlways: LogRaw(Level, TimeStamp+S);
+    llInfo, llAlways: LogRaw(Level, S, TimeStamp);
     llWarning: begin
-      LogRaw(Level, TimeStamp+'Warning: '+S);
+      LogRaw(Level, S, TimeStamp+'Warning: ');
       InterlockedIncrement(LogWarnings);
     end;
     llError: begin
-      LogRaw(Level, TimeStamp+'Error: '+S);
+      LogRaw(Level, S, TimeStamp+'Error: ');
       InterlockedIncrement(LogErrors);
     end;
   end;
@@ -106,18 +115,22 @@ begin
   Log(Level, Format(Fmt, Args));
 end;
 
-procedure LogRaw(Level: TLogLevel; const S: string);
+procedure LogRaw(Level: TLogLevel; const S: string; const Prefix: string = '');
 begin
   if (Level<LogLevel) or not LogInitialized then Exit;
+  if Assigned(LogOnUpdate) then LogOnUpdate(Level, S);
   LogBufferLock.Acquire;
-  LogBuffer:=LogBuffer+S+#13#10;
-  LogBufferLock.Release;
+  try
+    LogBuffer:=LogBuffer+Prefix+S+#13#10;
+  finally
+    LogBufferLock.Release;
+  end;
   LogEvent.SetEvent;
 end;
 
 initialization
 
-  LogEvent:=TEvent.Create(nil, false, false, LogBuffer);
+  LogEvent:=TEvent.Create(nil, false, false, '');
   LogBufferLock:=TCriticalSection.Create;
   Logger:=TLoggerThread.Create(false);
   LogStart:=GetTickCount;

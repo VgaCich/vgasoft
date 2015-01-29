@@ -27,6 +27,7 @@ http://sourceforge.net/projects/delphi-dx9sdk
 
 VSE_DEBUG - сборка отладочной версии движка VSE, отключается останов движка при исключениях в пользовательском коде
 VSE_LOG - включить лог
+VSE_CONSOLE - включить консоль
 SYNTEX_USELOG - включить лог в SynTex'е
 MEMPAK_PLAINFS - использовать данные из папки Data (иначе из MemPak.inc)
 DEBUGMEM - отладка памяти (требуется FastMM)
@@ -35,7 +36,7 @@ VSE_ESC_EXIT - принудительный выход по escape
 VSE_USE_SNAPSHOT_KEY - сохранение скриншота по нажатию кнопки Print Screen
 
 Рабочий набор дефайнов:
-VSE_DEBUG;DEBUGMEM;VSE_LOG;SYNTEX_USELOG;MEMPAK_PLAINFS;VSE_USE_SNAPSHOT_KEY
+VSE_DEBUG;DEBUGMEM;VSE_LOG;VSE_CONSOLE;SYNTEX_USELOG;MEMPAK_PLAINFS;VSE_USE_SNAPSHOT_KEY
 
 Релизный набор дефайнов:
 VSE_USE_SNAPSHOT_KEY

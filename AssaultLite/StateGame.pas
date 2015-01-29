@@ -26,8 +26,7 @@ type
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
-    procedure CharEvent(C: Char); override;
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     function  SysNotify(Notify: TSysNotify): Boolean; override;
     procedure NewGame;
     property CanResumeGame: Boolean read GetCanResumeGame;
@@ -67,6 +66,7 @@ const
 var
   i: Integer;
 begin
+  inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
   glePerspectiveMatrix(60, Core.ResolutionX, Core.ResolutionY);
   glMatrixMode(GL_PROJECTION);
@@ -117,6 +117,7 @@ var
   C, S: Single;
   i, j, Pass: Integer;
 begin
+  inherited;
   VectorClear(Spd);
   if BindMan.BindActive['Fwd'] then Spd.Z:=Spd.Z+1;
   if BindMan.BindActive['Bwd'] then Spd.Z:=Spd.Z-1;
@@ -162,20 +163,25 @@ end;
 
 function TStateGame.Activate: Cardinal;
 begin
+  inherited Activate;
   Result:=20;
   glClearColor(0, 0, 0, 1);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_DEPTH_TEST);
   Core.MouseCapture:=true;
   Sound.PlayMusic('Music.xm');
 end;
 
 procedure TStateGame.Deactivate;
 begin
+  inherited;
   Core.MouseCapture:=false;
   Sound.StopMusic;
 end;
 
 procedure TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 begin
+  inherited;
   if Event<>meMove then Exit;
   Camera.XAngle:=Camera.XAngle+X/10;
   Camera.YAngle:=Camera.YAngle-Y/10;
@@ -183,25 +189,24 @@ begin
   if Camera.YAngle>89 then Camera.YAngle:=89;
 end;
 
-procedure TStateGame.KeyEvent(Button: Integer; Event: TKeyEvent);
+procedure TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent);
 begin
-  if Event=keDown then
+  inherited;
+  if Event=keUp then
   begin
-    case Button of
+    case Key of
       VK_ESCAPE: Core.SwitchState('Menu');
     end;
   end;
 end;
 
-procedure TStateGame.CharEvent(C: Char);
-begin
-
-end;
-
 function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result:=inherited SysNotify(Notify);
-  if Notify=snMinimize then Core.SwitchState('Menu');
+  case Notify of
+    snMinimize: Core.SwitchState('Menu');
+    snConsoleActive: Result:=true;
+  end;
 end;
 
 procedure TStateGame.NewGame;

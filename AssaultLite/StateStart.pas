@@ -31,7 +31,6 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure Draw; override;
-    procedure Update; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
     function  SysNotify(Notify: TSysNotify): Boolean; override;
@@ -120,13 +119,14 @@ end;
 
 procedure TStateStart.Draw;
 begin
+  inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
-  TexMan.TextOut(FFont, 400-TexMan.TextLen(FFont, SLoad)/2, 500, SLoad);
-  TexMan.TextOut(FFont, 400-TexMan.TextLen(FFont, STitle)/2, 250, STitle);
+  TexMan.TextOut(FFont, 400-TexMan.TextWidth(FFont, SLoad)/2, 500, SLoad);
+  TexMan.TextOut(FFont, 400-TexMan.TextWidth(FFont, STitle)/2, 250, STitle);
   glPushMatrix;
   glTranslate(200, 230, 0);
   glScalef(0.5, 0.5, 1);
-  TexMan.TextOut(FFont, 400-TexMan.TextLen(FFont, SRVSE)/2, 430, SRVSE);
+  TexMan.TextOut(FFont, 400-TexMan.TextWidth(FFont, SRVSE)/2, 430, SRVSE);
   DrawSegs(300, 200, $426);
   DrawSegs(400, 200, $2C0);
   DrawSegs(500, 200, $079);
@@ -135,13 +135,9 @@ begin
   glPopMatrix;
 end;
 
-procedure TStateStart.Update;
-begin
-
-end;
-
 function TStateStart.Activate: Cardinal;
 begin
+  Result:=inherited Activate;
   glClearColor(0, 0, 0, 1);
   glColor3f(0, 1, 0);
   gleOrthoMatrix(800, 600);
@@ -149,11 +145,11 @@ begin
   FLoadThread.OnTerminate:=OnLoaded;
   FLoadThread.Resume;
   ShowCursor(false);
-  Result:=100;
 end;
 
 procedure TStateStart.Deactivate;
 begin
+  inherited;
   FLoadThread.WaitFor;
   FAN(FLoadThread);
   ShowCursor(true);
@@ -162,7 +158,7 @@ end;
 function TStateStart.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result:=inherited SysNotify(Notify);
-  if Notify=snMinimize then Result:=true;
+  if (Notify=snMinimize) or (Notify=snConsoleActive) then Result:=true;
 end;
 
 function TStateStart.GetName: string;

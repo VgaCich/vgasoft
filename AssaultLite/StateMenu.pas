@@ -3,7 +3,7 @@ unit StateMenu;
 interface
 
 uses
-  Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions,
+  Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions, VSEImageCodec,
   VSEGameStates, VSEGUI, VSETexMan, VSEMemPak, VSEBindMan, StateGame, StateLoad;
 
 type
@@ -18,7 +18,7 @@ type
     procedure ExitClick(Btn: PBtn);
   public
     constructor Create(Parent: TStateMenu);
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure ResumeEnable(Enable: Boolean);
   end;
   TOptions=class(TGUIForm)
@@ -39,7 +39,7 @@ type
   public
     constructor Create(Parent: TStateMenu);
     destructor Destroy; override;
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure ReadOptions;
   end;
   TTextView=class(TGUIForm)
@@ -53,7 +53,7 @@ type
   public
     constructor Create(Parent: TStateMenu; const Caption, TextFile: string);
     destructor Destroy; override;
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
   end;
   TStateMenu=class(TGameState)
   private
@@ -63,6 +63,7 @@ type
     FCurFrm: TGUIForm;
     FGame: TStateGame;
     FLoad: TStateLoad;
+    FBgTex: Cardinal;
     procedure KeyConfigClose(Sender: TObject);
   protected
     function GetName: string; override;
@@ -73,13 +74,14 @@ type
     procedure Update; override;
     function  Activate: Cardinal; override;
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Button: Integer; Event: TKeyEvent); override;
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure CharEvent(C: Char); override;
+    function  SysNotify(Notify: TSysNotify): Boolean; override;
   end;
 
 implementation
 
-uses VSEInit, VSECore, VSESound;
+uses VSEInit, VSECore, VSESound{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 {TMainMenu}
 
@@ -107,13 +109,13 @@ begin
   Button[FResumeButton].Enabled:=false;
 end;
 
-procedure TMainMenu.KeyEvent(Button: Integer; Event: TKeyEvent);
+procedure TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvent);
 begin
-  if (Button=VK_ESCAPE) and (Event=keDown)
+  if (Key=VK_ESCAPE) and (Event=keUp)
     then if Self.Button[FResumeButton].Enabled
       then Core.SwitchState('Game')
       else Core.StopEngine
-    else inherited KeyEvent(Button, Event);
+    else inherited KeyEvent(Key, Event);
 end;
 
 procedure TMainMenu.ResumeEnable(Enable: Boolean);
@@ -162,30 +164,18 @@ begin
   FParent:=Parent;
   FCaption:='Настройки';
   FResolutions:=gleGetResolutions;
+  FLResolution:=CreateSelect(Self, 10, 60, 190, 20, ResClick, '-', '+');
+  FLRefreshRate:=CreateSelect(Self, 10, 110, 190, 20, RefrClick, '-', '+');
+  FLColorDepth:=CreateSelect(Self, 10, 160, 190, 20, DepthClick, '-', '+');
   with Btn do
   begin
     Enabled:=true;
-    Tag:=0;
-    Typ:=btCheck;
-    X:=10;
-    Y:=200;
-    Width:=210;
-    Height:=20;
-    Caption:='Полный экран';
-    FCFullscreen:=AddButton(Btn);
-    Y:=230;
-    Caption:='Верт. синхр.';
-    FCVSync:=AddButton(Btn);
-    X:=220;
-    Y:=200;
-    Width:=160;
-    Caption:='Музыка';
-    FCEnableBGM:=AddButton(Btn);
-    Typ:=btPush;
     X:=220;
     Y:=60;
     Width:=160;
     Height:=30;
+    Tag:=0;
+    Type_:=btPush;
     OnClick:=ToggleCache;
     FBToggleCache:=AddButton(Btn);
     Y:=100;
@@ -196,10 +186,27 @@ begin
     Caption:='Управление';
     OnClick:=KeyConfig;
     AddButton(Btn);
+    X:=10;
+    Y:=200;
+    Width:=200;
+    Height:=20;
+    Type_:=btCheck;
+    OnClick:=nil;
+    Caption:='Полный экран';
+    FCFullscreen:=AddButton(Btn);
+    Y:=230;
+    Caption:='Верт. синхр.';
+    FCVSync:=AddButton(Btn);
+    X:=220;
+    Y:=200;
+    Width:=160;
+    Caption:='Музыка';
+    FCEnableBGM:=AddButton(Btn);
     X:=140;
     Y:=310;
     Width:=120;
     Height:=30;
+    Type_:=btPush;
     Caption:='Применить';
     OnClick:=OKClick;
     AddButton(Btn);
@@ -230,9 +237,6 @@ begin
     Caption:='';
     FLCacheSize:=AddLabel(Lbl);
   end;
-  FLResolution:=CreateSelect(Self, 10, 60, 190, 20, ResClick, '-', '+');
-  FLRefreshRate:=CreateSelect(Self, 10, 110, 190, 20, RefrClick, '-', '+');
-  FLColorDepth:=CreateSelect(Self, 10, 160, 190, 20, DepthClick, '-', '+');
 end;
 
 destructor TOptions.Destroy;
@@ -241,11 +245,11 @@ begin
   inherited Destroy;
 end;
 
-procedure TOptions.KeyEvent(Button: Integer; Event: TKeyEvent);
+procedure TOptions.KeyEvent(Key: Integer; Event: TKeyEvent);
 begin
-  if (Button=VK_ESCAPE) and (Event=keDown)
+  if (Key=VK_ESCAPE) and (Event=keUp)
     then FParent.FCurFrm:=FParent.FMainMenu
-    else inherited KeyEvent(Button, Event);
+    else inherited KeyEvent(Key, Event);
 end;
 
 procedure TOptions.ReadOptions;
@@ -376,7 +380,7 @@ begin
   begin
     Src:=ProcessKeyTags(FText[Line]);
     Dst:='';
-    while (Src<>'') and (TexMan.TextLen(FFont, Src)>620) do
+    while (Src<>'') and (TexMan.TextWidth(FFont, Src)>620) do
     begin
       Dst:=Src[Length(Src)]+Dst;
       Delete(Src, Length(Src), 1);
@@ -389,7 +393,7 @@ begin
   FCurPage:=0;
   with Btn do
   begin
-    Typ:=btPush;
+    Type_:=btPush;
     X:=535;
     Y:=445;
     Width:=100;
@@ -410,12 +414,12 @@ begin
   inherited Destroy;
 end;
 
-procedure TTextView.KeyEvent(Button: Integer; Event: TKeyEvent);
+procedure TTextView.KeyEvent(Key: Integer; Event: TKeyEvent);
 var
   Btn: TBtn;
 begin
   if Event=keDown then
-    case Button of
+    case Key of
       VK_LEFT:
         begin
           Btn.Tag:=-1;
@@ -426,9 +430,9 @@ begin
           Btn.Tag:=1;
           ChangePage(@Btn);
         end;
-      VK_ESCAPE: Close(nil);
-      else inherited KeyEvent(Button, Event);
-    end;
+    end
+    else if Key=VK_ESCAPE then Close(nil);
+  inherited KeyEvent(Key, Event);
 end;
 
 procedure TTextView.DrawForm;
@@ -447,7 +451,7 @@ begin
       if (S<>'') and (S[1]=#9) then
       begin
         S:=Copy(S, 2, MaxInt);
-        Inc(Left, 310-TexMan.TextLen(FFont, S) div 2);
+        Inc(Left, 310-TexMan.TextWidth(FFont, S) div 2);
       end;
       TexMan.TextOut(FFont, Left, FY+35+16*i, S);
     end;
@@ -466,6 +470,11 @@ end;
 {TStateMenu}
 
 constructor TStateMenu.Create;
+const
+  BgNames: array[0..4] of string = ('MenuBg.bmp', 'MenuBg.gif', 'MenuBg.jpg', 'MenuBg.png', 'MenuBg.tif');
+var
+  ImageData: TImageData;
+  i: Integer;
 begin
   inherited Create;
   FMainMenu:=TMainMenu.Create(Self);
@@ -477,6 +486,16 @@ begin
   FCurFrm:=FMainMenu;
   FGame:=TStateGame(Core.GetState(Core.FindState('Game')));
   FLoad:=TStateLoad(Core.GetState(Core.FindState('Load')));
+  for i:=0 to 4 do
+    if FileExists(BgNames[i]) then
+    begin
+      ImageData.Pixels := nil;
+      if LoadImageFromFile(BgNames[i], ImageData)
+        then FBgTex:=TexMan.AddTexture('MenuBg', ImageData, true, false)
+        {$IFDEF VSE_LOG}else Log(llError, 'StateMenu: can''t load background from '+BgNames[i]){$ENDIF};
+      FreeImageData(ImageData);
+      Break;
+    end;
 end;
 
 destructor TStateMenu.Destroy;
@@ -489,35 +508,53 @@ end;
 
 procedure TStateMenu.Draw;
 begin
+  inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
-  if FGame.CanResumeGame then FGame.Draw;
+  if FGame.CanResumeGame then FGame.Draw
+    else if FBgTex<>0 then
+    begin
+      TexMan.Bind(FBgTex);
+      gleOrthoMatrix(800, 600);
+      glColor(1.0, 1.0, 1.0);
+      glBegin(GL_QUADS);
+        glTexCoord(0.0, 0.0); glVertex(0.0, 0.0);
+        glTexCoord(1.0, 0.0); glVertex(800.0, 0.0);
+        glTexCoord(1.0, 1.0); glVertex(800.0, 600.0);
+        glTexCoord(0.0, 1.0); glVertex(0.0, 600.0);
+      glEnd;
+      TexMan.Unbind;
+    end;
   FCurFrm.Draw;
 end;
 
 procedure TStateMenu.Update;
 begin
+  inherited;
   FCurFrm.Update;
 end;
 
 function TStateMenu.Activate: Cardinal;
 begin
+  Result:=inherited Activate;
   glClearColor(0, 0, 0, 1);
   FMainMenu.ResumeEnable(FGame.CanResumeGame);
-  Result:=50;
 end;
 
 procedure TStateMenu.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 begin
+  inherited;
   FCurFrm.MouseEvent(Button, Event, X, Y);
 end;
 
-procedure TStateMenu.KeyEvent(Button: Integer; Event: TKeyEvent);
+procedure TStateMenu.KeyEvent(Key: Integer; Event: TKeyEvent);
 begin
-  FCurFrm.KeyEvent(Button, Event);
+  inherited;
+  FCurFrm.KeyEvent(Key, Event);
 end;
 
 procedure TStateMenu.CharEvent(C: Char);
 begin
+  inherited;
   FCurFrm.CharEvent(C);
 end;
 
@@ -529,6 +566,11 @@ end;
 procedure TStateMenu.KeyConfigClose(Sender: TObject);
 begin
   FCurFrm:=FOptions;
+end;
+
+function TStateMenu.SysNotify(Notify: TSysNotify): Boolean;
+begin
+  if Notify=snConsoleActive then Result:=true;
 end;
 
 end.

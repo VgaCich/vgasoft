@@ -17,6 +17,7 @@ const
   GL_MAX_TEXTURE_UNITS_ARB = $84E2;
   GL_MAX_TEXTURE_SIZE      = $0D33;
   GL_CLAMP_TO_EDGE = $812F;
+  GL_LUMINANCE8    = $8040;
   GL_RGB8          = $8051;
   GL_RGBA8         = $8058;
   GL_BGR           = $80E0;
