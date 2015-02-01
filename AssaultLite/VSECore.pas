@@ -49,6 +49,14 @@ type
     procedure SetMouseCapture(Value: Boolean);
     function  GetMouseCursor: TPoint;
     function  GetTime: Cardinal;
+    {$IFDEF VSE_CONSOLE}
+    function QuitHandler(Sender: TObject; Args: array of const): Boolean;
+    function StateHandler(Sender: TObject; Args: array of const): Boolean;
+    function ResolutionHandler(Sender: TObject; Args: array of const): Boolean;
+    function FullscreenHandler(Sender: TObject; Args: array of const): Boolean;
+    function VSyncHandler(Sender: TObject; Args: array of const): Boolean;
+    function ScreenshotHandler(Sender: TObject; Args: array of const): Boolean;
+    {$ENDIF}
   protected
     procedure StartEngine;
     procedure SaveSettings;
@@ -202,7 +210,15 @@ begin
   FDC:=GetDC(FHandle);
   FRC:=gleSetPix(FDC, FColorDepth);
   if FRC=0 then raise Exception.Create('Unable to set rendering context');
-  {$IFDEF VSE_CONSOLE}Console:=TConsole.Create;{$ENDIF}
+  {$IFDEF VSE_CONSOLE}
+  Console:=TConsole.Create;
+  Console.OnCommand['quit ?code=i0:5']:=QuitHandler;
+  Console.OnCommand['state ?state=s']:=StateHandler;
+  Console.OnCommand['resolution ?resx=i640:65536 ?resy=i480:65536 ?refr=i0']:=ResolutionHandler;
+  Console.OnCommand['fullscreen ?val=eoff:on']:=FullscreenHandler;
+  Console.OnCommand['vsync ?val=eoff:on']:=VSyncHandler;
+  Console.OnCommand['screenshot ?name=s ?fmt=ebmp:jpg:gif:png:tif']:=ScreenshotHandler;
+  {$ENDIF}
   Sound:=TSound.Create;
   TexMan:=TTexMan.Create;
   BindMan:=TBindMan.Create;
@@ -226,6 +242,10 @@ begin
   glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
   glEnable(GL_NORMALIZE);
   FFPSTimer:=timeSetEvent(1000, 0, @UpdateFPS, 0, TIME_PERIODIC);
+  {$IFDEF VSE_CONSOLE}
+  {$IFDEF VSE_LOG}Log(llInfo, 'Executing autoexec.cfg');{$ENDIF}
+  Console.Execute('exec autoexec.cfg');
+  {$ENDIF}
   FPaused:=false;
 end;
 
@@ -593,7 +613,7 @@ begin
     glPixelStore(GL_PACK_ALIGNMENT, 4);
     glReadPixels(0, 0, FResolutionX, FResolutionY, GL_BGR, GL_UNSIGNED_BYTE, ImageData.Pixels);
     if Format = ifJPEG
-      then Quality := 85
+      then Quality := 95
       else Quality := 0;
     if SaveImageToFile(ImageData, Name, Format, Quality) then
       {$IFDEF VSE_LOG}Log(llInfo, 'Screenshot saved to "'+Name+'"') else Log(llError, 'Can''t save screenshot'){$ENDIF};
@@ -872,6 +892,67 @@ begin
   {$ENDIF}
   UnregisterClass(WndClassName, hInstance);
 end;
+
+{$IFDEF VSE_CONSOLE}
+const
+  BoolState: array[Boolean] of string = ('off', 'on');
+
+function TCore.FullscreenHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>0
+    then Fullscreen:=Boolean(Args[0].VInteger)
+    else Console.WriteLn('Fullscreen: '+BoolState[Fullscreen]);
+  Result:=true;
+end;
+
+function TCore.QuitHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>0
+    then StopEngine(Args[0].VInteger)
+    else StopEngine;
+  Result:=true;
+end;
+
+function TCore.ResolutionHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  Result:=true;
+  case Length(Args) of
+    0: Console.WriteLn(Format('Resolution: %dx%d@%d', [ResolutionX, ResolutionY, RefreshRate]));
+    2: SetResolution(Args[0].VInteger, Args[1].VInteger, RefreshRate, Fullscreen);
+    3: SetResolution(Args[0].VInteger, Args[1].VInteger, Args[2].VInteger, Fullscreen);
+    else begin
+      Console.WriteLn('Invalid arguments');
+      Result:=false;
+    end;
+  end;
+end;
+
+function TCore.ScreenshotHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  case Length(Args) of
+    0: MakeScreenshot(ChangeFileExt(ExtractFileName(ExeName), '')+'_screenshot', ifPNG);
+    1: MakeScreenshot(string(Args[0].VAnsiString), ifPNG, false);
+    else MakeScreenshot(string(Args[0].VAnsiString), TImageFormat(Args[1].VInteger), false);
+  end;
+  Result:=true;
+end;
+
+function TCore.StateHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>0
+    then SwitchState(string(Args[0].VAnsiString))
+    else Console.WriteLn('Current state: '+CurState.Name);
+  Result:=true;
+end;
+
+function TCore.VSyncHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>0
+    then VSync:=Boolean(Args[0].VInteger)
+    else Console.WriteLn('VSync: '+BoolState[VSync]);
+  Result:=true;
+end;
+{$ENDIF}
 
 initialization
 

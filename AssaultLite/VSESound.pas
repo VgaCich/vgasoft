@@ -17,6 +17,7 @@ type
     FMusicBufferDesc: TDSBufferDesc;
     FEnableBGM: Boolean;
     procedure SetEnableBGM(Value: Boolean);
+    function SetBGMHandler(Sender: TObject; Args: array of const): Boolean;
   public
     constructor Create; //internally used
     destructor Destroy; override; //internally used
@@ -33,7 +34,7 @@ var
 implementation
 
 uses
-  VSEInit, VSECore, VSEMemPak {$IFDEF VSE_LOG}, VSELog{$ENDIF};
+  VSEInit, VSECore, VSEMemPak{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 {uFMOD}
 
@@ -54,6 +55,7 @@ constructor TSound.Create;
 begin
   inherited Create;
   {$IFDEF VSE_LOG}Log(llInfo, 'Sound: Create');{$ENDIF}
+  {$IFDEF VSE_CONSOLE}Console.OnCommand['setbgm ?val=eoff:on']:=SetBGMHandler;{$ENDIF}
   if DirectSoundCreate(nil, FDirectSound, nil)<>S_OK then
   begin
     {$IFDEF VSE_LOG}Log(llError, 'Sound: Cannot initialize DirectSound');{$ENDIF}
@@ -181,5 +183,18 @@ begin
     else if Assigned(FMusicBuffer) and Assigned(FMusicFile)
       then uFMOD_DSPlaySong(FMusicFile.Memory, FMusicFile.Size, XM_MEMORY, FMusicBuffer);
 end;
+
+{$IFDEF VSE_CONSOLE}
+const
+  BoolState: array[Boolean] of string = ('off', 'on');
+
+function TSound.SetBGMHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>0
+    then EnableBGM:=Boolean(Args[0].VInteger)
+    else Console.WriteLn('BGM: '+BoolState[EnableBGM]);
+  Result:=true;
+end;
+{$ENDIF}
 
 end.

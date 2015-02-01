@@ -25,10 +25,11 @@ type
     FScrollStateClicks: Integer;
     FScrollStateUp: Boolean;
     function GetBindActive(Name: string): Boolean;
-    function FindBinding(const Name: string): Integer;
+    function FindBinding(Name: string): Integer;
     procedure LoadBindings;
     function NewEvent(Event_: TBindEvent): PEventQueue;
     procedure SaveBindings;
+    {$IFDEF VSE_CONSOLE}function BindHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
   public
     constructor Create; //internally used
     destructor Destroy; override; //internally used
@@ -46,7 +47,6 @@ type
     FPageLabel, FPage, FPages, FActive: Integer;
     FOnClose: TOnEvent;
     procedure ChangePage(Btn: PBtn);
-    procedure FillKeys;
     procedure KeyBtnClick(Btn: PBtn);
     procedure CloseClick(Btn: PBtn);
     procedure DefaultClick(Btn: PBtn);
@@ -56,6 +56,7 @@ type
     destructor Destroy; override;
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    procedure Refresh;
     property  OnClose: TOnEvent read FOnClose write FOnClose; //Triggered at click on 'close' button
   end;
 
@@ -164,6 +165,7 @@ var
 begin
   inherited Create;
   {$IFDEF VSE_LOG}Log(llInfo, 'BindMan: Create');{$ENDIF}
+  {$IFDEF VSE_CONSOLE}Console.OnCommand['bind name=s ?key=s']:=BindHandler;{$ENDIF}
   LoadBindings;
   SetLength(FQueuePool, 3*MaxEventAge*Length(FBindings));
   for i:=0 to High(FQueuePool) do
@@ -173,15 +175,17 @@ end;
 destructor TBindMan.Destroy;
 begin
   {$IFDEF VSE_LOG}Log(llInfo, 'BindMan: Destroy');{$ENDIF}
+  SaveBindings;
   Finalize(FBindings);
   Finalize(FQueuePool);
   inherited Destroy;
 end;
 
-function TBindMan.FindBinding(const Name: string): Integer;
+function TBindMan.FindBinding(Name: string): Integer;
 var
   i: Integer;
 begin
+  Name:=LowerCase(Name);
   for i:=0 to High(FBindings) do
     if FBindings[i].Name=Name then
     begin
@@ -271,7 +275,7 @@ begin
   for i:=0 to High(InitSettings.Bindings) do
     with FBindings[i] do
     begin
-      Name:=InitSettings.Bindings[i].Name;
+      Name:=LowerCase(InitSettings.Bindings[i].Name);
       Description:=InitSettings.Bindings[i].Description;
       Key:=InitSettings.Bindings[i].Key;
       Events:=nil;
@@ -377,8 +381,39 @@ var
   i: Integer;
 begin
   for i:=0 to High(FBindings) do
-    Settings.Int[SSectionBindings, FBindings[i].Name]:=FBindings[i].Key;
+    Settings.Int[SSectionBindings, InitSettings.Bindings[i].Name]:=FBindings[i].Key;
 end;
+
+{$IFDEF VSE_CONSOLE}
+function TBindMan.BindHandler(Sender: TObject; Args: array of const): Boolean;
+var
+  Binding, i: Integer;
+  KeyName: string;
+begin
+  Result:=false;
+  Binding:=FindBinding(string(Args[0].VAnsiString));
+  if Binding=-1 then Exit;
+  Result:=true;
+  if Length(Args)>1 then
+  begin
+    KeyName:=LowerCase(string(Args[1].VAnsiString));
+    if KeyName[1]<>'#' then
+    begin
+      for i:=0 to 255 do
+        if KeyName=LowerCase(KeyNames[i]) then
+        begin
+          FBindings[Binding].Key:=i;
+          Exit;
+        end;
+      Console.WriteLn('Unknown key name');
+      Result:=false;
+      Exit;
+    end
+      else FBindings[Binding].Key:=StrToInt(Copy(KeyName, 2, 3));
+  end
+    else Console.WriteLn(FBindings[Binding].Name+' binded to key '+KeyToStr(FBindings[Binding].Key));
+end;
+{$ENDIF}
 
 { TBindManCfgForm }
 
@@ -421,7 +456,7 @@ begin
     FButtons[i]:=AddButton(Btn);
     FLabels[i]:=AddLabel(Lbl);
   end;
-  FillKeys;
+  Refresh;
   if FPages>0 then
   begin
     FPageLabel:=CreateSelect(Self, 10, Height-40, Min(Width div 2, Width-280), 30, ChangePage, '<', '>');
@@ -446,10 +481,10 @@ procedure TBindManCfgForm.ChangePage(Btn: PBtn);
 begin
   FPage:=Min(FPages, Max(0, FPage+Btn^.Tag));
   Lbl[FPageLabel].Caption:=Format(PageLabel, [FPage+1, FPages+1]);
-  FillKeys;
+  Refresh;
 end;
 
-procedure TBindManCfgForm.FillKeys;
+procedure TBindManCfgForm.Refresh;
 var
   i: Integer;
 begin
@@ -488,7 +523,7 @@ begin
     if Key=VK_ESCAPE then
     begin
       FActive:=-1;
-      FillKeys;
+      Refresh;
     end
       else if Key=VK_BACK
         then SetKey(0)
@@ -534,7 +569,7 @@ procedure TBindManCfgForm.DefaultClick(Btn: PBtn);
 begin
   Settings.EraseSection(SSectionBindings);
   BindMan.LoadBindings;
-  FillKeys;
+  Refresh;
 end;
 
 procedure TBindManCfgForm.SetKey(Key: Integer);
@@ -547,7 +582,7 @@ begin
       then BindMan.FBindings[i].Key:=BindMan.FBindings[FActive].Key;
   BindMan.FBindings[FActive].Key:=Key;
   FActive:=-1;
-  FillKeys;
+  Refresh;
 end;
 
 initialization

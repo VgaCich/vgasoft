@@ -9,8 +9,43 @@ uses
   VSEGameStates{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 type
-  TOnConsoleCommand = function(Sender: TObject; ArgsCount: Integer; Args: array of const): Boolean of object;
-  TOnConsoleExecute = function(Sender: TObject; const Command: string): Boolean of object;
+  TOnConsoleCommand = function(Sender: TObject; Args: array of const): Boolean of object; // Console command handler
+  TOnConsoleExecute = function(Sender: TObject; const CommandLine: string): Boolean of object; // Console commands hook
+  TConsoleCommandArgument = class // internally used
+  private
+    FName: string;
+    FOptional: Boolean;
+    FValue: TVarRec;
+    function GetNextOption(var Options: string): string;
+    function GetArgument(var CommandLine: string): string;
+    function GetDescription: string;
+    function GetType: string; virtual; abstract;
+  public
+    constructor Create(const Name: string; Options: string);
+    function Parse(var CommandLine: string): Boolean; virtual; abstract;
+    property Value: TVarRec read FValue;
+    property Name: string read FName;
+    property Description: string read GetDescription;
+  end;
+  TConsoleCommand = class // internally used
+  private
+    FName: string;
+    FArguments: array of TConsoleCommandArgument;
+    FHandler: TOnConsoleCommand;
+    FPrev, FNext: TConsoleCommand;
+    function CreateArgumentParser(ArgumentDesc: string): TConsoleCommandArgument;
+    function GetDescription: string;
+  public
+    constructor Create(Prev: TConsoleCommand; CmdDesc: string; Handler: TOnConsoleCommand);
+    destructor Destroy; override;
+    function Execute(CommandLine: string): Boolean;
+    function FindCommand(Name: string): TConsoleCommand;
+    property Handler: TOnConsoleCommand read FHandler;
+    property Name: string read FName;
+    property Description: string read GetDescription;
+    property Prev: TConsoleCommand read FPrev;
+    property Next: TConsoleCommand read FNext;
+  end;
   TConsole = class
   private
     FActive: Boolean;
@@ -25,38 +60,80 @@ type
     FCommandLine: string;
     FOnExecute: TOnConsoleExecute;
     FScreenWidth, FLineLength, FCharWidth: Integer;
+    FCommands: TConsoleCommand;
     procedure AddToCache(const Line: string);
     function LogEndPosition: Integer;
     procedure SetActive(Value: Boolean);
-    function GetCommand(const Cmd: string): TOnConsoleCommand;
-    procedure SetCommand(const Cmd: string; Value: TOnConsoleCommand);
+    function GetCommand(const CmdDesc: string): TOnConsoleCommand;
+    procedure SetCommand(const CmdDesc: string; Value: TOnConsoleCommand);
+    function HelpHandler(Sender: TObject; Args: array of const): Boolean;
+    function CmdListHandler(Sender: TObject; Args: array of const): Boolean;
+    function ExecHandler(Sender: TObject; Args: array of const): Boolean;
+    function EchoHandler(Sender: TObject; Args: array of const): Boolean;
+    class function GetCommandName(CommandLine: string): string;
   public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Draw;
-    procedure Update;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent);
-    procedure CharEvent(C: Char);
-    procedure WriteLn(const Line: string);
-    function Execute(Command: string): Boolean;
-    function GetCommands(const Prefix: string): TStringList;
-    property Active: Boolean read FActive write SetActive;
-    property OnCommand[const Cmd: string]: TOnConsoleCommand read GetCommand write SetCommand; default;
-    property OnExecute: TOnConsoleExecute read FOnExecute write FOnExecute;
+    constructor Create; // internally used
+    destructor Destroy; override; // internally used
+    procedure Draw; // internally used
+    procedure Update; // internally used
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent); // internally used
+    procedure CharEvent(C: Char); // internally used
+    procedure WriteLn(const Line: string = ''); // Write line to console
+    function Execute(const CommandLine: string): Boolean; // Execute command; returns true if successful
+    function GetCommands(Prefix: string): TStringList; // Get list of commands, starts with Prefix
+    property Active: Boolean read FActive write SetActive; // Console is open
+    property OnCommand[const CmdDesc: string]: TOnConsoleCommand read GetCommand write SetCommand; default; // Command handlers; assign nil to delete command; see FmtDocs for commands description language
+    property OnExecute: TOnConsoleExecute read FOnExecute write FOnExecute; // Console commands hook
   end;
-  
+
 var
-  Console: TConsole;
+  Console: TConsole; // Console interface
 
 implementation
 
 uses
-  VSECore, VSETexMan;
+  VSECore, VSETexMan, VSEMemPak;
 
 const
   DisplayLines = 19;
   VK_TILDE = 192;
-  
+  vtInvalid = 255;
+
+type
+  TCCAInteger = class(TConsoleCommandArgument)
+  private
+    FMin, FMax: Integer;
+    function GetType: string; override;
+  public
+    constructor Create(const Name: string; Options: string);
+    function Parse(var CommandLine: string): Boolean; override;
+  end;
+  TCCAFloat = class(TConsoleCommandArgument)
+  private
+    FMin, FMax: Single;
+    function GetType: string; override;
+  public
+    constructor Create(const Name: string; Options: string);
+    function Parse(var CommandLine: string): Boolean; override;
+  end;
+  TCCAString = class(TConsoleCommandArgument)
+  private
+    FFullLine: Boolean;
+    FValueBuffer: string;
+    function GetType: string; override;
+  public
+    constructor Create(const Name: string; Options: string);
+    function Parse(var CommandLine: string): Boolean; override;
+  end;
+  TCCAEnum = class(TConsoleCommandArgument)
+  private
+    FValues: array of string;
+    function GetType: string; override;
+  public
+    constructor Create(const Name: string; Options: string);
+    function Parse(var CommandLine: string): Boolean; override;
+  end;
+
 {$IFDEF VSE_LOG}
 procedure LogUpdateHandler(Level: TLogLevel; const S: string);
 begin
@@ -89,6 +166,10 @@ begin
   FLog := TStringList.Create;
   FLogCache := TStringList.Create;
   FCmdHistory := TStringList.Create;
+  FCommands := TConsoleCommand.Create(nil, 'help', HelpHandler);
+  OnCommand['cmdlist ?prefix=s'] := CmdListHandler;
+  OnCommand['exec file=s'] := ExecHandler;
+  OnCommand['echo msg=s*'] := EchoHandler;
   {$IFDEF VSE_LOG}
   Log(llInfo, 'Console: Create');
   FLogBuffer := TStringList.Create;
@@ -108,6 +189,8 @@ begin
   FAN(FLogBufferEvent);
   FAN(FLogBuffer);
   {$ENDIF}
+  while Assigned(FCommands.Next) do FCommands.Next.Free;
+  FAN(FCommands);
   FAN(FCmdHistory);
   FAN(FLogCache);
   FAN(FLog);
@@ -264,7 +347,7 @@ begin
           List := GetCommands(FCommandLine);
           try
             if List.Count = 1
-              then SetCommandLine(List[0])
+              then SetCommandLine(List[0] + ' ')
             else if List.Count > 1 then
               for i := 0 to List.Count - 1 do
                 WriteLn('    ' + List[i]);
@@ -303,14 +386,14 @@ end;
 
 procedure TConsole.CharEvent(C: Char);
 begin
-  if C in [#31..#95, #97..#126, #126..#255] then
+  if C in [#31..#95, #97..#126, #128..#255] then
   begin
     Insert(C, FCommandLine, FCursor);
     Inc(FCursor);
   end;
 end;
 
-procedure TConsole.WriteLn(const Line: string);
+procedure TConsole.WriteLn(const Line: string = '');
 var
   AtEnd: Boolean;
 begin
@@ -320,21 +403,41 @@ begin
   if AtEnd then FLogPosition := LogEndPosition;
 end;
 
-function TConsole.Execute(Command: string): Boolean;
+function TConsole.Execute(const CommandLine: string): Boolean;
+var
+  Command: TConsoleCommand;
 begin
   Result := false;
   if Assigned(FOnExecute) then
     try
-      if not FOnExecute(Self, Command) then Exit;
+      if not FOnExecute(Self, CommandLine) then Exit;
     except
       {$IFDEF VSE_LOG}LogException('in Console.OnExecute handler');{$ENDIF}
       {$IFNDEF VSE_DEBUG}Core.StopEngine(StopUserException);{$ENDIF}
     end;
+  Command := FCommands.FindCommand(GetCommandName(CommandLine));
+  if not Assigned(Command) then
+  begin
+    WriteLn('Command "' + GetCommandName(CommandLine) + '" not found');
+    Exit;
+  end;
+  Result := Command.Execute(CommandLine);
 end;
 
-function TConsole.GetCommands(const Prefix: string): TStringList;
+function TConsole.GetCommands(Prefix: string): TStringList;
+var
+  CurCmd: TConsoleCommand;
 begin
-
+  Result := TStringList.Create;
+  CurCmd := FCommands;
+  Prefix := LowerCase(Prefix);
+  while Assigned(CurCmd) do
+  begin
+    if Prefix = Copy(CurCmd.Name, 1, Length(Prefix))
+      then Result.Add(CurCmd.Name);
+    CurCmd := CurCmd.Next;
+  end;
+  Result.Sort;
 end;
 
 procedure TConsole.AddToCache(const Line: string);
@@ -343,14 +446,18 @@ var
   Postfix: string;
 begin
   if FLineLength = 0 then Exit;
-  Pos := 1;
-  Postfix := ' ';
-  if LastChar(Line) in [#10, #13] then Postfix := LastChar(Line);
-  while Pos <= Length(Line) do
+  if Line <> '' then
   begin
-    FLogCache.Add(Copy(Line, Pos, FLineLength)+Postfix);
-    Inc(Pos, FLineLength);
-  end;
+    Pos := 1;
+    Postfix := ' ';
+    if LastChar(Line) in [#10, #13] then Postfix := LastChar(Line);
+    while Pos <= Length(Line) do
+    begin
+      FLogCache.Add(Copy(Line, Pos, FLineLength)+Postfix);
+      Inc(Pos, FLineLength);
+    end;
+  end
+    else  FLogCache.Add('');
 end;
 
 function TConsole.LogEndPosition: Integer;
@@ -358,9 +465,14 @@ begin
   Result := Max(FLogCache.Count - DisplayLines, 0);
 end;
 
-function TConsole.GetCommand(const Cmd: string): TOnConsoleCommand;
+function TConsole.GetCommand(const CmdDesc: string): TOnConsoleCommand;
+var
+  Command: TConsoleCommand;
 begin
-
+  Command := FCommands.FindCommand(GetCommandName(CmdDesc));
+  if Assigned(Command)
+    then Result := Command.Handler
+    else Result := nil;
 end;
 
 procedure TConsole.SetActive(Value: Boolean);
@@ -376,9 +488,372 @@ begin
   end;
 end;
 
-procedure TConsole.SetCommand(const Cmd: string; Value: TOnConsoleCommand);
+procedure TConsole.SetCommand(const CmdDesc: string; Value: TOnConsoleCommand);
 begin
+  FCommands.FindCommand(GetCommandName(CmdDesc)).Free;
+  if Assigned(Value) then TConsoleCommand.Create(FCommands, CmdDesc, Value);
+end;
 
+function TConsole.HelpHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  WriteLn;
+  WriteLn('Use command "cmdlist [prefix]" to get commands list');
+  WriteLn('Use PageUp, PageDown, Ctrl+Up, Ctrl+Down, Ctrl+Home, Ctrl+End, Escape to navigate console log');
+  WriteLn('Use Up/Down to navigate commands history');
+  WriteLn('Press Tab to autocomplete command');
+  WriteLn('Press Insert to paste from clipboard');
+  WriteLn('Press Escape to clear command line');
+  Result := true;
+end;
+
+function TConsole.CmdListHandler(Sender: TObject; Args: array of const): Boolean;
+var
+  Prefix: string;
+  Commands: TStringList;
+  i: Integer;
+begin
+  if Length(Args) > 0
+    then Prefix := string(Args[0].VAnsiString)
+    else Prefix := '';
+  Commands := GetCommands(Prefix);
+  try
+    for i := 0 to Commands.Count - 1 do
+      WriteLn(FCommands.FindCommand(Commands[i]).Description);
+  finally
+    FAN(Commands);
+  end;
+  Result := true;
+end;
+
+function TConsole.ExecHandler(Sender: TObject; Args: array of const): Boolean;
+var
+  CmdFileName: string;
+  CmdFile: TStringList;
+  i: Integer;
+begin
+  Result := false;
+  CmdFileName := string(Args[0].VAnsiString);
+  CmdFile:=GetFileText(string(Args[0].VAnsiString));
+  if not Assigned(CmdFile) then
+  begin
+    {$IFDEF VSE_LOG}LogF(llError, 'Console: can''t execute file "%s": file not found', [CmdFileName]);{$ENDIF}
+    Exit;
+  end;
+  try
+    for i := 0 to CmdFile.Count - 1 do
+      Execute(CmdFile[i]);
+    Result := true;
+  finally
+    FAN(CmdFile);
+  end;
+end;
+
+function TConsole.EchoHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  WriteLn(string(Args[0].VAnsiString));
+  Result := true;
+end;
+
+class function TConsole.GetCommandName(CommandLine: string): string;
+begin
+  Result := LowerCase(Trim(Tok(' ', CommandLine)));
+end;
+
+{ TConsoleCommandArgument }
+
+constructor TConsoleCommandArgument.Create(const Name: string; Options:
+    string);
+begin
+  inherited Create;
+  FName := Name;
+  if FName[1] = '?' then
+  begin
+    FOptional := true;
+    Delete(FName, 1, 1);
+  end;
+end;
+
+function TConsoleCommandArgument.GetNextOption(var Options: string): string;
+begin
+  Result := Trim(Tok(':', Options));
+end;
+
+function TConsoleCommandArgument.GetArgument(var CommandLine: string): string;
+const
+  Delim: array[Boolean] of Char = (' ', '"'); 
+var
+  IsQuoted: Boolean;
+  i: Integer;
+begin
+  Result := '';
+  CommandLine := TrimLeft(CommandLine);
+  if CommandLine = '' then Exit;
+  IsQuoted := CommandLine[1] = '"';
+  i := PosEx(Delim[IsQuoted], CommandLine, 2);
+  if i = 0 then i := Length(CommandLine);
+  Result := Trim(Copy(CommandLine, 1, i));
+  Delete(CommandLine, 1, i);
+  if IsQuoted then Result := Copy(Result, 2, Length(Result) - 2);
+end;
+
+function TConsoleCommandArgument.GetDescription: string;
+begin
+  Result := Name + ': ' + GetType;
+  if FOptional
+    then Result := '[' + Result + ']'
+    else Result := '<' + Result + '>';
+end;
+
+{ TCCAInteger }
+
+constructor TCCAInteger.Create(const Name: string; Options: string);
+begin
+  inherited;
+  if Options <> ''
+    then FMin := StrToInt(GetNextOption(Options))
+    else FMin := -MaxInt - 1;
+  if Options <> ''
+    then FMax := StrToInt(GetNextOption(Options))
+    else FMax := MaxInt;
+end;
+
+function TCCAInteger.GetType: string;
+begin
+  Result := 'int';
+end;
+
+function TCCAInteger.Parse(var CommandLine: string): Boolean;
+begin
+  if CommandLine = '' then
+  begin
+    Result := FOptional;
+    FValue.VType := vtInvalid;
+    Exit;
+  end;
+  FValue.VType := vtInteger;
+  if TryStrToInt(GetArgument(CommandLine), FValue.VInteger)
+    then Result := (FValue.VInteger >= FMin) and (FValue.VInteger <= FMax);
+end;
+
+{ TCCAFloat }
+
+constructor TCCAFloat.Create(const Name: string; Options: string);
+begin
+  inherited;
+  if Options <> ''
+    then FMin := StrToFloat(GetNextOption(Options))
+    else FMin := -MaxSingle;
+  if Options <> ''
+    then FMax := StrToFloat(GetNextOption(Options))
+    else FMax := MaxSingle;
+end;
+
+function TCCAFloat.GetType: string;
+begin
+  Result := 'float'; 
+end;
+
+function TCCAFloat.Parse(var CommandLine: string): Boolean;
+var
+  Val: Single;
+begin
+  if CommandLine = '' then
+  begin
+    Result := FOptional;
+    FValue.VType := vtInvalid;
+    Exit;
+  end;
+  if TryStrToFloat(GetArgument(CommandLine), Val)
+    then Result := (Val >= FMin) and (Val <= FMax);
+  FValue.VType := vtExtended;
+  FValue.VExtended^ := Val;
+end;
+
+{ TCCAString }
+
+constructor TCCAString.Create(const Name: string; Options: string);
+begin
+  inherited;
+  if GetNextOption(Options) = '*' then FFullLine := true;
+end;
+
+function TCCAString.GetType: string;
+begin
+  Result := 'str';
+end;
+
+function TCCAString.Parse(var CommandLine: string): Boolean;
+begin
+  if CommandLine = '' then
+  begin
+    Result := FOptional;
+    FValue.VType := vtInvalid;
+    Exit;
+  end;
+  if FFullLine then
+  begin
+    FValueBuffer := TrimLeft(CommandLine);
+    CommandLine := '';
+  end
+    else FValueBuffer := GetArgument(CommandLine);
+  FValue.VType := vtAnsiString;
+  FValue.VAnsiString := Pointer(FValueBuffer);
+  Result := true;
+end;
+
+{ TCCAEnum }
+
+constructor TCCAEnum.Create(const Name: string; Options: string);
+begin
+  inherited;
+  while Options <> '' do
+  begin
+    SetLength(FValues, Length(FValues) + 1);
+    FValues[High(FValues)] := LowerCase(GetNextOption(Options));
+  end;
+end;
+
+function TCCAEnum.GetType: string;
+var
+  i: Integer;
+begin
+  Result := '';
+  if Length(FValues) = 0 then Exit;
+  if Length(FValues) <= 5 then
+  begin
+    for i := 0 to High(FValues) do
+      Result := Result + '|' + FValues[i];
+    Delete(Result, 1, 1);
+  end
+    else Result := FValues[0] + ' .. ' + FValues[High(FValues)];
+end;
+
+function TCCAEnum.Parse(var CommandLine: string): Boolean;
+var
+  Val: string;
+  i: Integer;
+begin
+  if CommandLine = '' then
+  begin
+    Result := FOptional;
+    FValue.VType := vtInvalid;
+    Exit;
+  end;
+  Val := LowerCase(GetArgument(CommandLine));
+  for i := 0 to High(FValues) do
+    if Val = FValues[i] then
+    begin
+      FValue.VType := vtInteger;
+      FValue.VInteger := i;
+      Result := true;
+      Exit;
+    end;
+  Result := false;
+end;
+
+{ TConsoleCommand }
+
+constructor TConsoleCommand.Create(Prev: TConsoleCommand; CmdDesc: string; Handler: TOnConsoleCommand);
+begin
+  inherited Create;
+  if Assigned(Prev) then
+  begin
+    FNext := Prev.FNext;
+    FPrev := Prev;
+    Prev.FNext := Self;
+    if Assigned(FNext) then FNext.FPrev := Self;
+  end;
+  FName := LowerCase(Trim(Tok(' ', CmdDesc)));
+  FHandler := Handler;
+  while CmdDesc <> '' do
+  begin
+    SetLength(FArguments, Length(FArguments) + 1);
+    FArguments[High(FArguments)] := CreateArgumentParser(Trim(Tok(' ', CmdDesc)));
+    if not Assigned(FArguments[High(FArguments)]) then
+    begin
+      {$IFDEF VSE_LOG}LogF(llError, 'Console: can''t parse command "%s" arguments description', [FName]);{$ENDIF}
+      raise Exception.Create('Unable to parse command arguments description');
+    end;
+  end;
+end;
+
+destructor TConsoleCommand.Destroy;
+var
+  i: Integer;
+begin
+  if Assigned(FPrev) then FPrev.FNext := FNext;
+  if Assigned(FNext) then FNext.FPrev := FPrev;
+  for i := 0 to High(FArguments) do
+    FArguments[i].Free;
+  Finalize(FArguments);
+  inherited;
+end;
+
+function TConsoleCommand.CreateArgumentParser(ArgumentDesc: string): TConsoleCommandArgument;
+var
+  Name: string;
+  Type_: Char;
+begin
+  Result := nil;
+  Name := Tok('=', ArgumentDesc);
+  if (Name = '') or (Length(ArgumentDesc) < 2) then Exit;
+  Type_ := UpCase(ArgumentDesc[2]);
+  Delete(ArgumentDesc, 1, 2);
+  case Type_ of
+    'I': Result := TCCAInteger.Create(Name, ArgumentDesc);
+    'F': Result := TCCAFloat.Create(Name, ArgumentDesc);
+    'S': Result := TCCAString.Create(Name, ArgumentDesc);
+    'E': Result := TCCAEnum.Create(Name, ArgumentDesc);
+  end;
+end;
+
+function TConsoleCommand.Execute(CommandLine: string): Boolean;
+var
+  i, ArgsCount: Integer;
+  Arguments: array of TVarRec;
+begin
+  Result := false;
+  Tok(' ', CommandLine);
+  CommandLine := TrimLeft(CommandLine);
+  ArgsCount := 0;
+  for i := 0 to High(FArguments) do
+  begin
+    if not FArguments[i].Parse(CommandLine) then
+    begin
+      Console.WriteLn('Error: invalid argument #' + IntToStr(i + 1));
+      Exit;
+    end;
+    if FArguments[i].Value.VType <> vtInvalid then Inc(ArgsCount);
+  end;
+  if Assigned(FHandler) then
+    try
+      SetLength(Arguments, ArgsCount);
+      for i := 0 to ArgsCount - 1 do
+        Arguments[i] := FArguments[i].Value;
+      Result := FHandler(Self, Arguments);
+    except
+      {$IFDEF VSE_LOG}LogException('in console command "' + Name + '" handler');{$ENDIF}
+      {$IFNDEF VSE_DEBUG}Core.StopEngine(StopUserException);{$ENDIF}
+    end;
+end;
+
+function TConsoleCommand.FindCommand(Name: string): TConsoleCommand;
+begin
+  Name := LowerCase(Name);
+  Result := Self;
+  while Assigned(Result) do
+    if Result.Name = Name
+      then Exit
+      else Result := Result.Next;
+end;
+
+function TConsoleCommand.GetDescription: string;
+var
+  i: Integer;
+begin
+  Result := FName;
+  for i := 0 to High(FArguments) do
+    Result := Result + ' ' + FArguments[i].Description;
 end;
 
 {$IFDEF VSE_LOG}

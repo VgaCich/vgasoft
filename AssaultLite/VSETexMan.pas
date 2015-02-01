@@ -37,6 +37,7 @@ type
     FRTTMethod: TRTTMethod;
     FDontLogLostTex: Boolean;
     procedure CreateFontTex(Font: Cardinal);
+    {$IFDEF VSE_CONSOLE}function ClearCacheHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
   public
     constructor Create; //internally used
     destructor Destroy; override; //internally used
@@ -73,7 +74,7 @@ var
 implementation
 
 uses
-  VSECore{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+  VSECore{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
   TexCapDelta=16;
@@ -82,6 +83,7 @@ constructor TTexMan.Create;
 begin
   inherited Create;
   {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: Create');{$ENDIF}
+  {$IFDEF VSE_CONSOLE}Console.OnCommand['cleartexcache']:=ClearCacheHandler;{$ENDIF}
   FTexCache:=CacheDir+'Tex\';
   if UseCache then ForceDirectories(FTexCache);
   FCount:=0;
@@ -570,5 +572,13 @@ begin
   if (Font>=Cardinal(Length(FFonts))) or (FFonts[Font]=nil) then Exit;
   Result:=FFonts[Font]^.Height;
 end;
+
+{$IFDEF VSE_CONSOLE}
+function TTexMan.ClearCacheHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  ClearCache;
+  Result:=true;
+end;
+{$ENDIF}
 
 end.

@@ -65,6 +65,7 @@ type
     FLoad: TStateLoad;
     FBgTex: Cardinal;
     procedure KeyConfigClose(Sender: TObject);
+    {$IFDEF VSE_CONSOLE}function CacheHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
   protected
     function GetName: string; override;
   public
@@ -81,7 +82,7 @@ type
 
 implementation
 
-uses VSEInit, VSECore, VSESound{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+uses VSEInit, VSECore, VSESound{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 {TMainMenu}
 
@@ -340,6 +341,7 @@ end;
 procedure TOptions.KeyConfig(Btn: PBtn);
 begin
   FParent.FCurFrm:=FParent.FKeyConfig;
+  FParent.FKeyConfig.Refresh;
 end;
 
 procedure TOptions.OKClick(Btn: PBtn);
@@ -477,6 +479,7 @@ var
   i: Integer;
 begin
   inherited Create;
+  {$IFDEF VSE_CONSOLE}Console.OnCommand['cache ?val=eoff:on']:=CacheHandler;{$ENDIF}
   FMainMenu:=TMainMenu.Create(Self);
   FOptions:=TOptions.Create(Self);
   FKeyConfig:=TBindManCfgForm.Create(800, 600, 200, 130, 400, 350,
@@ -487,10 +490,10 @@ begin
   FGame:=TStateGame(Core.GetState(Core.FindState('Game')));
   FLoad:=TStateLoad(Core.GetState(Core.FindState('Load')));
   for i:=0 to 4 do
-    if FileExists(BgNames[i]) then
+    if FileExists(ExePath+BgNames[i]) then
     begin
       ImageData.Pixels := nil;
-      if LoadImageFromFile(BgNames[i], ImageData)
+      if LoadImageFromFile(ExePath+BgNames[i], ImageData)
         then FBgTex:=TexMan.AddTexture('MenuBg', ImageData, true, false)
         {$IFDEF VSE_LOG}else Log(llError, 'StateMenu: can''t load background from '+BgNames[i]){$ENDIF};
       FreeImageData(ImageData);
@@ -570,7 +573,26 @@ end;
 
 function TStateMenu.SysNotify(Notify: TSysNotify): Boolean;
 begin
+  Result:=inherited SysNotify(Notify);
   if Notify=snConsoleActive then Result:=true;
 end;
+
+{$IFDEF VSE_CONSOLE}
+const
+  BoolState: array[Boolean] of string = ('off', 'on');
+
+function TStateMenu.CacheHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>0 then
+  begin
+    UseCache:=Boolean(Args[0].VInteger);
+    if UseCache
+      then CreateDir(CacheDir)
+      else DeleteDir(CacheDir);
+  end
+    else Console.WriteLn('Cache: '+BoolState[UseCache]);
+  Result:=true;
+end;
+{$ENDIF}
 
 end.
