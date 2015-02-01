@@ -177,7 +177,7 @@ begin
     end;
   {$IFDEF SYNTEX_USELOG}
   finally
-    if not Result then Log('Sinthesize: execution stopped at '+IntToStr(FCode.Position));
+    if not Result then Log('Synthesize: execution stopped at '+IntToStr(FCode.Position));
   end;
   {$ENDIF}
 end;
