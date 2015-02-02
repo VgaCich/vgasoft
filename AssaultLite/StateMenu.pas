@@ -65,7 +65,10 @@ type
     FLoad: TStateLoad;
     FBgTex: Cardinal;
     procedure KeyConfigClose(Sender: TObject);
-    {$IFDEF VSE_CONSOLE}function CacheHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
+    {$IFDEF VSE_CONSOLE}
+    function CacheHandler(Sender: TObject; Args: array of const): Boolean;
+    function MenuBgHandler(Sender: TObject; Args: array of const): Boolean;
+    {$ENDIF}
   protected
     function GetName: string; override;
   public
@@ -472,14 +475,12 @@ end;
 {TStateMenu}
 
 constructor TStateMenu.Create;
-const
-  BgNames: array[0..4] of string = ('MenuBg.bmp', 'MenuBg.gif', 'MenuBg.jpg', 'MenuBg.png', 'MenuBg.tif');
-var
-  ImageData: TImageData;
-  i: Integer;
 begin
   inherited Create;
-  {$IFDEF VSE_CONSOLE}Console.OnCommand['cache ?val=eoff:on']:=CacheHandler;{$ENDIF}
+  {$IFDEF VSE_CONSOLE}
+  Console.OnCommand['cache ?val=eoff:on']:=CacheHandler;
+  Console.OnCommand['menubg file=s']:=MenuBgHandler;
+  {$ENDIF}
   FMainMenu:=TMainMenu.Create(Self);
   FOptions:=TOptions.Create(Self);
   FKeyConfig:=TBindManCfgForm.Create(800, 600, 200, 130, 400, 350,
@@ -489,16 +490,6 @@ begin
   FCurFrm:=FMainMenu;
   FGame:=TStateGame(Core.GetState(Core.FindState('Game')));
   FLoad:=TStateLoad(Core.GetState(Core.FindState('Load')));
-  for i:=0 to 4 do
-    if FileExists(ExePath+BgNames[i]) then
-    begin
-      ImageData.Pixels := nil;
-      if LoadImageFromFile(ExePath+BgNames[i], ImageData)
-        then FBgTex:=TexMan.AddTexture('MenuBg', ImageData, true, false)
-        {$IFDEF VSE_LOG}else Log(llError, 'StateMenu: can''t load background from '+BgNames[i]){$ENDIF};
-      FreeImageData(ImageData);
-      Break;
-    end;
 end;
 
 destructor TStateMenu.Destroy;
@@ -592,6 +583,22 @@ begin
   end
     else Console.WriteLn('Cache: '+BoolState[UseCache]);
   Result:=true;
+end;
+
+function TStateMenu.MenuBgHandler(Sender: TObject; Args: array of const): Boolean;
+var
+  ImageData: TImageData;
+  FileName: string;
+begin
+  FileName:=ExePath+string(Args[0].VAnsiString);
+  if FileExists(FileName) then
+  begin
+    InitImageData(ImageData);
+    if LoadImageFromFile(FileName, ImageData)
+      then FBgTex:=TexMan.AddTexture('MenuBg', ImageData, true, false)
+      {$IFDEF VSE_LOG}else Log(llError, 'StateMenu: can''t load background from "'+FileName+'"'){$ENDIF};
+    FreeImageData(ImageData);
+  end;
 end;
 {$ENDIF}
 

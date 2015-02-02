@@ -313,6 +313,11 @@ var
   end;
 
 begin
+  if not FActive then
+  begin
+    if (Event = keUp) and (Key = VK_TILDE) then Active := true;
+    Exit;
+  end;
   if (Event = keDown) then
   begin
     case Key of
@@ -379,14 +384,14 @@ begin
           Execute(FCommandLine);
           SetCommandLine('');
         end;
-      VK_TILDE: if not Core.KeyPressed[VK_SHIFT] then Active := not Active;
+      VK_TILDE: if not Core.KeyPressed[VK_SHIFT] then Active := false;
     end;
   end;
 end;
 
 procedure TConsole.CharEvent(C: Char);
 begin
-  if C in [#31..#95, #97..#126, #128..#255] then
+  if FActive and (C in [#31..#95, #97..#126, #128..#255]) then
   begin
     Insert(C, FCommandLine, FCursor);
     Inc(FCursor);
@@ -541,7 +546,8 @@ begin
   end;
   try
     for i := 0 to CmdFile.Count - 1 do
-      Execute(CmdFile[i]);
+      if (Length(CmdFile[i]) > 0) and (CmdFile[i][1] <> ';')
+        then Execute(CmdFile[i]);
     Result := true;
   finally
     FAN(CmdFile);

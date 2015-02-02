@@ -24,18 +24,22 @@ type
     FQueuePool: array of TEventQueue;
     FScrollStateClicks: Integer;
     FScrollStateUp: Boolean;
+    {$IFDEF VSE_CONSOLE}FCmdBindings: array of record Key: Byte; Cmd: string; end; {$ENDIF}
     function GetBindActive(Name: string): Boolean;
     function FindBinding(Name: string): Integer;
     procedure LoadBindings;
     function NewEvent(Event_: TBindEvent): PEventQueue;
     procedure SaveBindings;
-    {$IFDEF VSE_CONSOLE}function BindHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
+    {$IFDEF VSE_CONSOLE}
+    function BindHandler(Sender: TObject; Args: array of const): Boolean;
+    function BindCmdHandler(Sender: TObject; Args: array of const): Boolean;
+    {$ENDIF}
   public
     constructor Create; //internally used
     destructor Destroy; override; //internally used
+    procedure Update; //internally used
     procedure MouseEvent(Button: Integer; Event: TMouseEvent); //internally used
     procedure KeyEvent(Key: Integer; Event: TKeyEvent);
-    procedure Update; //internally used
     procedure ResetEvents; //internally used
     function  GetBindKeyName(const BindName: string): string; //Get name of binded to BindName key
     function  GetBindEvent(const Name: string): TBindEvent; //Get oldest event from queue for binding, returns beNone if no events
@@ -131,6 +135,26 @@ begin
   if Result='' then Result:='VK #'+IntToStr(Key);
 end;
 
+function StrToKey(KeyName: string): Integer;
+var
+  i: Integer;
+begin
+  Result:=0;
+  if KeyName='' then Exit;
+  KeyName:=LowerCase(KeyName);
+  if Copy(KeyName, 1, 4)='VK #' then Delete(KeyName, 1, 3);
+  if KeyName[1]<>'#' then
+  begin
+    for i:=0 to 255 do
+      if KeyName=LowerCase(KeyNames[i]) then
+      begin
+        Result:=i;
+        Exit;
+      end;
+  end
+    else Result:=StrToInt(Copy(KeyName, 2, 3));
+end;
+
 function ProcessKeyTags(const S: string): string;
 var
   CurPos, Idx: Integer;
@@ -165,7 +189,10 @@ var
 begin
   inherited Create;
   {$IFDEF VSE_LOG}Log(llInfo, 'BindMan: Create');{$ENDIF}
-  {$IFDEF VSE_CONSOLE}Console.OnCommand['bind name=s ?key=s']:=BindHandler;{$ENDIF}
+  {$IFDEF VSE_CONSOLE}
+  Console.OnCommand['bind name=s ?key=s']:=BindHandler;
+  Console.OnCommand['bindcmd key=s ?cmd=s*']:=BindCmdHandler;
+  {$ENDIF}
   LoadBindings;
   SetLength(FQueuePool, 3*MaxEventAge*Length(FBindings));
   for i:=0 to High(FQueuePool) do
@@ -242,28 +269,6 @@ begin
     else Result:=''; 
 end;
 
-procedure TBindMan.KeyEvent(Key: Integer; Event: TKeyEvent);
-const
-  EvMap: array[keDown..keUp] of TBindEvent = (beDown, beUp);
-var
-  i: Integer;
-  Ev: PEventQueue;
-begin
-  for i:=0 to High(FBindings) do
-    if FBindings[i].Key=Key then
-      with FBindings[i] do
-      begin
-        if Assigned(Events) then
-        begin
-          Ev:=Events;
-          while Assigned(Ev^.Next) do Ev:=Ev^.Next;
-          Ev^.Next:=NewEvent(EvMap[Event]);
-        end
-          else Events:=NewEvent(EvMap[Event]);
-        Exit;
-      end;
-end;
-
 procedure TBindMan.LoadBindings;
 var
   BindingsList: TStringList;
@@ -291,6 +296,60 @@ begin
   finally
     FAN(BindingsList);
   end;
+end;
+
+procedure TBindMan.Update;
+var
+  i: Integer;
+  Event: PEventQueue;
+begin
+  if FScrollStateClicks>0 then Dec(FScrollStateClicks);
+  for i:=0 to High(FBindings) do
+    with FBindings[i] do
+    begin
+      while Assigned(Events) and (Events^.Age>=MaxEventAge) do
+      begin
+        Events^.Age:=DeadEvent;
+        Events:=Events^.Next;
+      end;
+      Event:=Events;
+      while Assigned(Event) do
+      begin
+        Inc(Event^.Age);
+        Event:=Event^.Next;
+      end;
+    end;
+end;
+
+procedure TBindMan.KeyEvent(Key: Integer; Event: TKeyEvent);
+const
+  EvMap: array[keDown..keUp] of TBindEvent = (beDown, beUp);
+var
+  i: Integer;
+  Ev: PEventQueue;
+begin
+  for i:=0 to High(FBindings) do
+    if FBindings[i].Key=Key then
+      with FBindings[i] do
+      begin
+        if Assigned(Events) then
+        begin
+          Ev:=Events;
+          while Assigned(Ev^.Next) do Ev:=Ev^.Next;
+          Ev^.Next:=NewEvent(EvMap[Event]);
+        end
+          else Events:=NewEvent(EvMap[Event]);
+        Break;
+      end;
+  {$IFDEF VSE_CONSOLE}
+  if Event=keUp then
+    for i:=0 to High(FCmdBindings) do
+      if FCmdBindings[i].Key=Key then
+      begin
+        Console.Execute(FCmdBindings[i].Cmd);
+        Break;
+      end;
+  {$ENDIF}
 end;
 
 procedure TBindMan.MouseEvent(Button: Integer; Event: TMouseEvent);
@@ -339,29 +398,6 @@ begin
   {$IFDEF VSE_LOG}Log(llError, 'BindMan: Event pool overflow');{$ENDIF}
 end;
 
-procedure TBindMan.Update;
-var
-  i: Integer;
-  Event: PEventQueue;
-begin
-  if FScrollStateClicks>0 then Dec(FScrollStateClicks);
-  for i:=0 to High(FBindings) do
-    with FBindings[i] do
-    begin
-      while Assigned(Events) and (Events^.Age>=MaxEventAge) do
-      begin
-        Events^.Age:=DeadEvent;
-        Events:=Events^.Next;
-      end;
-      Event:=Events;
-      while Assigned(Event) do
-      begin
-        Inc(Event^.Age);
-        Event:=Event^.Next;
-      end;
-    end;
-end;
-
 procedure TBindMan.ResetEvents;
 var
   i: Integer;
@@ -387,8 +423,7 @@ end;
 {$IFDEF VSE_CONSOLE}
 function TBindMan.BindHandler(Sender: TObject; Args: array of const): Boolean;
 var
-  Binding, i: Integer;
-  KeyName: string;
+  Binding, Key: Integer;
 begin
   Result:=false;
   Binding:=FindBinding(string(Args[0].VAnsiString));
@@ -396,22 +431,51 @@ begin
   Result:=true;
   if Length(Args)>1 then
   begin
-    KeyName:=LowerCase(string(Args[1].VAnsiString));
-    if KeyName[1]<>'#' then
+    Key:=StrToKey(string(Args[1].VAnsiString));
+    if Key=0 then
     begin
-      for i:=0 to 255 do
-        if KeyName=LowerCase(KeyNames[i]) then
-        begin
-          FBindings[Binding].Key:=i;
-          Exit;
-        end;
       Console.WriteLn('Unknown key name');
       Result:=false;
       Exit;
-    end
-      else FBindings[Binding].Key:=StrToInt(Copy(KeyName, 2, 3));
+    end;
+    FBindings[Binding].Key:=Key;
   end
     else Console.WriteLn(FBindings[Binding].Name+' binded to key '+KeyToStr(FBindings[Binding].Key));
+end;
+
+function TBindMan.BindCmdHandler(Sender: TObject; Args: array of const): Boolean;
+
+  function FindBinding(Key: Byte): Integer;
+  begin
+    for Result:=0 to High(FCmdBindings) do
+      if FCmdBindings[Result].Key=Key then Exit;
+    Result:=-1;
+  end;
+
+var
+  Key: Byte;
+  Binding: Integer;
+begin
+  Result:=false;
+  Key:=StrToKey(string(Args[0].VAnsiString));
+  if Key<>0 then
+  begin
+    Binding:=FindBinding(Key);
+    if Length(Args)>1 then
+    begin
+      if Binding=-1 then Binding:=FindBinding(0);
+      if Binding=-1 then
+      begin
+        SetLength(FCmdBindings, Length(FCmdBindings)+1);
+        Binding:=High(FCmdBindings);
+      end;
+      FCmdBindings[Binding].Key:=Key;
+      FCmdBindings[Binding].Cmd:=string(Args[1].VAnsiString);
+    end
+      else if Binding<>-1 then
+        FCmdBindings[Binding].Key:=0;
+  end
+    else Console.WriteLn('Unknown key name');
 end;
 {$ENDIF}
 

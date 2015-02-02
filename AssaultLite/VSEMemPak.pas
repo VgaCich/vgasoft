@@ -10,7 +10,6 @@ function GetFileText(const FileName: string): TStringList; //Get text file as TS
 
 implementation
 
-{$IFNDEF MEMPAK_PLAINFS}
 {$I VSEMemPakTypes.inc}
 type
   TMemStream=class(TCustomMemoryStream)
@@ -20,19 +19,7 @@ type
 
 const
 {$I MemPak.inc}
-{$ENDIF}
 
-{$IFDEF MEMPAK_PLAINFS}
-function GetFile(FileName: string): TCustomMemoryStream;
-begin
-  Result:=nil;
-  if FileExists(ExePath+'Data\'+FileName) then
-  begin
-    Result:=TMemoryStream.Create;
-    TMemoryStream(Result).LoadFromFile(ExePath+'Data\'+FileName);
-  end;
-end;
-{$ELSE}
 constructor TMemStream.Create(Mem: Pointer; Size: Integer);
 begin
   inherited Create;
@@ -45,27 +32,33 @@ var
   Name: string;
   Pak: TMemStream;
 begin
-  FileName:=UpperCase(FileName);
   Result:=nil;
-  Pak:=TMemStream.Create(@MemPakData, SizeOf(MemPakData));
-  try
-    while Pak.Position<Pak.Size do
-    begin
-      Pak.Read(Hdr, SizeOf(Hdr));
-      SetLength(Name, Hdr.NameLen);
-      Pak.Read(Name[1], Hdr.NameLen);
-      if Name=FileName then
+  if FileExists(ExePath+'Data\'+FileName) then
+  begin
+    Result:=TMemoryStream.Create;
+    TMemoryStream(Result).LoadFromFile(ExePath+'Data\'+FileName);
+  end
+  else begin
+    FileName:=UpperCase(FileName);
+    Pak:=TMemStream.Create(@MemPakData, SizeOf(MemPakData));
+    try
+      while Pak.Position<Pak.Size do
       begin
-        Result:=TMemStream.Create(IncPtr(Pak.Memory, Pak.Position), Hdr.FileSize);
-        Exit;
-      end
-        else Pak.Seek(Hdr.FileSize, soFromCurrent);
+        Pak.Read(Hdr, SizeOf(Hdr));
+        SetLength(Name, Hdr.NameLen);
+        Pak.Read(Name[1], Hdr.NameLen);
+        if Name=FileName then
+        begin
+          Result:=TMemStream.Create(IncPtr(Pak.Memory, Pak.Position), Hdr.FileSize);
+          Exit;
+        end
+          else Pak.Seek(Hdr.FileSize, soFromCurrent);
+      end;
+    finally
+      FAN(Pak);
     end;
-  finally
-    FAN(Pak);
   end;
 end;
-{$ENDIF}
 
 function GetFileText(const FileName: string): TStringList;
 var

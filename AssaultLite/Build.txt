@@ -3,10 +3,12 @@
 http://vgasoft.googlecode.com/svn/AvL/AvL.pas
 http://vgasoft.googlecode.com/svn/AvL/avlMath.pas
 http://vgasoft.googlecode.com/svn/AvL/avlUtils.pas
+http://vgasoft.googlecode.com/svn/AvL/avlClasses.pas
 http://vgasoft.googlecode.com/svn/AvL/avlSyncObjs.pas
 http://vgasoft.googlecode.com/svn/AvL/avlVectors.pas
+http://vgasoft.googlecode.com/svn/AvL/avlIStreamAdapter.pas
 2) Замены системных модулей, для Delphi 7 качать здесь:
-http://vgacich.narod.ru/SysDCU-D7.7z
+http://vgasoft.googlecode.com/svn/AvL/SysDCU-D7.7z
 В настройках проекта предполагается, что замены установлены в $(DELPHI)\Lib\sysdcu
 С другими заменами возможно потребуется закомментировать модуль SysSfIni в секции uses файла AssaultLite.dpr
 3) SynTex:
@@ -29,14 +31,13 @@ VSE_DEBUG - сборка отладочной версии движка VSE, отключается останов движка при 
 VSE_LOG - включить лог
 VSE_CONSOLE - включить консоль
 SYNTEX_USELOG - включить лог в SynTex'е
-MEMPAK_PLAINFS - использовать данные из папки Data (иначе из MemPak.inc)
 DEBUGMEM - отладка памяти (требуется FastMM)
 PM_DRAWNORMALS - рисовать нормали у моделей
 VSE_ESC_EXIT - принудительный выход по escape
 VSE_USE_SNAPSHOT_KEY - сохранение скриншота по нажатию кнопки Print Screen
 
 Рабочий набор дефайнов:
-VSE_DEBUG;DEBUGMEM;VSE_LOG;VSE_CONSOLE;SYNTEX_USELOG;MEMPAK_PLAINFS;VSE_USE_SNAPSHOT_KEY
+VSE_DEBUG;DEBUGMEM;VSE_LOG;VSE_CONSOLE;SYNTEX_USELOG;VSE_USE_SNAPSHOT_KEY
 
 Релизный набор дефайнов:
 VSE_USE_SNAPSHOT_KEY
