@@ -17,7 +17,7 @@ type
     FMusicBufferDesc: TDSBufferDesc;
     FEnableBGM: Boolean;
     procedure SetEnableBGM(Value: Boolean);
-    function SetBGMHandler(Sender: TObject; Args: array of const): Boolean;
+    {$IFDEF VSE_CONSOLE}function SetBGMHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
   public
     constructor Create; //internally used
     destructor Destroy; override; //internally used
