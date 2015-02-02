@@ -729,6 +729,67 @@ begin
   Result:=Trunc(1000*(T/FPerformanceFrequency));
 end;
 
+{$IFDEF VSE_CONSOLE}
+const
+  BoolState: array[Boolean] of string = ('off', 'on');
+
+function TCore.FullscreenHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>0
+    then Fullscreen:=Boolean(Args[0].VInteger)
+    else Console.WriteLn('Fullscreen: '+BoolState[Fullscreen]);
+  Result:=true;
+end;
+
+function TCore.QuitHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>0
+    then StopEngine(Args[0].VInteger)
+    else StopEngine;
+  Result:=true;
+end;
+
+function TCore.ResolutionHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  Result:=true;
+  case Length(Args) of
+    0: Console.WriteLn(Format('Resolution: %dx%d@%d', [ResolutionX, ResolutionY, RefreshRate]));
+    2: SetResolution(Args[0].VInteger, Args[1].VInteger, RefreshRate, Fullscreen);
+    3: SetResolution(Args[0].VInteger, Args[1].VInteger, Args[2].VInteger, Fullscreen);
+    else begin
+      Console.WriteLn('Invalid arguments');
+      Result:=false;
+    end;
+  end;
+end;
+
+function TCore.ScreenshotHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  case Length(Args) of
+    0: MakeScreenshot(ChangeFileExt(ExtractFileName(ExeName), '')+'_screenshot', ifPNG);
+    1: MakeScreenshot(string(Args[0].VAnsiString), ifPNG, false);
+    else MakeScreenshot(string(Args[0].VAnsiString), TImageFormat(Args[1].VInteger), false);
+  end;
+  Result:=true;
+end;
+
+function TCore.StateHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>0
+    then SwitchState(string(Args[0].VAnsiString))
+    else Console.WriteLn('Current state: '+CurState.Name);
+  Result:=true;
+end;
+
+function TCore.VSyncHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>0
+    then VSync:=Boolean(Args[0].VInteger)
+    else Console.WriteLn('VSync: '+BoolState[VSync]);
+  Result:=true;
+end;
+{$ENDIF}
+
 function WndProc(hWnd: HWND; Msg: UINT; wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;
 var
   WndWidth, WndHeight: Word;
@@ -892,67 +953,6 @@ begin
   {$ENDIF}
   UnregisterClass(WndClassName, hInstance);
 end;
-
-{$IFDEF VSE_CONSOLE}
-const
-  BoolState: array[Boolean] of string = ('off', 'on');
-
-function TCore.FullscreenHandler(Sender: TObject; Args: array of const): Boolean;
-begin
-  if Length(Args)>0
-    then Fullscreen:=Boolean(Args[0].VInteger)
-    else Console.WriteLn('Fullscreen: '+BoolState[Fullscreen]);
-  Result:=true;
-end;
-
-function TCore.QuitHandler(Sender: TObject; Args: array of const): Boolean;
-begin
-  if Length(Args)>0
-    then StopEngine(Args[0].VInteger)
-    else StopEngine;
-  Result:=true;
-end;
-
-function TCore.ResolutionHandler(Sender: TObject; Args: array of const): Boolean;
-begin
-  Result:=true;
-  case Length(Args) of
-    0: Console.WriteLn(Format('Resolution: %dx%d@%d', [ResolutionX, ResolutionY, RefreshRate]));
-    2: SetResolution(Args[0].VInteger, Args[1].VInteger, RefreshRate, Fullscreen);
-    3: SetResolution(Args[0].VInteger, Args[1].VInteger, Args[2].VInteger, Fullscreen);
-    else begin
-      Console.WriteLn('Invalid arguments');
-      Result:=false;
-    end;
-  end;
-end;
-
-function TCore.ScreenshotHandler(Sender: TObject; Args: array of const): Boolean;
-begin
-  case Length(Args) of
-    0: MakeScreenshot(ChangeFileExt(ExtractFileName(ExeName), '')+'_screenshot', ifPNG);
-    1: MakeScreenshot(string(Args[0].VAnsiString), ifPNG, false);
-    else MakeScreenshot(string(Args[0].VAnsiString), TImageFormat(Args[1].VInteger), false);
-  end;
-  Result:=true;
-end;
-
-function TCore.StateHandler(Sender: TObject; Args: array of const): Boolean;
-begin
-  if Length(Args)>0
-    then SwitchState(string(Args[0].VAnsiString))
-    else Console.WriteLn('Current state: '+CurState.Name);
-  Result:=true;
-end;
-
-function TCore.VSyncHandler(Sender: TObject; Args: array of const): Boolean;
-begin
-  if Length(Args)>0
-    then VSync:=Boolean(Args[0].VInteger)
-    else Console.WriteLn('VSync: '+BoolState[VSync]);
-  Result:=true;
-end;
-{$ENDIF}
 
 initialization
 

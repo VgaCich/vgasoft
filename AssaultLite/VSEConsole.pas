@@ -637,8 +637,7 @@ begin
     Exit;
   end;
   FValue.VType := vtInteger;
-  if TryStrToInt(GetArgument(CommandLine), FValue.VInteger)
-    then Result := (FValue.VInteger >= FMin) and (FValue.VInteger <= FMax);
+  Result := TryStrToInt(GetArgument(CommandLine), FValue.VInteger) and (FValue.VInteger >= FMin) and (FValue.VInteger <= FMax);
 end;
 
 { TCCAFloat }
@@ -669,8 +668,7 @@ begin
     FValue.VType := vtInvalid;
     Exit;
   end;
-  if TryStrToFloat(GetArgument(CommandLine), Val)
-    then Result := (Val >= FMin) and (Val <= FMax);
+  Result := TryStrToFloat(GetArgument(CommandLine), Val) and  (Val >= FMin) and (Val <= FMax);
   FValue.VType := vtExtended;
   FValue.VExtended^ := Val;
 end;
