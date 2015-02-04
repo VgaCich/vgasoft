@@ -71,6 +71,7 @@ type
     function ExecHandler(Sender: TObject; Args: array of const): Boolean;
     function EchoHandler(Sender: TObject; Args: array of const): Boolean;
     class function GetCommandName(CommandLine: string): string;
+    procedure UpdateLog;
   public
     constructor Create; // internally used
     destructor Destroy; override; // internally used
@@ -282,22 +283,8 @@ begin
 end;
 
 procedure TConsole.Update;
-var
-  i: Integer;
 begin
-  {$IFDEF VSE_LOG}
-  if FLogBufferEvent.WaitFor(0) = wrSignaled then
-  begin
-    FLogBufferLock.Acquire;
-    try
-      for i := 0 to FLogBuffer.Count-1 do
-        WriteLn(FLogBuffer[i]);
-      FLogBuffer.Clear;
-    finally
-      FLogBufferLock.Release;
-    end;
-  end;
-  {$ENDIF}
+  {$IFDEF VSE_LOG}UpdateLog;{$ENDIF}
 end;
 
 procedure TConsole.KeyEvent(Key: Integer; Event: TKeyEvent);
@@ -402,6 +389,7 @@ procedure TConsole.WriteLn(const Line: string = '');
 var
   AtEnd: Boolean;
 begin
+  {$IFDEF VSE_LOG}UpdateLog;{$ENDIF}
   FLog.Add(Line);
   AtEnd := FLogPosition = LogEndPosition;
   AddToCache(Line);
@@ -564,6 +552,25 @@ class function TConsole.GetCommandName(CommandLine: string): string;
 begin
   Result := LowerCase(Trim(Tok(' ', CommandLine)));
 end;
+
+{$IFDEF VSE_LOG}
+procedure TConsole.UpdateLog;
+var
+  i: Integer;
+begin
+  if FLogBufferEvent.WaitFor(0) = wrSignaled then
+  begin
+    FLogBufferLock.Acquire;
+    try
+      for i := 0 to FLogBuffer.Count-1 do
+        WriteLn(FLogBuffer[i]);
+      FLogBuffer.Clear;
+    finally
+      FLogBufferLock.Release;
+    end;
+  end;
+end;
+{$ENDIF}
 
 { TConsoleCommandArgument }
 
