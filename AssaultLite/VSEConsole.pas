@@ -505,9 +505,15 @@ begin
 end;
 
 procedure TConsole.SetCommand(const CmdDesc: string; Value: TOnConsoleCommand);
+var
+  Command: TConsoleCommand;
 begin
-  FCommands.FindCommand(GetCommandName(CmdDesc)).Free;
-  if Assigned(Value) then TConsoleCommand.Create(FCommands, CmdDesc, Value);
+  Command := FCommands.FindCommand(GetCommandName(CmdDesc));
+  if Command <> FCommands then
+  begin
+    Command.Free;
+    if Assigned(Value) then TConsoleCommand.Create(FCommands, CmdDesc, Value);
+  end;
 end;
 
 function TConsole.HelpHandler(Sender: TObject; Args: array of const): Boolean;
@@ -578,8 +584,7 @@ end;
 
 { TConsoleCommandArgument }
 
-constructor TConsoleCommandArgument.Create(const Name: string; Options:
-    string);
+constructor TConsoleCommandArgument.Create(const Name: string; Options: string);
 begin
   inherited Create;
   FName := Name;
