@@ -365,11 +365,14 @@ begin
       VK_RETURN:
         begin
           WriteLn('>' + FCommandLine);
-          FCmdHistory.Add(FCommandLine);
-          if FCmdHistory.Count > 32 then FCmdHistory.Delete(0);
-          FCmdHistoryIndex := FCmdHistory.Count;
-          Execute(FCommandLine);
-          SetCommandLine('');
+          if FCommandLine <> '' then
+          begin
+            FCmdHistory.Add(FCommandLine);
+            if FCmdHistory.Count > 32 then FCmdHistory.Delete(0);
+            FCmdHistoryIndex := FCmdHistory.Count;
+            Execute(FCommandLine);
+            SetCommandLine('');
+          end;
         end;
       VK_TILDE: if not Core.KeyPressed[VK_SHIFT] then Active := false;
     end;
@@ -401,6 +404,7 @@ var
   Command: TConsoleCommand;
 begin
   Result := false;
+  if Trim(CommandLine) = '' then Exit;
   if Assigned(FOnExecute) then
     try
       if not FOnExecute(Self, CommandLine) then Exit;
