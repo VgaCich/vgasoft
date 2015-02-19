@@ -1,3 +1,9 @@
+unit GDIPAPI;
+
+interface
+
+uses Windows;
+
 type
   TStatus = (Ok, GenericError, InvalidParameter, OutOfMemory, ObjectBusy,
     InsufficientBuffer, NotImplemented, Win32Error, WrongState, Aborted,
@@ -128,11 +134,11 @@ function GdiplusStartup(out token: ULONG; input: PGdiplusStartupInput; output: P
 procedure GdiplusShutdown(token: ULONG); stdcall; external WINGDIPDLL name 'GdiplusShutdown';
 function GdipGetImageEncodersSize(out numEncoders: UINT; out size: UINT): TStatus; stdcall; external WINGDIPDLL name 'GdipGetImageEncodersSize';
 function GdipGetImageEncoders(numEncoders: UINT; size: UINT; encoders: PImageCodecInfo): TStatus; stdcall; external WINGDIPDLL name 'GdipGetImageEncoders';
-function GdipCreateBitmapFromScan0(width: Integer; height: Integer; stride: Integer; format: Integer; scan0: PBYTE; out bitmap: Pointer): TStatus; stdcall; external WINGDIPDLL name 'GdipCreateBitmapFromScan0';
+function GdipCreateBitmapFromScan0(width: Integer; height: Integer; stride: Integer; format: Integer; scan0: Pointer; out bitmap: Pointer): TStatus; stdcall; external WINGDIPDLL name 'GdipCreateBitmapFromScan0';
 function GdipCreateBitmapFromFile(filename: PWCHAR; out bitmap: Pointer): TStatus; stdcall; external WINGDIPDLL name 'GdipCreateBitmapFromFile';
-function GdipCreateBitmapFromStream(stream: IStream; out bitmap: Pointer): TStatus; stdcall; external WINGDIPDLL name 'GdipCreateBitmapFromStream';
+function GdipCreateBitmapFromStream(stream: IUnknown; out bitmap: Pointer): TStatus; stdcall; external WINGDIPDLL name 'GdipCreateBitmapFromStream';
 function GdipSaveImageToFile(image: Pointer; filename: PWChar; clsidEncoder: PGUID; encoderParams: PEncoderParameters): TStatus; stdcall; external WINGDIPDLL name 'GdipSaveImageToFile';
-function GdipSaveImageToStream(image: Pointer; stream: IStream; clsidEncoder: PGUID; encoderParams: PEncoderParameters): TStatus; stdcall; external WINGDIPDLL name 'GdipSaveImageToStream';
+function GdipSaveImageToStream(image: Pointer; stream: IUnknown; clsidEncoder: PGUID; encoderParams: PEncoderParameters): TStatus; stdcall; external WINGDIPDLL name 'GdipSaveImageToStream';
 function GdipDisposeImage(image: Pointer): TStatus; stdcall; external WINGDIPDLL name 'GdipDisposeImage';
 function GdipGetImagePalette(image: Pointer; out palette: TColorPalette256; size: Integer): TStatus; stdcall;  external WINGDIPDLL name 'GdipGetImagePalette';
 function GdipSetImagePalette(image: Pointer; const palette: TColorPalette256): TStatus; stdcall; external WINGDIPDLL name 'GdipSetImagePalette';
@@ -143,4 +149,8 @@ function GdipBitmapUnlockBits(bitmap: Pointer; lockedBitmapData: PBitmapData): T
 function GdipGetImageWidth(image: Pointer; var width: UINT): TStatus; stdcall; external WINGDIPDLL name 'GdipGetImageWidth';
 function GdipGetImageHeight(image: Pointer; var height: UINT): TStatus; stdcall; external WINGDIPDLL name 'GdipGetImageHeight';
 function GdipGetImagePixelFormat(image: Pointer; out format: Integer): TStatus; stdcall; external WINGDIPDLL name 'GdipGetImagePixelFormat';
+
+implementation
+
+end.
 

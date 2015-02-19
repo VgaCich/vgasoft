@@ -184,7 +184,7 @@ destructor TConsole.Destroy;
 begin
   {$IFDEF VSE_LOG}
   Log(llInfo, 'Console: Destroy');
-  Update;
+  UpdateLog;
   FLog.SaveToFile(ExePath + 'Console.log');
   FAN(FLogBufferLock);
   FAN(FLogBufferEvent);

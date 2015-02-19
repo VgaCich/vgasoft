@@ -46,7 +46,7 @@ type
     procedure Store(Sender: TObject; const Reg: TSynTexRegister; TexSize: Integer; const Name: string); //SynTex interacting
     function  Load(Sender: TObject; var Reg: TSynTexRegister; TexSize: Integer; const Name: string): Boolean; //SynTex interacting
     //function  AddTexture(const Name: string; Stream: TStream; Clamp, MipMap: Boolean): Cardinal; overload;  //Add texture from stream
-    function  AddTexture(const Name: string; const ImageData: TImageData; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from TImageData
+    function  AddTexture(const Name: string; const Image: TImageCodec; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from TImageData
     function  AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from memory
     function  GetTex(Name: string): Cardinal; //Get texture ID by texture name
     procedure Bind(ID: Cardinal; Channel: Integer = 0); //Set current texture in specified texture channel
@@ -115,31 +115,34 @@ end;
 
 function TTexMan.LoadCache: Boolean;
 var
+  Image: TImageCodec;
   SR: TSearchRec;
-  ImageData: TImageData;
   TexFile: TFileStream;
 begin
   Result:=false;
-  InitImageData(ImageData);
-  if UseCache and (DirSize(CacheDir)>0) then
-  begin
-    {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: found texture cache; loading');{$ENDIF}
-    if FindFirst(FTexCache+'*', 0, SR)=0 then
-      repeat
-        TexFile:=TFileStream.Create(FTexCache+SR.Name, fmOpenRead);
-        try
-          if not LoadImageData(ImageData, TexFile) then
-          begin
-            {$IFDEF VSE_LOG}Log(llError, 'TexMan: can''t load texture '+SR.Name+' from cache');{$ENDIF}
+  Image:=TImageCodec.Create;
+  try
+    if UseCache and (DirSize(CacheDir)>0) then
+    begin
+      {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: found texture cache; loading');{$ENDIF}
+      if FindFirst(FTexCache+'*', 0, SR)=0 then
+        repeat
+          TexFile:=TFileStream.Create(FTexCache+SR.Name, fmOpenRead);
+          try
+            if not Image.LoadRaw(TexFile) then
+            begin
+              {$IFDEF VSE_LOG}Log(llError, 'TexMan: can''t load texture '+SR.Name+' from cache');{$ENDIF}
+            end;
+            AddTexture(SR.Name, Image, false, true);
+          finally
+            TexFile.Free;
           end;
-          AddTexture(SR.Name, ImageData, false, true);
-        finally
-          FAN(TexFile);
-        end;
-      until FindNext(SR)<>0;
-    FindClose(SR);
-    FreeImageData(ImageData);
-    Result:=true;
+        until FindNext(SR)<>0;
+      FindClose(SR);
+      Result:=true;
+    end;
+  finally
+    Image.Free;
   end;
 end;
 
@@ -160,17 +163,13 @@ begin
   FreeImageData(ImageData);
 end;*)
 
-function TTexMan.AddTexture(const Name: string; const ImageData: TImageData; Clamp, MipMap: Boolean): Cardinal;
+function TTexMan.AddTexture(const Name: string; const Image: TImageCodec; Clamp, MipMap: Boolean): Cardinal;
 const
   Comp: array[TPixelFormat] of GLenum = (GL_LUMINANCE8, GL_RGB8, GL_RGBA8, GL_RGBA8);
   Format: array[TPixelFormat] of GLenum = (GL_LUMINANCE, GL_BGR, GL_RGBA, GL_BGRA);
-var
-  i: Integer;
 begin
-  if ImageData.Stride>ImageDataRowSize(ImageData) then
-    for i:=1 to ImageData.Height-1 do
-      Move(IncPtr(ImageData.Pixels, i*ImageData.Stride)^, IncPtr(ImageData.Pixels, i*ImageDataRowSize(ImageData))^, ImageDataRowSize(ImageData));
-  Result:=AddTexture(Name, ImageData.Pixels, ImageData.Width, ImageData.Height, Comp[ImageData.PixelFormat], Format[ImageData.PixelFormat], Clamp, MipMap);
+  Image.Pack;
+  Result:=AddTexture(Name, Image.Pixels, Image.Width, Image.Height, Comp[Image.PixelFormat], Format[Image.PixelFormat], Clamp, MipMap);
 end;
 
 function TTexMan.AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal;
@@ -215,28 +214,25 @@ end;
 procedure TTexMan.Store(Sender: TObject; const Reg: TSynTexRegister; TexSize: Integer; const Name: string);
 var
   TexFile: TFileStream;
-  ImageData: TImageData;
+  Image: TImageCodec;
 begin
-  //InitImageData(ImageData);
-  with ImageData do
-  begin
-    Width:=TexSize;
-    Height:=TexSize;
-    Stride:=TexSize*SizeOf(TRGBA);
-    PixelFormat:=pfRGBA32bit;
-    Pixels:=@Reg[0];
-  end;
-  if UseCache and Assigned(Sender) then
-  begin
-    {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: caching texture '+Name);{$ENDIF}
-    TexFile:=TFileStream.Create(FTexCache+Name, fmCreate or fmOpenWrite);
-    try
-      SaveImageData(ImageData, TexFile);
-    finally
-      FAN(TexFile);
+  Image:=TImageCodec.Create(TexSize, TexSize, pfRGBA32bit, TexSize*SizeOf(TRGBA));
+  try
+    Image.Pixels:=@Reg[0];
+    if UseCache and Assigned(Sender) then
+    begin
+      {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: caching texture '+Name);{$ENDIF}
+      TexFile:=TFileStream.Create(FTexCache+Name, fmCreate or fmOpenWrite);
+      try
+        Image.SaveRaw(TexFile);
+      finally
+        TexFile.Free;
+      end;
     end;
+    AddTexture(Name, Image, false, true);
+  finally
+    Image.Free;
   end;
-  AddTexture(Name, ImageData, false, true);
 end;
 
 function TTexMan.Load(Sender: TObject; var Reg: TSynTexRegister; TexSize: Integer; const Name: string): Boolean;

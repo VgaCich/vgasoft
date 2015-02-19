@@ -587,17 +587,20 @@ end;
 
 function TStateMenu.MenuBgHandler(Sender: TObject; Args: array of const): Boolean;
 var
-  ImageData: TImageData;
+  Image: TImageCodec;
   FileName: string;
 begin
   FileName:=ExePath+string(Args[0].VAnsiString);
   if FileExists(FileName) then
   begin
-    InitImageData(ImageData);
-    if LoadImageFromFile(FileName, ImageData)
-      then FBgTex:=TexMan.AddTexture('MenuBg', ImageData, true, false)
-      {$IFDEF VSE_LOG}else Log(llError, 'StateMenu: can''t load background from "'+FileName+'"'){$ENDIF};
-    FreeImageData(ImageData);
+    Image:=TImageCodec.Create;
+    try
+      if Image.Load(FileName)
+        then FBgTex:=TexMan.AddTexture('MenuBg', Image, true, false)
+        {$IFDEF VSE_LOG}else Log(llError, 'StateMenu: can''t load background from "'+FileName+'"'){$ENDIF};
+    finally
+      Image.Free;
+    end;
   end;
 end;
 {$ENDIF}
