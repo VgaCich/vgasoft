@@ -47,6 +47,7 @@ const
   BitDepths: array[TPixelFormat] of Integer = (8, 24, 32, 32);
   PixelFormats: array[TPixelFormat] of Integer = (PixelFormat8bppIndexed, PixelFormat24bppRGB, 0, PixelFormat32bppARGB);
   RawMagic: Cardinal = $57415249;
+  SGDIPIsNotInitialized = 'ImageCodec: GDI+ is not initialized (Status=%d)';
 
 function GetEncoderCLSID(const Format: string): TGUID;
 var
@@ -97,6 +98,7 @@ end;
 
 constructor TImageCodec.Create(Width, Height: Cardinal; PixelFormat: TPixelFormat; Stride: Integer);
 begin
+  if GdiplusInitStatus <> Ok then raise Exception.CreateFmt(SGDIPIsNotInitialized, [Integer(GdiplusInitStatus)]);
   FWidth := Width;
   FHeight := Height;
   FPixelFormat := PixelFormat;
@@ -107,7 +109,7 @@ end;
 
 constructor TImageCodec.Create;
 begin
-
+  if GdiplusInitStatus <> Ok then raise Exception.CreateFmt(SGDIPIsNotInitialized, [Integer(GdiplusInitStatus)]);
 end;
 
 destructor TImageCodec.Destroy;
@@ -331,15 +333,5 @@ procedure TImageCodec.SetPixels(Value: PByteArray);
 begin
   Move(Value^, FPixels^, FStride * FHeight);
 end;
-
-var
-  GdiplusStartupInput: TGdiplusStartupInput = (GdiplusVersion: 1; DebugEventCallback: nil; SuppressBackgroundThread: false; SuppressExternalCodecs: false);
-  GdiplusToken: ULONG = 0;
-
-initialization
-  {$IFDEF VSE_LOG}LogF(llInfo, 'GDI+ initialization: status=%d, token=%08x', [Integer({$ENDIF}GdiplusStartup(GdiplusToken, @GdiplusStartupInput, nil){$IFDEF VSE_LOG}), GdiplusToken]){$ENDIF};
-
-finalization
-  GdiplusShutdown(GdiplusToken);
 
 end.

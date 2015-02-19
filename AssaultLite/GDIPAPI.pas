@@ -150,7 +150,19 @@ function GdipGetImageWidth(image: Pointer; var width: UINT): TStatus; stdcall; e
 function GdipGetImageHeight(image: Pointer; var height: UINT): TStatus; stdcall; external WINGDIPDLL name 'GdipGetImageHeight';
 function GdipGetImagePixelFormat(image: Pointer; out format: Integer): TStatus; stdcall; external WINGDIPDLL name 'GdipGetImagePixelFormat';
 
+var
+  GdiplusInitStatus: TStatus = GdiplusNotInitialized;
+
 implementation
 
-end.
+var
+  GdiplusStartupInput: TGdiplusStartupInput = (GdiplusVersion: 1; DebugEventCallback: nil; SuppressBackgroundThread: false; SuppressExternalCodecs: false);
+  GdiplusToken: ULONG = 0;
 
+initialization
+  GdiplusInitStatus := GdiplusStartup(GdiplusToken, @GdiplusStartupInput, nil);
+
+finalization
+  GdiplusShutdown(GdiplusToken);
+
+end.
