@@ -17,8 +17,8 @@
 	~~~~~
 	Vga
 
-	Игра использует VS Engine (c) VgaSoft, 2005-2009
+	Игра использует VS Engine (c) VgaSoft, 2005-2015
 	Для генерации текстур используется SynTex (c) VgaSoft, 2007-2009
 	Частично использованы наработки eXgine Lite by XProger
 
-	(c) VgaSoft, 2007-2009
+	(c) VgaSoft, 2007-2015

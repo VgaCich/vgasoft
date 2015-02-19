@@ -136,7 +136,7 @@ begin
   Result := false;
   Glob := CreateIStreamOnMemory(Mem, Size, Stream);
   try
-    if Assigned(Stream) then
+    if (Glob <> 0) and Assigned(Stream) then
     begin
       Status := GdipCreateBitmapFromStream(Stream, Bitmap);
       Result := LoadImage(Bitmap, Status);
