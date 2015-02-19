@@ -59,12 +59,30 @@ type
     function Clone(out stm: IStream): HResult; stdcall;
   end;
 
+function CreateIStreamOnMemory(Mem: Pointer; Size: Integer; var Stream: IStream): HGLOBAL; //Don't forget to free returned HGLOBAL after use
+
 const
   STREAM_SEEK_SET = 0;
   STREAM_SEEK_CUR = 1;
   STREAM_SEEK_END = 2;
 
 implementation
+
+function CreateStreamOnHGlobal(hglob: HGlobal; fDeleteOnRelease: BOOL; out stm: IStream): HResult; stdcall; external 'ole32.dll';
+
+function CreateIStreamOnMemory(Mem: Pointer; Size: Integer; var Stream: IStream): HGLOBAL;
+var
+  GlobBuf: Pointer;
+begin
+  Result := GlobalAlloc(GMEM_FIXED, Size);
+  if Result <> 0 then
+  begin
+    GlobBuf := GlobalLock(Result);
+    Move(Mem^, GlobBuf^, Size);
+    GlobalUnlock(Result);
+    CreateStreamOnHGlobal(Result, false, Stream);
+  end;
+end;
 
 { TIStreamAdapter }
 
