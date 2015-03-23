@@ -587,7 +587,7 @@ end;
 
 procedure TCore.MakeScreenshot(Name: string; Format: TImageFormat; Numerate: Boolean = true);
 var
-  ImageCodec: TImageCodec;
+  Image: TImage;
   i, Quality: Integer;
 begin
   if Numerate then
@@ -600,17 +600,17 @@ begin
       end;
   end
     else Name:=ExePath+Name+ImageFormatExtension[Format];
-  ImageCodec:=TImageCodec.Create(FResolutionX, FResolutionY, pfBGR24bit, Ceil(FResolutionX*3/4)*4);
+  Image:=TImage.Create(FResolutionX, FResolutionY, pfBGR24bit, Ceil(FResolutionX*3/4)*4);
   try
     glPixelStore(GL_PACK_ALIGNMENT, 4);
-    glReadPixels(0, 0, FResolutionX, FResolutionY, GL_BGR, GL_UNSIGNED_BYTE, ImageCodec.Pixels);
+    glReadPixels(0, 0, FResolutionX, FResolutionY, GL_BGR, GL_UNSIGNED_BYTE, Image.Pixels);
     if Format = ifJPEG
       then Quality := 95
       else Quality := 0;
-    if ImageCodec.Save(Name, Format, Quality) then
-      {$IFDEF VSE_LOG}Log(llInfo, 'Screenshot saved to "'+Name+'"') else Log(llError, 'Can''t save screenshot'){$ENDIF};
+    Image.Save(Name, Format, Quality);
+    {$IFDEF VSE_LOG}Log(llInfo, 'Screenshot saved to "'+Name+'"'){$ENDIF};
   finally
-    ImageCodec.Free;
+    Image.Free;
   end;
 end;
 

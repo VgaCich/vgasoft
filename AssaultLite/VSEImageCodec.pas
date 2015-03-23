@@ -9,26 +9,26 @@ type
   TImageFormat = (ifBMP, ifJPEG, ifGIF, ifPNG, ifTIFF); // Image formats
   TPixelFormat = (pfGS8bit, pfBGR24bit, pfRGBA32bit, pfBGRA32bit); // Pixel data format: 8-bit grayscale, 24-bit BGR, 32-bit RGBA and BGRA
   TSaveFunction = function(Bitmap, UserData: Pointer; EncCLSID: PGUID; EncParams: PEncoderParameters): TStatus; // used internally
-  TImageCodec = class
+  TImage = class
   private
     FWidth, FHeight: Cardinal;
     FStride: Integer;
     FPixelFormat: TPixelFormat;
     FPixels: PByteArray;
-    function LoadImage(Bitmap: Pointer; Status: TStatus): Boolean;
-    function SaveImage(SaveFunction: TSaveFunction; UserData: Pointer; ImageFormat: TImageFormat; Quality: Cardinal): Boolean;
+    procedure LoadImage(Bitmap: Pointer; Status: TStatus);
+    procedure SaveImage(SaveFunction: TSaveFunction; UserData: Pointer; ImageFormat: TImageFormat; Quality: Cardinal);
     procedure SetPixels(Value: PByteArray);
   public
     constructor Create; overload; // Create codec with no image
     constructor Create(Width, Height: Cardinal; PixelFormat: TPixelFormat; Stride: Integer = 0); overload; // Create codec with void image
     destructor Destroy; override;
-    function Load(const FileName: string): Boolean; overload; // Load image from file; returns true if successful
-    function Load(Stream: TStream): Boolean; overload; // Load image from stream; returns true if successful
-    function Load(Mem: Pointer; Size: Cardinal): Boolean; overload; // Load image from memory; returns true if successful
-    function LoadRaw(Stream: TStream): Boolean; // Load raw image data; returns true if successful
-    function Save(const FileName: string; ImageFormat: TImageFormat; Quality: Cardinal = 0): Boolean; overload; // Save image to file in specified format; returns true if successful
-    function Save(Stream: TStream; ImageFormat: TImageFormat; Quality: Cardinal = 0): Boolean; overload; // Save image to stream in specified format; returns true if successful
-    procedure SaveRaw(Stream: TStream); // Save raw image data; returns true if successful
+    procedure Load(const FileName: string); overload; // Load image from file
+    procedure Load(Stream: TStream); overload; // Load image from stream
+    procedure Load(Mem: Pointer; Size: Cardinal); overload; // Load image from memory
+    function  LoadRaw(Stream: TStream): Boolean; // Load raw image data; returns true if successful
+    procedure Save(const FileName: string; ImageFormat: TImageFormat; Quality: Cardinal = 0); overload; // Save image to file in specified format
+    procedure Save(Stream: TStream; ImageFormat: TImageFormat; Quality: Cardinal = 0); overload; // Save image to stream in specified format
+    procedure SaveRaw(Stream: TStream); // Save raw image data
     procedure Pack; // Remove rows alignment
     property Width: Cardinal read FWidth; // Image width
     property Height: Cardinal read FHeight; // Image height
@@ -44,10 +44,18 @@ const
 implementation
 
 const
+  SCantSaveImage = 'Image.SaveImage: can''t save image (Status=%d)';
+  SGDIPEncoderIsNotAvailable = 'Image.SaveImage: GDI+ encoder for %s is not available';
+  SSaveCantCreateGDIBitmap = 'Image.SaveImage: can''t create GDI+ bitmap (Status=%d)';
+  SCantLockBitmapData = 'Image.LoadImage: can''t lock bitmap data (Status=%d)';
+  SCanTGetPalette = 'Image.LoadImage: can''t get palette';
+  SUnknownPixelFormat = 'Image.LoadImage: unknown pixel format';
+  SCantGetImageProperties = 'Image.LoadImage: can''t get image properties';
+  SLoadCantCreateGDIBitmap = 'Image.LoadImage: can''t create GDI+ bitmap (Status=%d)';
   BitDepths: array[TPixelFormat] of Integer = (8, 24, 32, 32);
   PixelFormats: array[TPixelFormat] of Integer = (PixelFormat8bppIndexed, PixelFormat24bppRGB, 0, PixelFormat32bppARGB);
   RawMagic: Cardinal = $57415249;
-  SGDIPIsNotInitialized = 'ImageCodec: GDI+ is not initialized (Status=%d)';
+  SGDIPIsNotInitialized = 'Image: GDI+ is not initialized (Status=%d)';
 
 function GetEncoderCLSID(const Format: string): TGUID;
 var
@@ -94,9 +102,9 @@ begin
   Result := GdipSaveImageToStream(Bitmap, StreamAdapter, EncCLSID, EncParams);
 end;
 
-{ TImageCodec }
+{ TImage }
 
-constructor TImageCodec.Create(Width, Height: Cardinal; PixelFormat: TPixelFormat; Stride: Integer);
+constructor TImage.Create(Width, Height: Cardinal; PixelFormat: TPixelFormat; Stride: Integer);
 begin
   if GdiplusInitStatus <> Ok then raise Exception.CreateFmt(SGDIPIsNotInitialized, [Integer(GdiplusInitStatus)]);
   FWidth := Width;
@@ -107,49 +115,60 @@ begin
   GetMem(FPixels, Stride * Height);
 end;
 
-constructor TImageCodec.Create;
+constructor TImage.Create;
 begin
   if GdiplusInitStatus <> Ok then raise Exception.CreateFmt(SGDIPIsNotInitialized, [Integer(GdiplusInitStatus)]);
 end;
 
-destructor TImageCodec.Destroy;
+destructor TImage.Destroy;
 begin
   if Assigned(FPixels) then FreeMem(FPixels);
   inherited;
 end;
 
-function TImageCodec.Load(const FileName: string): Boolean;
+procedure TImage.Load(const FileName: string);
 var
   Bitmap: Pointer;
   Status: TStatus;
 begin
   Status := GdipCreateBitmapFromFile(PWideChar(WideString(FileName)), Bitmap);
-  Result := LoadImage(Bitmap, Status);
-  {$IFDEF VSE_LOG}if not Result then LogF(llError, 'ImageCodec.Load("%s"): failed', [FileName]);{$ENDIF}
+  {$IFDEF VSE_LOG}try{$ENDIF}
+    LoadImage(Bitmap, Status);
+  {$IFDEF VSE_LOG}
+  except
+    LogF(llError, 'Image.Load(%s): Exception "%s"', [FileName, Exception(ExceptObject).Message]);
+    raise;
+  end;
+  {$ENDIF}
 end;
 
-function TImageCodec.Load(Mem: Pointer; Size: Cardinal): Boolean;
+procedure TImage.Load(Mem: Pointer; Size: Cardinal);
 var
   Bitmap: Pointer;
   Status: TStatus;
   Glob: HGLOBAL;
   Stream: IStream;
 begin
-  Result := false;
   Glob := CreateIStreamOnMemory(Mem, Size, Stream);
   try
     if (Glob <> 0) and Assigned(Stream) then
     begin
       Status := GdipCreateBitmapFromStream(Stream, Bitmap);
-      Result := LoadImage(Bitmap, Status);
+      {$IFDEF VSE_LOG}try{$ENDIF}
+        LoadImage(Bitmap, Status);
+      {$IFDEF VSE_LOG}
+      except
+        LogF(llError, 'Image.Load($%x, %d): Exception "%s"', [Mem, Size, Exception(ExceptObject).Message]);
+        raise;
+      end;
+      {$ENDIF}
     end;
   finally
     if Glob <> 0 then GlobalFree(Glob);
   end;
-  {$IFDEF VSE_LOG}if not Result then Log(llError, 'ImageCodec.Load(Buffer): failed');{$ENDIF}
 end;
 
-function TImageCodec.Load(Stream: TStream): Boolean;
+procedure TImage.Load(Stream: TStream);
 var
   Bitmap: Pointer;
   Status: TStatus;
@@ -157,37 +176,41 @@ var
 begin
   TIStreamAdapter.Create(Stream).GetInterface(IStream, StreamAdapter);
   Status := GdipCreateBitmapFromStream(StreamAdapter, Bitmap);
-  Result := LoadImage(Bitmap, Status);
-  {$IFDEF VSE_LOG}if not Result then Log(llError, 'ImageCodec.Load(Stream): failed');{$ENDIF}
+  {$IFDEF VSE_LOG}try{$ENDIF}
+  LoadImage(Bitmap, Status);
+  {$IFDEF VSE_LOG}
+  except
+    LogF(llError, 'Image.Load(TStream($%x)): Exception "%s"', [Integer(Stream), Exception(ExceptObject).Message]);
+    raise;
+  end;
+  {$ENDIF}
 end;
 
-function TImageCodec.LoadImage(Bitmap: Pointer; Status: TStatus): Boolean;
+procedure TImage.LoadImage(Bitmap: Pointer; Status: TStatus);
 var
   BitmapData: TBitmapData;
   i, PixFormat, PalSize: Integer;
   Palette: TColorPalette256;
   Rect: TGPRect;
 begin
-  Result := false;
   if Status <> Ok then
-  begin
-    {$IFDEF VSE_LOG}LogF(llError, 'ImageCodec.LoadImage: can''t create GDI+ bitmap (Status=%d)', [Integer(Status)]);{$ENDIF}
-    Exit;
-  end;
+    raise Exception.CreateFmt(SLoadCantCreateGDIBitmap, [Integer(Status)]);
   try
-    if GdipGetImageWidth(Bitmap, FWidth) <> Ok then Exit;
-    if GdipGetImageHeight(Bitmap, FHeight) <> Ok then Exit;
-    if GdipGetImagePixelFormat(Bitmap, PixFormat) <> Ok then Exit;
+    if (GdipGetImageWidth(Bitmap, FWidth) <> Ok) or
+       (GdipGetImageHeight(Bitmap, FHeight) <> Ok) or
+       (GdipGetImagePixelFormat(Bitmap, PixFormat) <> Ok)
+      then raise Exception.Create(SCantGetImageProperties);
     case (PixFormat and $FF00) shr 8 of
       1, 4, 8: FPixelFormat := pfGS8bit;
       16, 24: FPixelFormat := pfBGR24bit;
       32: FPixelFormat := pfBGRA32bit;
-      else Exit;
+      else raise Exception.Create(SUnknownPixelFormat);
     end;
     if PixFormat and PixelFormatIndexed <> 0 then
     begin
-      if GdipGetImagePaletteSize(Bitmap, PalSize) <> Ok then Exit;
-      if GdipGetImagePalette(Bitmap, Palette, Min(PalSize, SizeOf(Palette))) <> Ok then Exit;
+      if (GdipGetImagePaletteSize(Bitmap, PalSize) <> Ok) or
+         (GdipGetImagePalette(Bitmap, Palette, Min(PalSize, SizeOf(Palette))) <> Ok)
+        then raise Exception.Create(SCanTGetPalette);
       with Palette do
         for i := 0 to Count - 1 do
           if Entries[i] <> Entries[i] or ((Entries[i] shl 8) and $00FFFF00) then
@@ -207,15 +230,11 @@ begin
     Status := GdipBitmapLockBits(Bitmap, Rect, ImageLockModeRead, PixelFormats[FPixelFormat], @BitmapData);
     if (Status = InvalidParameter) and (FPixelFormat = pfGS8bit) then
     begin
-      {$IFDEF VSE_LOG}Log(llWarning, 'ImageCodec.LoadImage: can''t lock bitmap data as GS8, retrying locking as BGR24');{$ENDIF}
       FPixelFormat := pfBGR24bit;
       Status := GdipBitmapLockBits(Bitmap, Rect, ImageLockModeRead, PixelFormats[FPixelFormat], @BitmapData);
     end;
     if Status <> Ok then
-    begin
-      {$IFDEF VSE_LOG}LogF(llError, 'ImageCodec.LoadImage: can''t lock bitmap data (Status=%d)', [Integer(Status)]);{$ENDIF}
-      Exit;
-    end;
+      raise Exception.CreateFmt(SCantLockBitmapData, [Integer(Status)]);
     try
       FStride := Abs(BitmapData.Stride);
       ReallocMem(FPixels, FStride * FHeight);
@@ -223,13 +242,12 @@ begin
     finally
       GdipBitmapUnlockBits(Bitmap, @BitmapData);
     end;
-    Result := true;
   finally
     GdipDisposeImage(Bitmap);
   end;
 end;
 
-function TImageCodec.LoadRaw(Stream: TStream): Boolean;
+function TImage.LoadRaw(Stream: TStream): Boolean;
 var
   Magic: Cardinal;
 begin
@@ -246,19 +264,31 @@ begin
   Result := true;
 end;
 
-function TImageCodec.Save(const FileName: string; ImageFormat: TImageFormat; Quality: Cardinal): Boolean;
+procedure TImage.Save(const FileName: string; ImageFormat: TImageFormat; Quality: Cardinal);
 begin
-  Result := SaveImage(SaveToFileFunction, PWideChar(WideString(FileName)), ImageFormat, Quality);
-  {$IFDEF VSE_LOG}if not Result then LogF(llError, 'ImageCodec.Save("%s"): failed', [FileName]);{$ENDIF}
+  {$IFDEF VSE_LOG}try{$ENDIF}
+  SaveImage(SaveToFileFunction, PWideChar(WideString(FileName)), ImageFormat, Quality);
+  {$IFDEF VSE_LOG}
+  except
+    LogF(llError, 'Image.Load(%s): Exception "%s"', [FileName, Exception(ExceptObject).Message]);
+    raise;
+  end;
+  {$ENDIF}
 end;
 
-function TImageCodec.Save(Stream: TStream; ImageFormat: TImageFormat; Quality: Cardinal): Boolean;
+procedure TImage.Save(Stream: TStream; ImageFormat: TImageFormat; Quality: Cardinal);
 begin
-  Result := SaveImage(SaveToStreamFunction, Pointer(Stream), ImageFormat, Quality);
-  {$IFDEF VSE_LOG}if not Result then Log(llError, 'ImageCodec.Save(Stream): failed');{$ENDIF}
+  {$IFDEF VSE_LOG}try{$ENDIF}
+  SaveImage(SaveToStreamFunction, Pointer(Stream), ImageFormat, Quality);
+  {$IFDEF VSE_LOG}
+  except
+    LogF(llError, 'Image.Save(TStream($%x)): Exception "%s"', [Integer(Stream), Exception(ExceptObject).Message]);
+    raise;
+  end;
+  {$ENDIF}
 end;
 
-function TImageCodec.SaveImage(SaveFunction: TSaveFunction; UserData: Pointer; ImageFormat: TImageFormat; Quality: Cardinal): Boolean;
+procedure TImage.SaveImage(SaveFunction: TSaveFunction; UserData: Pointer; ImageFormat: TImageFormat; Quality: Cardinal);
 var
   Status: TStatus;
   Bitmap: Pointer;
@@ -266,23 +296,16 @@ var
   EncParams: TEncoderParameters;
   PEncParams: PEncoderParameters;
 begin
-  Result := false;
   if not Assigned(FPixels) then Exit;
   Status := GdipCreateBitmapFromScan0(FWidth, FHeight, FStride, PixelFormats[FPixelFormat], FPixels, Bitmap);
   if Status <> Ok then
-  begin
-    {$IFDEF VSE_LOG}LogF(llError, 'ImageCodec.SaveImage: can''t create GDI+ bitmap (Status=%d)', [Integer(Status)]);{$ENDIF}
-    Exit;
-  end;
+    raise Exception.CreateFmt(SSaveCantCreateGDIBitmap, [Integer(Status)]);
   try
     if FPixelFormat = pfGS8bit then GdipSetImagePalette(Bitmap, GSPalette);
     GdipImageRotateFlip(Bitmap, RotateNoneFlipY);
     EncCLSID := GetEncoderCLSID(ImageFormatMime[ImageFormat]);
     if EncCLSID.D1 = 0 then
-    begin
-      {$IFDEF VSE_LOG}LogF(llError, 'ImageCodec.SaveImage: GDI+ encoder for %s is not available', [ImageFormatMime[ImageFormat]]);{$ENDIF}
-      Exit;
-    end;
+      raise Exception.CreateFmt(SGDIPEncoderIsNotAvailable, [ImageFormatMime[ImageFormat]]);
     if Quality > 0 then
     begin
       EncParams.Count := 1;
@@ -298,17 +321,13 @@ begin
       else PEncParams := nil;
     Status := SaveFunction(Bitmap, UserData, @EncCLSID, PEncParams);
     if Status <> Ok then
-    begin
-      {$IFDEF VSE_LOG}LogF(llError, 'ImageCodec.SaveImage: can''t save image (Status=%d)', [Integer(Status)]);{$ENDIF}
-      Exit;
-    end;
-    Result := true;
+      raise Exception.CreateFmt(SCantSaveImage, [Integer(Status)]);
   finally
     GdipDisposeImage(Bitmap);
   end;
 end;
 
-procedure TImageCodec.SaveRaw(Stream: TStream);
+procedure TImage.SaveRaw(Stream: TStream);
 begin
   Stream.Write(RawMagic, SizeOf(RawMagic));
   Stream.Write(FWidth, SizeOf(FWidth));
@@ -318,7 +337,7 @@ begin
   Stream.Write(FPixels^, FStride * FHeight);
 end;
 
-procedure TImageCodec.Pack;
+procedure TImage.Pack;
 var
   i, RowSize: Integer;
 begin
@@ -329,7 +348,7 @@ begin
   FStride := RowSize;
 end;
 
-procedure TImageCodec.SetPixels(Value: PByteArray);
+procedure TImage.SetPixels(Value: PByteArray);
 begin
   Move(Value^, FPixels^, FStride * FHeight);
 end;

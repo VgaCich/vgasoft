@@ -46,7 +46,7 @@ type
     procedure Store(Sender: TObject; const Reg: TSynTexRegister; TexSize: Integer; const Name: string); //SynTex interacting
     function  Load(Sender: TObject; var Reg: TSynTexRegister; TexSize: Integer; const Name: string): Boolean; //SynTex interacting
     //function  AddTexture(const Name: string; Stream: TStream; Clamp, MipMap: Boolean): Cardinal; overload;  //Add texture from stream
-    function  AddTexture(const Name: string; const Image: TImageCodec; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from TImageData
+    function  AddTexture(const Name: string; const Image: TImage; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from TImageData
     function  AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from memory
     function  GetTex(Name: string): Cardinal; //Get texture ID by texture name
     procedure Bind(ID: Cardinal; Channel: Integer = 0); //Set current texture in specified texture channel
@@ -115,12 +115,12 @@ end;
 
 function TTexMan.LoadCache: Boolean;
 var
-  Image: TImageCodec;
+  Image: TImage;
   SR: TSearchRec;
   TexFile: TFileStream;
 begin
   Result:=false;
-  Image:=TImageCodec.Create;
+  Image:=TImage.Create;
   try
     if UseCache and (DirSize(CacheDir)>0) then
     begin
@@ -163,7 +163,7 @@ begin
   FreeImageData(ImageData);
 end;*)
 
-function TTexMan.AddTexture(const Name: string; const Image: TImageCodec; Clamp, MipMap: Boolean): Cardinal;
+function TTexMan.AddTexture(const Name: string; const Image: TImage; Clamp, MipMap: Boolean): Cardinal;
 const
   Comp: array[TPixelFormat] of GLenum = (GL_LUMINANCE8, GL_RGB8, GL_RGBA8, GL_RGBA8);
   Format: array[TPixelFormat] of GLenum = (GL_LUMINANCE, GL_BGR, GL_RGBA, GL_BGRA);
@@ -214,9 +214,9 @@ end;
 procedure TTexMan.Store(Sender: TObject; const Reg: TSynTexRegister; TexSize: Integer; const Name: string);
 var
   TexFile: TFileStream;
-  Image: TImageCodec;
+  Image: TImage;
 begin
-  Image:=TImageCodec.Create(TexSize, TexSize, pfRGBA32bit, TexSize*SizeOf(TRGBA));
+  Image:=TImage.Create(TexSize, TexSize, pfRGBA32bit, TexSize*SizeOf(TRGBA));
   try
     Image.Pixels:=@Reg[0];
     if UseCache and Assigned(Sender) then
