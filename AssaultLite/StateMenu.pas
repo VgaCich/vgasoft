@@ -600,7 +600,8 @@ begin
     finally
       Image.Free;
     end;
-  end;
+  end
+    {$IFDEF VSE_LOG}else LogF(llError, 'StateMenu.MenuBg: file "%s" not found', [string(Args[0].VAnsiString)]){$ENDIF};
 end;
 {$ENDIF}
 

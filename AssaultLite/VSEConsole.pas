@@ -260,7 +260,7 @@ begin
   glEnd;
   for i := 0 to Min(DisplayLines - 1, FLogCache.Count - FLogPosition - 1) do
   begin
-    if LastChar(FLogCache[FLogPosition + i]) = #13 then glColor(1.0, 0.0, 0.0)
+    if LastChar(FLogCache[FLogPosition + i]) = #13 then glColor(1.0, 0.4, 0.0)
     else if LastChar(FLogCache[FLogPosition + i]) = #10 then glColor(1.0, 1.0, 0.0)
     else glColor(0.0, 1.0, 0.0);
     TexMan.TextOut(FFont, 0, 15 * i, FLogCache[FLogPosition + i]);

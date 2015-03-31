@@ -434,7 +434,7 @@ begin
     Key:=StrToKey(string(Args[1].VAnsiString));
     if Key=0 then
     begin
-      Console.WriteLn('Unknown key name');
+      Console.WriteLn('Unknown key name: '+string(Args[1].VAnsiString));
       Result:=false;
       Exit;
     end;
@@ -475,7 +475,7 @@ begin
       else if Binding<>-1 then
         FCmdBindings[Binding].Key:=0;
   end
-    else Console.WriteLn('Unknown key name');
+    else Console.WriteLn('Unknown key name: '+string(Args[0].VAnsiString));
 end;
 {$ENDIF}
 
