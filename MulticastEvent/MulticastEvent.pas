@@ -499,7 +499,7 @@ begin
     SetLength(FEvents[EventHash], Length(FEvents[EventHash])+1);
     EventRec:=@FEvents[EventHash][High(FEvents[EventHash])];
     EventRec.EventId:=EventId;
-    EventRec.EventSender:=EventSignature.Create;;
+    EventRec.EventSender:=EventSignature.Create;
   end;
   if not EventRec.EventSender.ClassNameIs(EventSignature.ClassName)
     then raise Exception.Create('EventBroadcaster.AddListener: wrong signature "'+EventSignature.ClassName+'" for EventId "'+EventId+'"');

@@ -3,11 +3,7 @@ program FLViewer;
 {$R *.res}
 {$R FLViewerRes.res}
 
-uses Windows, Messages, AvL, avlUtils, UCLAPI, ShellAPI, avlMasks;
-
-const
-  TVN_FIRST=0-400;
-  TVN_SELCHANGED=TVN_FIRST-2;
+uses Windows, Messages, CommCtrl, AvL, avlUtils, ShellAPI, avlMasks, avlSplitter;
 
 type
   TExtR=record
@@ -28,28 +24,32 @@ type
     LVFiles: TListView;
     TB: TToolBar;
     SB: TStatusBar;
-    PStatus, PSplitter: TPanel;
+    PStatus: TPanel;
+    Splitter: TSplitter;
     PBStatus: TProgressBar;
     LStatus: TLabel;
-    TBImages, Icons, Folders: TImageList;
+    MenuView: TMenu;
+    TBImages, Icons, SmallIcons, Folders: TImageList;
     Data, Files: TStringList;
     Garbage: TList;
     FileName, Mask: string;
-    SplitMoving, Initialized, OpenDelay, FindDelay, FindFiles, FindDirs: Boolean;
+    Initialized, OpenDelay, FindDelay, FindFiles, FindDirs: Boolean;
     RefreshTimer: TTimer;
-    CurFolder, SplitColor, ExtsCount, ExtsCapacity: Integer;
+    CurFolder, ExtsCount, ExtsCapacity: Integer;
     SizeMin, SizeMax: Int64;
     SizeMode: Cardinal;
     Exts: array of TExtR;
+    procedure AdjustColumns(Sender: TObject);
+    procedure CopyClick;
+    function NodeName(Node: Integer): string;
+    procedure ViewClick;
   protected
-    procedure FormCreate(Sender: TObject);
-    function  FormClose(Sender: TObject): Boolean;
+    constructor Create;
+    destructor Destroy; override;
+    procedure SplitterMove(Sender: TObject);
     procedure OpenClick;
-    procedure SaveClick;
+    procedure ExportClick;
     procedure FindClick;
-    procedure SplitterMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure SplitterMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure SplitterMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure RefreshTick(Sender: TObject);
     procedure ShowStatusPanel(const Caption: string);
     procedure HideStatusPanel;
@@ -87,18 +87,28 @@ type
 
 const
   ID: Cardinal=1279677270;
-  CCapt='VgaSoft FileList Viewer 2.9';
+  CCapt='VgaSoft FileList Viewer 2.11';
   AboutText=CCapt+#13#10 +
-            'Copyright '#169'VgaSoft, 2004-2011';
+            'Copyright '#169'VgaSoft, 2004-2016';
 
   TB_OPEN=0;
-  TB_SAVE=1;
-  TB_FIND=2;
-  TB_REFRESH=3;
-  TB_ABOUT=4;
-  TB_EXIT=5;
+  TB_EXPORT=1;
+  TB_COPY=2;
+  TB_FIND=3;
+  TB_REFRESH=4;
+  TB_VIEW=5;
+  TB_ABOUT=6;
+  TB_EXIT=7;
 
-  SPLITTERWIDTH=8;
+  ViewReport=1001;
+  ViewList=1002;
+  ViewSmallIcons=1003;
+  ViewIcons=1004;
+  MenuViewTemplate: array[0..4] of PChar=('1001',
+    'Report',
+    'List',
+    'Small icons',
+    'Icons');
 
   SIZES=4;
   SIZE_NONE=0;
@@ -115,9 +125,114 @@ const
 
 function ImageList_GetIcon(ImageList: HIMAGELIST; Index: Integer; Flags: DWORD): HICON; stdcall; external 'comctl32.dll';
 
+function nrv2e_decompress(src: Pointer; src_len: Cardinal; dst: Pointer; var dst_len: Cardinal): Integer;
+var
+  BB, ILen: Cardinal;
+
+  function GetByte: Byte;
+  begin
+    Result := PByteArray(Src)[ILen];
+    Inc(ILen);
+  end;
+
+  function GetBit: Cardinal;
+  begin
+    if (BB and $7f) = 0 then
+      BB := 2 * GetByte + 1
+    else
+      BB := 2 * BB;
+    Result := (BB shr 8) and 1;
+  end;
+
+var
+  OLen, OEnd, LastMOff, MOff, MLen: Cardinal;
+
+  function Check(Condition: Boolean; ErrorCode: Integer): Boolean;
+  begin
+    Result := Condition;
+    if Result then
+    begin
+      nrv2e_decompress := ErrorCode;
+      dst_len := OLen;
+    end;
+  end;
+
+begin
+  BB := 0;
+  ILen := 0;
+  OLen := 0;
+  OEnd := dst_len;
+  LastMOff := 1;
+  while true do
+  begin
+    while GetBit > 0 do
+    begin
+      if Check(ILen >= src_len, -201) then Exit;
+      if Check(OLen >= OEnd, -202) then Exit;
+      PByteArray(dst)[OLen] := GetByte;
+      Inc(OLen);
+    end;
+    MOff := 1;
+    while true do
+    begin
+      MOff := 2 * MOff + GetBit;
+      if Check(ILen >= src_len, -201) then Exit;
+      if Check(MOff > $1000002, -203) then Exit;
+      if GetBit > 0 then break;
+      MOff := 2 * (MOff - 1) + GetBit;
+    end;
+    if MOff = 2 then
+    begin
+      MOff := LastMOff;
+      MLen := GetBit;
+    end
+    else begin
+      if Check(ILen >= src_len, -201) then Exit;
+      MOff := 256 * (MOff - 3) + GetByte;
+      if MOff = $FFFFFFFF then break;
+      MLen := (not MOff) and 1;
+      MOff := (MOff shr 1) + 1;
+      LastMOff := MOff;
+    end;
+    if MLen > 0 then
+      MLen := GetBit + 1
+    else if GetBit > 0 then
+      MLen := GetBit + 3
+    else begin
+      Inc(MLen);
+      repeat
+        MLen := 2 * MLen + GetBit;
+        if Check(ILen >= src_len, -201) then Exit;
+        if Check(MLen >= OEnd, -202) then Exit;
+      until GetBit > 0;
+      Inc(MLen, 3);
+    end;
+    if MOff > $500 then
+      Inc(MLen);
+    if Check(OLen + MLen > OEnd, -202) then Exit;
+    if Check(MOff > OLen, -203) then Exit;
+    PByteArray(dst)[OLen] := PByteArray(dst)[OLen - MOff];
+    Inc(OLen);
+    repeat
+      PByteArray(dst)[OLen] := PByteArray(dst)[OLen - MOff];
+      Inc(OLen);
+      Dec(MLen);
+    until MLen = 0;
+  end;
+  dst_len := OLen;
+  if ILen = src_len then
+    Result := 0
+  else if ILen < src_len then
+    Result := -205
+  else
+    Result := -201;
+end;
+
 var
   MainForm: TMainForm;
   FindForm: TFindForm;
+
+{ TFolderData }
 
 constructor TFolderData.Create;
 begin
@@ -131,21 +246,80 @@ begin
   inherited Destroy;
 end;
 
-procedure TMainForm.FormCreate(Sender: TObject);
+{ TMainForm }
+
+constructor TMainForm.Create;
 var
   i: Integer;
 begin
+  inherited Create(nil, CCapt);
+  ExStyle:=ExStyle or WS_EX_ACCEPTFILES;
+  Initialized:=false;
+  OpenDelay:=false;
+  FindDelay:=false;
+  CanvasInit;
+  SetSize(640, 480);
+  Position:=poScreenCenter;
   DragAcceptFiles(Handle, True);
-  Folders:=TImageList.Create;
-  Folders.AddMasked(LoadImage(hInstance, 'Folder', IMAGE_BITMAP, 0, 0, 0), clWhite);
   Icons:=TImageList.Create;
-  Icons.Height:=48;
-  Icons.Width:=48;
+  Icons.Height:=32;
+  Icons.Width:=32;
+  SmallIcons:=TImageList.Create;
+  SmallIcons.Height:=16;
+  SmallIcons.Width:=16;
   ExtsCapacity:=512;
   ExtsCount:=0;
   SetLength(Exts, ExtsCapacity);
   Data:=TStringList.Create;
   Garbage:=TList.Create;
+  TBImages:=TImageList.Create;
+  TBImages.AddMasked(LoadImage(hInstance, 'TB', IMAGE_BITMAP, 0, 0, 0), clFuchsia);
+  TB:=TToolBar.Create(Self, false);
+  TB.SetPosition(0, 0);
+  TB.Images:=TBImages;
+  TB.ButtonAdd('Open', TB_OPEN);
+  TB.ButtonAdd('Export', TB_EXPORT);
+  TB.ButtonAdd('Copy', TB_COPY);
+  TB.ButtonAdd('Find', TB_FIND);
+  TB.ButtonAdd('Refresh', TB_REFRESH);
+  TB.ButtonAdd('View', TB_VIEW);
+  TB.ButtonAdd('About', TB_ABOUT);
+  TB.ButtonAdd('Exit', TB_EXIT);
+  MenuView:=TMenu.Create(Self, false, MenuViewTemplate);
+  SB:=TStatusBar.Create(Self, '');
+  SB.SetParts(SB_PARTS, SBParts);
+  Folders:=TImageList.Create;
+  Folders.AddMasked(LoadImage(hInstance, 'FOLDER', IMAGE_BITMAP, 0, 0, 0), clWhite);
+  Splitter := TSplitter.Create(Self, true);
+  Splitter.SetBounds(200, TB.Height, Splitter.Width, ClientHeight-TB.Height-SB.Height);
+  Splitter.OnMove:=SplitterMove;
+  TVFolders:=TTreeView.Create(Self);
+  TVFolders.Images:=Folders;
+  TVFolders.StateImages:=Folders;
+  TVFolders.SetBounds(0, TB.Height, Splitter.Left, Splitter.Height);
+  LVFiles:=TListView.Create(Self);
+  LVFiles.Style:=LVFiles.Style or LVS_SORTASCENDING or LVS_SHOWSELALWAYS or LVS_NOSORTHEADER;
+  LVFiles.ViewStyle := LVS_REPORT;
+  LVFiles.OptionsEx:=LVFiles.OptionsEx or LVS_EX_FULLROWSELECT or LVS_EX_GRIDLINES or LVS_EX_INFOTIP;
+  LVFiles.ColumnAdd('Name', 100);
+  LVFiles.ColumnAdd('Size', 100);
+  LVFiles.OnResize:=AdjustColumns;
+  LVFiles.SetBounds(Splitter.Right, TB.Height,
+    ClientWidth-Splitter.Right, Splitter.Height);
+  Splitter.BringToFront;
+  PStatus:=TPanel.Create(Self, '');
+  PStatus.Bevel:=bvRaised;
+  PStatus.SetSize(200, 45);
+  PStatus.Visible:=false;
+  LStatus:=TLabel.Create(PStatus, '');
+  LStatus.Transparent:=true;
+  LStatus.SetBounds(5, 5, 190, 15);
+  PBStatus:=TProgressBar.Create(PStatus);
+  PBStatus.SetBounds(5, 25, 190, 15);
+  PBStatus.Position:=0;
+  RefreshTimer:=TTimer.CreateEx(100, false);
+  RefreshTimer.OnTimer:=RefreshTick;
+  Initialized:=true;
   for i:=1 to ParamCount do
     if FileExists(ParamStr(i)) then
     begin
@@ -156,27 +330,37 @@ begin
     end;
 end;
 
-function TMainForm.FormClose(Sender: TObject): Boolean;
+destructor TMainForm.Destroy;
 begin
   ClearTree;
   FAN(Folders);
   FAN(Icons);
+  FAN(SmallIcons);
   Finalize(Exts);
   FAN(Data);
   FAN(Garbage);
-  Result:=true;
+  inherited;
 end;
 
 procedure TMainForm.WMCommand(var Msg: TWMCommand);
 begin
-  if Msg.Ctl=TB.Handle then
+  if Assigned(TB) and (Msg.Ctl=TB.Handle) then
     case Msg.ItemID of
       TB_OPEN: OpenClick;
-      TB_SAVE: SaveClick;
+      TB_EXPORT: ExportClick;
+      TB_COPY: CopyClick;
       TB_FIND: FindClick;
       TB_REFRESH: FillList;
+      TB_VIEW: ViewClick;
       TB_ABOUT: ShowAbout;
       TB_EXIT: Close;
+    end;
+  if (Msg.Ctl=0) and (Msg.NotifyCode in [0, 1]) then
+    case Msg.ItemID of
+      ViewReport: LVFiles.ViewStyle:=LVS_REPORT; 
+      ViewList: LVFiles.ViewStyle:=LVS_LIST;
+      ViewSmallIcons: LVFiles.ViewStyle:=LVS_SMALLICON;
+      ViewIcons: LVFiles.ViewStyle:=LVS_ICON;
     end;
 end;
 
@@ -184,9 +368,11 @@ procedure TMainForm.WMSize(var Msg: TWMSize);
 begin
   if not Initialized then Exit;
   TB.Width:=ClientWidth;
-  TVFolders.Height:=ClientHeight-TB.Height-SB.Height;
-  LVFiles.SetSize(ClientWidth-TVFolders.Width-SPLITTERWIDTH, TVFolders.Height);
-  PSplitter.SetSize(SPLITTERWIDTH, TVFolders.Height);
+  Splitter.Height:=ClientHeight-TB.Height-SB.Height;
+  if ClientWidth > 0 then
+    Splitter.MaxPos:=ClientWidth-Splitter.Width;
+  TVFolders.Height:=Splitter.Height;
+  LVFiles.SetSize(ClientWidth-Splitter.Right, Splitter.Height);
   RefreshTimer.Enabled:=false;
   RefreshTimer.Enabled:=true;
 end;
@@ -252,7 +438,7 @@ begin
     ExtractFilePath(FileName), 0, OFN_FILEMUSTEXIST, FileName) then Open;
 end;
 
-procedure TMainForm.SaveClick;
+procedure TMainForm.ExportClick;
 
   function Indent(Level: Integer): string;
   begin
@@ -264,47 +450,114 @@ procedure TMainForm.SaveClick;
     end;
   end;
 
+  procedure UpdateProgress(Progress: Single);
+  begin
+    if PBStatus.Position<>Round(100*Progress) then
+      PBStatus.Position:=Round(100*Progress);
+    ProcessMessages;
+  end;
+
+var
+  F: TextFile;
+
+  procedure WriteFolder(const Name: string; Level: Integer);
+  begin
+    WriteLn(F, Indent(Level)+'['+Name+']');
+  end;
+
+  procedure WriteFile(const Name: string; Level: Integer);
+  begin
+    WriteLn(F, Indent(Level)+'+-'+Copy(Name, 1, FirstDelimiter('|', Name)-1)+
+            ': '+SizeToStr(StrToInt64Def(Copy(Name, FirstDelimiter('|', Name)+1, MaxInt), 0)));
+  end;
+
+  procedure ExportData;
+  var
+    i, Level: Integer;
+  begin
+    Level:=0;
+    for i:=0 to Data.Count-1 do
+    begin
+      if Data[i][1]='<' then
+      begin
+        if Data[i][2]<>'|' then
+        begin
+          WriteFolder(Copy(Data[i], 2, Length(Data[i])-2), Level);
+          Inc(Level);
+        end
+          else Dec(Level);
+      end
+        else WriteFile(Data[i], Level);
+      UpdateProgress(i/Data.Count);
+    end;
+  end;
+
+var
+  NodesCount, NodesProcessed: Integer;
+
+  procedure CountNodes(Node: Integer);
+  begin
+    Inc(NodesCount);
+    Node:=TVFolders.Perform(TVM_GETNEXTITEM, TVGN_CHILD, Node);
+    while Node<>0 do
+    begin
+      CountNodes(Node);
+      Node:=TVFolders.Perform(TVM_GETNEXTITEM, TVGN_NEXT, Node);
+    end;
+  end;
+
+  procedure ExportNode(Node, Level: Integer);
+  var
+    i: Integer;
+    Item: TTVItem;
+    FD: TFolderData;
+  begin
+    WriteFolder(NodeName(Node), Level);
+    Item.mask:=TVIF_PARAM;
+    Item.hItem:=HTreeItem(Node);
+    TVFolders.Perform(TVM_GETITEM, 0, Integer(@Item));
+    FD:=TFolderData(Item.lParam);
+    for i:=0 to FD.Files.Count-1 do
+      WriteFile(FD.Files[i], Level+1);
+    Inc(NodesProcessed);
+    UpdateProgress(NodesProcessed/NodesCount);
+    Node:=TVFolders.Perform(TVM_GETNEXTITEM, TVGN_CHILD, Node);
+    while Node<>0 do
+    begin
+      ExportNode(Node, Level+1);
+      Node:=TVFolders.Perform(TVM_GETNEXTITEM, TVGN_NEXT, Node);
+    end;
+  end;
+
 var
   FN: string;
-  i, Level, Pr, OldPr: Integer;
-  F: TextFile;
+  Node: Integer;
 begin
   if Data.Count<=0 then
   begin
-    MessageDlg('Nothing to save', Caption, MB_ICONERROR);
+    MessageDlg('Nothing to export', Caption, MB_ICONERROR);
     Exit;
   end;
   FN:=ChangeFileExt(FileName, '.txt');
   if not OpenSaveDialog(Handle, false, '', 'txt', 'Text files|*.txt|All files|*.*',
     ExtractFilePath(FN), 0, OFN_OVERWRITEPROMPT or OFN_PATHMUSTEXIST, FN) then Exit;
-  ShowStatusPanel('Saving...');  
-  Level:=0;
-  Pr:=0;
-  OldPr:=0;
-  PBStatus.Position:=Pr;
+  ShowStatusPanel('Exporting...');
+  PBStatus.Position:=0;
   AssignFile(F, FN);
   try
     ReWrite(F);
-    for i:=0 to Data.Count-1 do
+    Node:=TVFolders.Perform(TVM_GETNEXTITEM, TVGN_CARET, 0);
+    if Node<>0 then
     begin
-      if Data[i][1]='<'
-        then begin
-          if Data[i][2]='|' then Dec(Level)
-          else begin
-            WriteLn(F, Indent(Level)+'['+Copy(Data[i], 2, Length(Data[i])-2)+']');
-            Inc(Level);
-          end;
-        end
-        else WriteLn(F, Indent(Level)+'+-'+Copy(Data[i], 1, FirstDelimiter('|', Data[i])-1)+
-                     ': '+SizeToStr(StrToInt64Def(Copy(Data[i], FirstDelimiter('|', Data[i])+1, MaxInt), 0)));
-      Pr:=Round(100*(i/Data.Count));
-      if Pr>OldPr then PBStatus.Position:=Pr;
-      OldPr:=Pr;
-    end;
+      NodesCount:=0;
+      NodesProcessed:=0;
+      CountNodes(Node);
+      ExportNode(Node, 0);
+    end
+      else ExportData;
   finally
     CloseFile(F);
     HideStatusPanel;
-    //PostMessage(PStatus.Handle, WM_CLOSE, 0, 0);
   end;
 end;
 
@@ -314,44 +567,6 @@ begin
     then FindForm:=TFindForm.Create(Self, 'Find');
   FindForm.EMask.SetFocus;
   FindForm.ShowModal;
-end;
-
-procedure TMainForm.SplitterMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-var
-  P: TPoint;
-begin
-  if SplitMoving then
-  begin
-    GetCursorPos(P);
-    //P.X:=P.X-Left-Width+ClientWidth;
-    ScreenToClient(Handle, P);
-    if (P.X<10) then P.X:=10;
-    if (P.X>ClientWidth-10) then P.X:=ClientWidth-10;
-    PSplitter.Left:=P.X-SPLITTERWIDTH div 2;
-  end;
-end;
-
-procedure TMainForm.SplitterMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  if Button=mbLeft then
-  begin
-    SplitMoving:=true;
-    PSplitter.Color:=clBlack;
-    SetCapture(PSplitter.Handle);
-  end;
-end;
-
-procedure TMainForm.SplitterMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  if (Button=mbLeft) and SplitMoving then
-  begin
-    ReleaseCapture;
-    SplitMoving:=false;
-    PSplitter.Color:=SplitColor;
-    TVFolders.Width:=PSplitter.Left;
-    LVFiles.SetBounds(TVFolders.Width+SPLITTERWIDTH, TB.Height,
-      ClientWidth-TVFolders.Width-SPLITTERWIDTH, LVFiles.Height);
-  end;
 end;
 
 procedure TMainForm.RefreshTick(Sender: TObject);
@@ -374,20 +589,13 @@ end;
 
 procedure TMainForm.ShowStatusPanel(const Caption: string);
 begin
-  if not Assigned(PStatus) then PStatus:=TPanel.Create(Self, '');
+  PStatus.Visible:=true;
   PStatus.BringToFront;
-  PStatus.Bevel:=bvRaised;
-  PStatus.SetBounds(ClientWidth div 2 - 100, ClientHeight div 2 - 22, 200, 45);
-  if not Assigned(LStatus)
-    then LStatus:=TLabel.Create(PStatus, Caption)
-    else LStatus.Caption:=Caption;
-  LStatus.Transparent:=true;
-  LStatus.SetBounds(5, 5, 190, 15);
-  if not Assigned(PBStatus) then PBStatus:=TProgressBar.Create(PStatus);
-  PBStatus.SetBounds(5, 25, 190, 15);
+  PStatus.SetPosition((ClientWidth - PStatus.Width) div 2, (ClientHeight - PStatus.Height) div 2);
+  LStatus.Caption:=Caption;
   PBStatus.Position:=0;
   LVFiles.Enabled:=false;
-  PSplitter.Enabled:=false;
+  Splitter.Enabled:=false;
   TB.Enabled:=false;
   TVFolders.Enabled:=false;
   ProcessMessages;
@@ -396,10 +604,10 @@ end;
 procedure TMainForm.HideStatusPanel;
 begin
   LVFiles.Enabled:=true;
-  PSplitter.Enabled:=true;
+  Splitter.Enabled:=true;
   TB.Enabled:=true;
   TVFolders.Enabled:=true;
-  PostMessage(PStatus.Handle, WM_CLOSE, 0, 0);
+  PStatus.Visible:=false;
 end;
 
 procedure TMainForm.Find;
@@ -524,8 +732,8 @@ begin
       GetMem(IBuffer, IBufSize);
       GetMem(OBuffer, OBufSize);
       IFile.Read(IBuffer^, IBufSize);
-      Res:=ucl_nrv2e_decompress_asm_safe_8(IBuffer, IBufSize, OBuffer, OBFTemp, nil);
-      if Res<>UCL_E_OK then
+      Res:=nrv2e_decompress(IBuffer, IBufSize, OBuffer, OBFTemp);
+      if Res<>0 then
       begin
         MessageBox(Handle, PChar(Format('NRV2E decompressing error: %d', [Res])), 'Error', MB_ICONERROR);
         Exit;
@@ -577,6 +785,16 @@ begin
   Exts[ExtsCount]:=Ext;
   Result:=ExtsCount;
   Inc(ExtsCount);
+end;
+
+procedure TMainForm.AdjustColumns(Sender: TObject);
+var
+  SizeWidth: Integer;
+begin
+  if LVFiles.ViewStyle<>LVS_REPORT then Exit;
+  SizeWidth:=LVFiles.Perform(LVM_GETCOLUMNWIDTH, 1, 0);
+  LVFiles.Perform(LVM_SETCOLUMNWIDTH, 0, LVFiles.ClientWidth-SizeWidth);
+  LVFiles.Perform(LVM_SETCOLUMNWIDTH, 1, SizeWidth);
 end;
 
 function TMainForm.FindExt(FileName: string): Integer;
@@ -693,7 +911,6 @@ var
   i, Index, IcoIndex: integer;
   FN: string;
   PSFI: SHFILEINFO;
-  ImgList: HIMAGELIST;
 begin
   if not Assigned(Files) then Exit;
   LVFiles.BeginUpdate;
@@ -702,19 +919,27 @@ begin
   begin
     FN:=Copy(Files[i], 1, LastDelimiter('|', Files[i])-1);
     Index:=LVFiles.ItemAdd(FN);
+    LVFiles.Items[Index, 1]:=SizeToStr(StrToInt64Def(Copy(Files[i], LastDelimiter('|', Files[i])+1, MaxInt), 0));
     IcoIndex:=FindExt(FN);
     if IcoIndex>-1
       then LVFiles.ItemImageIndex[Index]:=IcoIndex
     else begin
-      ImgList:=SHGetFileInfo(PChar(string(ExtractFileExt(FN))), FILE_ATTRIBUTE_NORMAL, PSFI, SizeOf(PSFI),
-                             SHGFI_SYSICONINDEX or SHGFI_TYPENAME or SHGFI_USEFILEATTRIBUTES or
-                             SHGFI_ICON or SHGFI_LARGEICON);
-      Icons.AddIcon(ImageList_GetIcon(ImgList, PSFI.iIcon, 0));
+      SHGetFileInfo(PChar(string(ExtractFileExt(FN))), FILE_ATTRIBUTE_NORMAL, PSFI, SizeOf(PSFI),
+                    SHGFI_USEFILEATTRIBUTES or SHGFI_ICON or SHGFI_LARGEICON);
+      Icons.AddIcon(PSFI.hIcon);
+      SHGetFileInfo(PChar(string(ExtractFileExt(FN))), FILE_ATTRIBUTE_NORMAL, PSFI, SizeOf(PSFI),
+                    SHGFI_USEFILEATTRIBUTES or SHGFI_ICON or SHGFI_SMALLICON);
+      SmallIcons.AddIcon(PSFI.hIcon);
       LVFiles.ItemImageIndex[Index]:=AddExt(FN);
     end;
   end;
-  if (LVFiles.LargeImages=nil) and (ExtsCount>0) then LVFiles.LargeImages:=Icons;
+  if (LVFiles.LargeImages=nil) and (ExtsCount>0) then
+  begin
+    LVFiles.LargeImages:=Icons;
+    LVFiles.SmallImages:=SmallIcons;
+  end;
   LVFiles.EndUpdate;
+  //AdjustColumns(Self);
 end;
 
 procedure TMainForm.ClearTree;
@@ -725,6 +950,41 @@ begin
     if Assigned(Garbage[i]) then TObject(Garbage[i]).Free;
   Garbage.Clear;
   TVFolders.Perform(TV_FIRST+1, 0, Integer(TVI_ROOT));//Clear tree view
+end;
+
+procedure TMainForm.CopyClick;
+var
+  Path: string;
+  Node: Integer;
+begin
+  Path:='';
+  if GetFocus<>TVFolders.Handle then
+  begin
+    if LVFiles.SelectedIndex<0 then Exit;
+    Path:=LVFiles.SelectedCaption;
+  end
+    else if TVFolders.Perform(TVM_GETNEXTITEM, TVGN_CARET, 0)=0 then Exit;
+  Node:=TVFolders.Perform(TVM_GETNEXTITEM, TVGN_CARET, 0);
+  while Node<>0 do
+  begin
+    Path:=NodeName(Node)+'\'+Path;
+    Node:=TVFolders.Perform(TVM_GETNEXTITEM, TVGN_PARENT, Node);
+  end;
+  if Path[Length(Path)]='\' then Delete(Path, Length(Path), 1);
+  SetClipboardText(Path);
+end;
+
+function TMainForm.NodeName(Node: Integer): string;
+var
+  Item: TTVItem;
+begin
+  SetLength(Result, MAX_PATH);
+  Item.mask:=TVIF_TEXT;
+  Item.pszText:=@Result[1];
+  Item.cchTextMax:=MAX_PATH;
+  Item.hItem:=HTreeItem(Node);
+  TVFolders.Perform(TVM_GETITEM, 0, Integer(@Item));
+  SetLength(Result, FirstDelimiter(#0, Result)-1);
 end;
 
 procedure TMainForm.ShowAbout;
@@ -766,6 +1026,28 @@ begin
     MessageBoxIndirectA(MsgBoxParamsA);
   end;
 end;
+
+procedure TMainForm.SplitterMove(Sender: TObject);
+begin
+  TVFolders.Width:=Splitter.Left;
+  LVFiles.SetBounds(Splitter.Right, TB.Height, ClientWidth-Splitter.Right, LVFiles.Height);
+end;
+
+procedure TMainForm.ViewClick;
+const
+  MenuCheck: array[Boolean] of UINT = (MF_UNCHECKED, MF_CHECKED);
+var
+  Cursor: TPoint;
+begin
+  GetCursorPos(Cursor);
+  CheckMenuItem(MenuView.Handle, ViewReport, MenuCheck[LVFiles.ViewStyle=LVS_REPORT] or MF_BYCOMMAND);
+  CheckMenuItem(MenuView.Handle, ViewList, MenuCheck[LVFiles.ViewStyle=LVS_LIST] or MF_BYCOMMAND);
+  CheckMenuItem(MenuView.Handle, ViewSmallIcons, MenuCheck[LVFiles.ViewStyle=LVS_SMALLICON] or MF_BYCOMMAND);
+  CheckMenuItem(MenuView.Handle, ViewIcons, MenuCheck[LVFiles.ViewStyle=LVS_ICON] or MF_BYCOMMAND);
+  MenuView.Popup(Cursor.X, Cursor.Y);
+end;
+
+{ TFindForm }
 
 constructor TFindForm.Create(Parent: TWinControl; Caption: string);
 var
@@ -866,55 +1148,8 @@ begin
 end;
 
 begin
-  MainForm:=TMainForm.Create(nil, CCapt);
-  with MainForm do
-  begin
-    ExStyle:=ExStyle or WS_EX_ACCEPTFILES;
-    Initialized:=false;
-    OpenDelay:=false;
-    FindDelay:=false;
-    CanvasInit;
-    SetSize(640, 480);
-    Position:=poScreenCenter;
-    OnCreate:=FormCreate;
-    OnClose:=FormClose;
-    TBImages:=TImageList.Create;
-    TBImages.AddMasked(LoadImage(hInstance, 'TB', IMAGE_BITMAP, 0, 0, 0), clFuchsia);
-    TB:=TToolBar.Create(MainForm, True);
-    TB.SetPosition(0, 0);
-    TB.Images:=TBImages;
-    TB.ButtonAdd('Open', TB_OPEN);
-    TB.ButtonAdd('Save', TB_SAVE);
-    TB.ButtonAdd('Find', TB_FIND);
-    TB.ButtonAdd('Refresh', TB_REFRESH);
-    TB.ButtonAdd('About', TB_ABOUT);
-    TB.ButtonAdd('Exit', TB_EXIT);
-    SB:=TStatusBar.Create(MainForm, '');
-    SB.SetParts(SB_PARTS, SBParts);
-    Folders:=TImageList.Create;
-    Folders.AddMasked(LoadImage(hInstance, 'FOLDER', IMAGE_BITMAP, 0, 0, 0), clFuchsia);
-    TVFolders:=TTreeView.Create(MainForm);
-    TVFolders.Images:=Folders;
-    TVFolders.StateImages:=Folders;
-    TVFolders.SetBounds(0, TB.Height, 200, ClientHeight-TB.Height-SB.Height);
-    PSplitter:=TPanel.Create(MainForm, '');
-    PSplitter.Bevel:=bvLowered;
-    PSplitter.SetBounds(TVFolders.Width, TB.Height, SPLITTERWIDTH, TVFolders.Height);
-    PSplitter.OnMouseMove:=SplitterMouseMove;
-    PSplitter.OnMouseDown:=SplitterMouseDown;
-    PSplitter.OnMouseUp:=SplitterMouseUp;
-    PSplitter.Cursor:=LoadCursor(0, IDC_SIZEWE);
-    SplitColor:=PSplitter.Color;
-    SplitMoving:=false;
-    LVFiles:=TListView.Create(MainForm);
-    LVFiles.Style:=LVFiles.Style or LVS_SORTASCENDING;
-    LVFiles.SetBounds(TVFolders.Width+SPLITTERWIDTH, TB.Height,
-      ClientWidth-TVFolders.Width-SPLITTERWIDTH, TVFolders.Height);
-    PSplitter.BringToFront;
-    RefreshTimer:=TTimer.CreateEx(100, false);
-    RefreshTimer.OnTimer:=RefreshTick;
-    Initialized:=true;
-  end;
+  MainForm:=TMainForm.Create;
   MainForm.Run;
+  MainForm.Free;
 end.
 
