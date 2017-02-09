@@ -1,0 +1,31 @@
+!vertex_shader
+uniform vec3 eyePos;
+varying vec3 l;
+varying vec3 n;
+varying vec3 h;
+varying float d;
+
+void main(void)
+{
+  vec3 p = vec3(gl_ModelViewMatrix * gl_Vertex);
+  l = vec3(gl_LightSource[0].position) - p;
+  d=length(l);
+  l = normalize(l);
+  h = normalize(l+normalize(vec3(eyePos) - p));
+  n = gl_NormalMatrix * gl_Normal;
+  gl_TexCoord[0] = gl_MultiTexCoord0;
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+}
+
+!fragment_shader
+varying vec3 l;
+varying vec3 n;
+varying vec3 h;
+varying float d;
+uniform sampler2D mainTex;
+
+void main(void)
+{
+  gl_FragColor = vec4((max(dot(n, l), 0.0) + pow(max(dot(n, h), 0.0), 20.0))
+    * texture2D(mainTex, gl_TexCoord[0].xy).rgb * (1.0/pow(d, 2.0)), 1.0);
+}

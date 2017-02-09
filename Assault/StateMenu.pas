@@ -13,7 +13,6 @@ type
     FMenu: TGUI;
     FCursor: TCursor;
     FLbl: TMenuLabel;
-    FTestTex: TTexture;
   protected
     function GetName: string; override;
     function Load(ProgFunc: TProgFunc): Boolean;
@@ -81,7 +80,6 @@ var
   Frm: TMenuForm;
 begin
   inherited Create;
-  FTestTex:=TexMan.LoadTexture('Menu.tga', 1);
   FCursor:=TCursor.Create;
   FCursor.Load('Cursor.vcr');
   FMenu:=TGUI.Create(800, 600);
@@ -107,7 +105,6 @@ end;
 
 destructor TStateMenu.Destroy;
 begin
-  FreeTex(FTestTex);
   FAN(FCursor);
   FAN(FMenu);
   inherited Destroy;
@@ -335,7 +332,7 @@ const
     ('MouseEnter', 'MouseLeave', 'MouseMove', 'MouseDown', 'MouseUp',
      'MouseClick', 'MouseWheel', 'Char', 'KeyDown', 'KeyUp');
 begin
-  FCaption:=Events[Event]+' '+IntToStr(X)+' '+IntToStr(Y);
+  //FCaption:=Events[Event]+' '+IntToStr(X)+' '+IntToStr(Y);
   case Event of
     reMouseDown:
       if Button=1 then
