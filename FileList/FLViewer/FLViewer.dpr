@@ -13,6 +13,7 @@ type
   end;
   TFolderData=class
   public
+    Name: string;
     Files: TStringList;
     FilesSize, FolderSize: Int64;
     constructor Create;
@@ -33,7 +34,7 @@ type
     Data, Files: TStringList;
     Garbage: TList;
     FileName, Mask: string;
-    Initialized, OpenDelay, FindDelay, FindFiles, FindDirs: Boolean;
+    Initialized, OpenDelay, Unicode, FindDelay, FindFiles, FindDirs: Boolean;
     RefreshTimer: TTimer;
     CurFolder, ExtsCount, ExtsCapacity: Integer;
     SizeMin, SizeMax: Int64;
@@ -59,6 +60,10 @@ type
     function  GetExtHash(const Ext: string): Integer;
     function  AddExt(FileName: string): Integer;
     function  FindExt(FileName: string): Integer;
+    function  C(const S: string): string;
+    function  T(const S: string): string;
+    function  GetName(const S: string): string;
+    function  GetSize(const S: string): Int64;
     function  GetNextFolder: string;
     procedure GetFolderFiles(Files: TStringList);
     function  InsertTreeItem(Parent: Integer; Text: string; Data: TObject): Integer;
@@ -86,10 +91,12 @@ type
   end;
 
 const
-  ID: Cardinal=1279677270;
-  CCapt='VgaSoft FileList Viewer 2.11';
+  IDA: Cardinal=$4C465356;
+  IDU: Cardinal=$55465356;
+  CRLFU=#$0D#$00#$0A#$00;
+  CCapt='VgaSoft FileList Viewer 3.0';
   AboutText=CCapt+#13#10 +
-            'Copyright '#169'VgaSoft, 2004-2016';
+            'Copyright '#169'VgaSoft, 2004-2017';
 
   TB_OPEN=0;
   TB_EXPORT=1;
@@ -226,6 +233,18 @@ begin
     Result := -205
   else
     Result := -201;
+end;
+
+function WS2S(const S: WideString): string;
+begin
+  SetLength(Result, Length(S) * 2);
+  Move(S[1], Result[1], Length(Result));
+end;
+
+function S2WS(const S: string): WideString;
+begin
+  SetLength(Result, Length(S) div 2);
+  Move(S[1], Result[1], Length(Result) * 2);
 end;
 
 var
@@ -389,7 +408,7 @@ type
   end;
 var
   i: Integer;
-  S, S1: string;
+  S: string;
   FD: TFolderData;
 begin
   if not Assigned(TVFolders) or not Assigned(LVFIles) then Exit;
@@ -408,11 +427,9 @@ begin
       S:=LVFiles.SelectedCaption;
       for i:=0 to Files.Count-1 do
       begin
-        S1:=Copy(Files[i], 1, LastDelimiter('|', Files[i])-1);
-        if S1=S then
+        if S=GetName(T(Files[i])) then
         begin
-          SB.SetPartText(2, 0, S1+': '+
-            SizeToStr(StrToInt64Def(Copy(Files[i], LastDelimiter('|', Files[i])+1, MaxInt), 0)));
+          SB.SetPartText(2, 0, S+': '+SizeToStr(GetSize(T(Files[i]))));
           Break;
         end;
       end;
@@ -458,31 +475,51 @@ procedure TMainForm.ExportClick;
   end;
 
 var
-  F: TextFile;
+  F: TFileStream;
 
-  procedure WriteFolder(const Name: string; Level: Integer);
+  function GetFileName(const S: string): string;
+  var
+    N: WideString;
   begin
-    WriteLn(F, Indent(Level)+'['+Name+']');
+    if Unicode then
+    begin
+      N:=S2WS(S);
+      while N[Length(N)] <> '|' do Delete(N, Length(N), 1);
+      Delete(N, Length(N), 1);
+      Result:=WS2S(N);
+    end
+      else Result:=GetName(S);
   end;
 
-  procedure WriteFile(const Name: string; Level: Integer);
+  procedure WriteFolder(Name: string; Level: Integer);
   begin
-    WriteLn(F, Indent(Level)+'+-'+Copy(Name, 1, FirstDelimiter('|', Name)-1)+
-            ': '+SizeToStr(StrToInt64Def(Copy(Name, FirstDelimiter('|', Name)+1, MaxInt), 0)));
+    Name:=C(Indent(Level)+'[')+Name+C(']'#13#10);
+    F.Write(Name[1], Length(Name));
+  end;
+
+  procedure WriteFile(Name: string; Level: Integer);
+  begin
+    Name:=C(Indent(Level)+'+-')+GetFileName(Name)+C(': '+SizeToStr(GetSize(T(Name)))+#13#10);
+    F.Write(Name[1], Length(Name));
   end;
 
   procedure ExportData;
   var
     i, Level: Integer;
+    S: string;
   begin
     Level:=0;
     for i:=0 to Data.Count-1 do
     begin
-      if Data[i][1]='<' then
+      S:=T(Data[i]);
+      if S[1]='<' then
       begin
-        if Data[i][2]<>'|' then
+        if S[2]<>'|' then
         begin
-          WriteFolder(Copy(Data[i], 2, Length(Data[i])-2), Level);
+          if Unicode then
+            WriteFolder(Copy(Data[i], 3, Length(Data[i])-4), Level)
+          else
+            WriteFolder(Copy(Data[i], 2, Length(Data[i])-2), Level);
           Inc(Level);
         end
           else Dec(Level);
@@ -512,11 +549,11 @@ var
     Item: TTVItem;
     FD: TFolderData;
   begin
-    WriteFolder(NodeName(Node), Level);
     Item.mask:=TVIF_PARAM;
     Item.hItem:=HTreeItem(Node);
     TVFolders.Perform(TVM_GETITEM, 0, Integer(@Item));
     FD:=TFolderData(Item.lParam);
+    WriteFolder(FD.Name, Level);
     for i:=0 to FD.Files.Count-1 do
       WriteFile(FD.Files[i], Level+1);
     Inc(NodesProcessed);
@@ -532,6 +569,8 @@ var
 var
   FN: string;
   Node: Integer;
+const
+  BOM: Word = $FEFF;
 begin
   if Data.Count<=0 then
   begin
@@ -543,9 +582,9 @@ begin
     ExtractFilePath(FN), 0, OFN_OVERWRITEPROMPT or OFN_PATHMUSTEXIST, FN) then Exit;
   ShowStatusPanel('Exporting...');
   PBStatus.Position:=0;
-  AssignFile(F, FN);
+  F:=TFileStream.Create(FN, fmCreate);
   try
-    ReWrite(F);
+    if Unicode then F.Write(BOM, SizeOf(BOM));
     Node:=TVFolders.Perform(TVM_GETNEXTITEM, TVGN_CARET, 0);
     if Node<>0 then
     begin
@@ -556,7 +595,7 @@ begin
     end
       else ExportData;
   finally
-    CloseFile(F);
+    FAN(F);
     HideStatusPanel;
   end;
 end;
@@ -625,6 +664,7 @@ var
   begin
     FD:=TFolderData.Create;
     Garbage.Add(FD);
+    FD.Name:=C(S);
     Inc(i);
     Node:=InsertTreeItem(Node, S, FD);
     while true do
@@ -633,13 +673,13 @@ var
       case List[i][1] of
         '>', '|': FD.FolderSize:=FD.FolderSize+FillFindNode(Node, Copy(List[i], 2, MaxInt));
         '<': Break;
-        '+': FD.Files.Add(Copy(List[i], 2, MaxInt));
+        '+': FD.Files.Add(C(Copy(List[i], 2, MaxInt)));
       end;
       Inc(i);
     end;
     for j:=0 to FD.Files.Count-1 do
-      FD.FilesSize:=FD.FilesSize+StrToInt(Copy(FD.Files[i], FirstDelimiter('|', FD.Files[i])+1, MaxInt));
-    FD.FolderSize:=FD.FolderSize+FD.FilesSize;  
+      FD.FilesSize:=FD.FilesSize+GetSize(T(FD.Files[i]));
+    FD.FolderSize:=FD.FolderSize+FD.FilesSize;
     TVFolders.Perform(TV_FIRST+19, 0, Node);//Sort childrens
     Result:=FD.FolderSize;
   end;
@@ -656,7 +696,7 @@ begin
       if Pr>OldPr then PBStatus.Position:=Pr;
       OldPr:=Pr;
       ProcessMessages;
-      S:=Data[i];
+      S:=T(Data[i]);
       if S[1]='<' then
       begin
         if S[2]='|'
@@ -671,9 +711,9 @@ begin
           end;
         Continue;
       end;
-      if FindFiles and CMask.Matches(Copy(S, 1, LastDelimiter('|', S)-1)) then
+      if FindFiles and CMask.Matches(GetName(S)) then
       begin
-        Sz:=StrToInt64Def(Copy(S, LastDelimiter('|', S)+1, MaxInt), 0);
+        Sz:=GetSize(S);
         case SizeMode of
           SIZE_NONE:;
           SIZE_MIN: if Sz<SizeMin then Continue;
@@ -697,6 +737,7 @@ begin
   try
     ShowStatusPanel('Loading...');
     if not Load then Exit;
+    Caption:=CCapt+' ['+ExtractFileName(FileName)+']';
     LStatus.Caption:='Building tree...';
     ProcessMessages;
     FillTree;
@@ -709,51 +750,65 @@ end;
 
 function TMainForm.Load: Boolean;
 var
-  IBuffer, OBuffer: Pointer;
-  IBufSize, OBufSize, OBFTemp, Res: Cardinal;
+  IBuffer: Pointer;
+  IBufSize, TextSize, OBFTemp, Res, Start: Cardinal;
+  Text: string;
   IFile: TFileStream;
 begin
   IBuffer:=nil;
-  OBuffer:=nil;
   Result:=false;
   try
     IFile:=TFileStream.Create(FileName, fmOpenRead);
     IFile.Read(IBufSize, SizeOf(IBufSize));
-    if IBufSize<>ID then
+    if (IBufSize<>IDA) and (IBufSize<>IDU) then
     begin
       MessageBox(Handle, 'Error: invalid file', 'Error', MB_ICONERROR);
       Exit;
     end;
-    IFile.Read(OBufSize, SizeOf(OBufSize));
+    Unicode:=IBufSize=IDU; 
+    IFile.Read(TextSize, SizeOf(TextSize));
     IBufSize:=IFile.Size-SizeOf(IBufSize)*2;
-    if OBufSize<>0 then
+    if TextSize<>0 then
     begin
-      OBFTemp:=OBufSize;
       GetMem(IBuffer, IBufSize);
-      GetMem(OBuffer, OBufSize);
+      SetLength(Text, TextSize);
       IFile.Read(IBuffer^, IBufSize);
-      Res:=nrv2e_decompress(IBuffer, IBufSize, OBuffer, OBFTemp);
+      Res:=nrv2e_decompress(IBuffer, IBufSize, Pointer(Text), TextSize);
       if Res<>0 then
       begin
         MessageBox(Handle, PChar(Format('NRV2E decompressing error: %d', [Res])), 'Error', MB_ICONERROR);
         Exit;
       end;
-      if OBFTemp<>OBufSize then
-        if MessageBox(Handle, 'Data corrupted. Continue?', 'Error', MB_ICONERROR or MB_YESNO)=ID_NO then Exit;
-      Data.Text:=string(OBuffer);
+      if TextSize<>Length(Text) then
+        if MessageBox(Handle, 'Data corrupted. Continue?', 'Error', MB_ICONERROR or MB_YESNO)=ID_YES then
+          SetLength(Text, TextSize)
+        else Exit;
     end
     else begin
-      GetMem(IBuffer, IBufSize);
-      IFile.Read(IBuffer^, IBufSize);
-      Data.Text:=string(IBuffer);
+      SetLength(Text, IBufSize);
+      IFile.Read(Text[1], Length(Text));
     end;
+    if Unicode then
+    begin
+      Data.Clear;
+      Start:=1;
+      Res:=Pos(CRLFU, Text);
+      while Res>0 do
+      begin
+        Data.Add(Copy(Text, Start, Res-Start));
+        Start:=Res+4;
+        Res:=PosEx(CRLFU, Text, Start);
+      end;
+      if Start<Length(Text) then
+        Data.Add(Copy(Text, Start, MaxInt));
+    end
+      else Data.Text:=Text;
     RemoveVoidStrings(Data);
     PBStatus.Position:=10;
     Result:=true;
   finally
     FAN(IFile);
     FreeMemAndNil(IBuffer, IBufSize);
-    FreeMemAndNil(OBuffer, OBufSize);
   end;
 end;
 
@@ -816,22 +871,54 @@ begin
   end;
 end;
 
+function TMainForm.C(const S: string): string;
+begin
+  if Unicode then
+    Result:=WS2S(WideString(S))
+  else
+    Result:=S;
+end;
+
+function TMainForm.T(const S: string): string;
+begin
+  if Unicode then
+    Result:=AnsiString(S2WS(S))
+  else
+    Result:=S;
+end;
+
+function TMainForm.GetName(const S: string): string;
+begin
+  Result:=Copy(S, 1, LastDelimiter('|', S)-1);
+end;
+
+function TMainForm.GetSize(const S: string): Int64;
+begin
+  Result:=StrToInt64Def(Copy(S, LastDelimiter('|', S)+1, MaxInt), 0);
+end;
+
 function TMainForm.GetNextFolder: string;
 var
   S: string;
 begin
   Result:='';
-  if CurFolder=Data.Count-1 then Exit;
+  if CurFolder=Data.Count-1 then raise Exception.Create('Malformed file');
   Inc(CurFolder);
   S:=Data[CurFolder];
-  while S[1]<>'<' do
+  while T(S)[1]<>'<' do
   begin
     if CurFolder<>Data.Count-1
       then Inc(CurFolder)
       else Exit;
     S:=Data[CurFolder];
   end;
-  Result:=Copy(S, 2, Length(S)-2);
+  if Unicode then
+  begin
+    Result:=Copy(S, 3, Length(S)-4);
+    if S2WS(Result)='|' then Result:='|';
+  end
+  else
+    Result:=Copy(S, 2, Length(S)-2);
 end;
 
 procedure TMainForm.GetFolderFiles(Files: TStringList);
@@ -841,7 +928,7 @@ procedure TMainForm.GetFolderFiles(Files: TStringList);
     Result:=CurFolder;
     if CurFolder=Data.Count-1 then Exit;
     Inc(Result);
-    while Data[Result][1]<>'<' do Inc(Result);
+    while (Result<Data.Count) and (T(Data[Result])[1]<>'<') do Inc(Result);
   end;
 
 var
@@ -878,12 +965,13 @@ var
 begin
   FD:=TFolderData.Create;
   Garbage.Add(FD);
+  FD.Name:=S;
   GetFolderFiles(FD.Files);
   for i:=0 to FD.Files.Count-1 do
-    FD.FilesSize:=FD.FilesSize+StrToInt64Def(Copy(FD.Files[i], FirstDelimiter('|', FD.Files[i])+1, MaxInt), 0);
+    FD.FilesSize:=FD.FilesSize+GetSize(T(FD.Files[i]));
   FD.FolderSize:=FD.FilesSize;
   if Node=Integer(TVI_ROOT) then Files:=FD.Files;
-  Node:=InsertTreeItem(Node, S, FD);
+  Node:=InsertTreeItem(Node, T(S), FD);
   while true do
   begin
     S:=GetNextFolder;
@@ -901,7 +989,11 @@ begin
   TVFolders.BeginUpdate;
   ClearTree;
   CurFolder:=-1;
-  FillNode(Integer(TVI_ROOT), GetNextFolder);
+  try
+    FillNode(Integer(TVI_ROOT), GetNextFolder);
+  except
+    MessageBox(Handle, PChar(Exception(ExceptObject).Message), 'Error', MB_ICONERROR);
+  end;
   TVFolders.EndUpdate;
   ProcessMessages;
 end;
@@ -917,9 +1009,9 @@ begin
   LVFiles.Clear;
   for i:= 0 to Files.Count-1 do
   begin
-    FN:=Copy(Files[i], 1, LastDelimiter('|', Files[i])-1);
+    FN:=GetName(T(Files[i]));
     Index:=LVFiles.ItemAdd(FN);
-    LVFiles.Items[Index, 1]:=SizeToStr(StrToInt64Def(Copy(Files[i], LastDelimiter('|', Files[i])+1, MaxInt), 0));
+    LVFiles.Items[Index, 1]:=SizeToStr(GetSize(T(Files[i])));
     IcoIndex:=FindExt(FN);
     if IcoIndex>-1
       then LVFiles.ItemImageIndex[Index]:=IcoIndex
@@ -946,10 +1038,10 @@ procedure TMainForm.ClearTree;
 var
   i: Integer;
 begin
+  TVFolders.Perform(TV_FIRST+1, 0, Integer(TVI_ROOT));
   for i:=0 to Garbage.Count-1 do
     if Assigned(Garbage[i]) then TObject(Garbage[i]).Free;
   Garbage.Clear;
-  TVFolders.Perform(TV_FIRST+1, 0, Integer(TVI_ROOT));//Clear tree view
 end;
 
 procedure TMainForm.CopyClick;

@@ -108,8 +108,8 @@ DebugCWD=
 [Version Info]
 IncludeVerInfo=1
 AutoIncBuild=0
-MajorVer=2
-MinorVer=11
+MajorVer=3
+MinorVer=0
 Release=0
 Build=0
 Debug=0
@@ -122,15 +122,16 @@ CodePage=1251
 [Version Info Keys]
 CompanyName=VgaSoft
 FileDescription=VgaSoft FileList Viewer
-FileVersion=2.11.0.0
+FileVersion=3.0.0.0
 InternalName=
-LegalCopyright=(c) VgaSoft, 2004-2016
+LegalCopyright=(c) VgaSoft, 2004-2017
 LegalTrademarks=
 OriginalFilename=FLViewer.exe
 ProductName=VgaSoft FileList
-ProductVersion=2.0.0.0
+ProductVersion=3.0.0.0
 Comments=
-LastCompiledTime=08.02.2016 16:54:56
+[Excluded Packages]
+C:\Program Files\Delphi7SE\Projects\BPL\wclr_d7.bpl=Wireless Communication Library VCL Developer for Delphi 7
 [HistoryLists\hlConditionals]
 Count=1
 Item0=CanvasAutoCreate

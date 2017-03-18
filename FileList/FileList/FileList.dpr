@@ -9,7 +9,7 @@ type
   TMainForm=class(TForm)
     LSrc, LDest: TLabel;
     ESrc, EDest: TEdit;
-    CAll, CCompr: TCheckBox;
+    CAll, CCompr, CUnicode: TCheckBox;
     BSrc, BDest, BSearch: TButton;
     procedure SrcClick(Sender: TObject);
     procedure DestClick(Sender: TObject);
@@ -18,11 +18,13 @@ type
     procedure AllClick(Sender: TObject);
     procedure SrcChange(Sender: TObject);
     procedure GetAllFiles(Mask: string; Files: TStringList);
+    procedure GetAllFilesU(Mask: WideString; Files: TStringList);
   end;
 
 const
-  ID: Cardinal=1279677270;
-  Capt='VgaSoft FileList 2.9';
+  IDA: Cardinal=$4C465356;
+  IDU: Cardinal=$55465356;
+  Capt='VgaSoft FileList 3.0';
 
 var
   MainForm: TMainForm;
@@ -66,9 +68,9 @@ var
   Files: TStringList;
   Buffer: Pointer;
   OFile: TFileStream;
-  Size, BufSize, Index: Cardinal;
+  Size, BufSize, Index, ID: Cardinal;
   Res: Integer;
-  Drives, Dest: string;
+  Drives, Dest, Text: string;
   UCLCB: TUCLProgressCallback;
 Label
   NextDisk;
@@ -96,7 +98,32 @@ Label
     EDest.Enabled:=Enable;
     CAll.Enabled:=Enable;
     CCompr.Enabled:=Enable;
+    CUnicode.Enabled:=Enable;
     BDest.Enabled:=Enable;
+  end;
+
+  function GetText: string;
+  var
+    i, L: Integer;
+    P: PChar;
+    S: string;
+  const
+    CRLF=#$0D#$00#$0A#$00;
+  begin
+    if CUnicode.Checked then
+    begin
+      L:=0;
+      for i:=0 to Files.Count-1 do Inc(L, Length(Files[i])+4);
+      SetString(Result, nil, L);
+      P:=PChar(Result);
+      for i:=0 to Files.Count-1 do
+      begin
+        S:=Files[i]+CRLF;
+        Move(S[1], P^, Length(S));
+        Inc(P, Length(S));
+      end;
+    end
+      else Result:=Files.Text;
   end;
 
 begin
@@ -134,7 +161,15 @@ begin
       Files:=TStringList.Create;
       Files.Clear;
       Caption:=Capt+': Searching in <'+ESrc.Text+'>...';
-      GetAllFiles(ESrc.Text+'*.*', Files);
+      if CUnicode.Checked then
+      begin
+        GetAllFilesU(WideString(ESrc.Text+'*.*'), Files);
+        ID:=IDU;
+      end
+      else begin
+        GetAllFiles(ESrc.Text+'*.*', Files);
+        ID:=IDA;
+      end;
       if FCancel then Exit;
       BSearch.Enabled:=false;
       Caption:=Capt+': Saving to <'+ExtractFileName(EDest.Text)+'>: 0%';
@@ -142,15 +177,16 @@ begin
       ProcessMessages;
       OFile:=TFileStream.Create(EDest.Text, fmCreate);
       OFile.WriteBuffer(ID, SizeOf(ID));
+      Text:=GetText;
       if CCompr.Checked then
       begin
-        Size:=Length(Files.Text);
+        Size:=Length(Text);
         OFile.WriteBuffer(Size, SizeOf(Size));
         BufSize:=UCLOutputBlockSize(Size);
         GetMem(Buffer, BufSize);
         UCLCB.Callback:=UCLProgressCallback;
         UCLCB.User:=Pointer(Size);
-        Res:=ucl_nrv2e_99_compress(Pointer(Files.Text), Size, Buffer, BufSize, @UCLCB, 10, nil, nil);
+        Res:=ucl_nrv2e_99_compress(Pointer(Text), Size, Buffer, BufSize, @UCLCB, 10, nil, nil);
         if Res<>UCL_E_OK then
         begin
           MessageBox(Handle, PChar(Format('Compression error %d', [Res])), 'Error', MB_ICONERROR);
@@ -161,7 +197,7 @@ begin
       else begin
         Size:=0;
         OFile.WriteBuffer(Size, SizeOf(Size));
-        Files.SaveToStream(OFile);
+        OFile.Write(Text[1], Length(Text));
       end;
       ProcessMessages;
     finally
@@ -208,15 +244,15 @@ var
   Directory: string;
   Directories: TStringList;
 
-    function GetLastDirectory(S: string): string;
-    var
-      i: integer;
-    begin
-      Delete(S, Length(S), 1);
-      i:=Length(S);
-      while S[i]<>'\' do Dec(i);
-      Result:=Copy(S, i+1, MaxInt);
-    end;
+  function GetLastDirectory(S: string): string;
+  var
+    i: integer;
+  begin
+    Delete(S, Length(S), 1);
+    i:=Length(S);
+    while (i>0) and (S[i]<>'\') do Dec(i);
+    Result:=Copy(S, i+1, MaxInt);
+  end;
 
 begin
   Directory := ExtractFilePath(Mask);
@@ -252,6 +288,84 @@ begin
   Files.Add('<|>');
 end;
 
+procedure TMainForm.GetAllFilesU(Mask: WideString; Files: TStringList);
+var
+  i: Integer;
+  F: THandle;
+  FD: TWin32FindDataW;
+  Directory: WideString;
+  Directories: TStringList;
+const
+  Delims = [WideChar('\'), WideChar(':')];
+
+  function GetLastDirectory(S: WideString): WideString;
+  var
+    i: integer;
+  begin
+    Delete(S, Length(S), 1);
+    i:=Length(S);
+    while (i>0) and (S[i]<>'\') do Dec(i);
+    Result:=Copy(S, i+1, MaxInt);
+  end;
+
+  function ExtractFilePath(const FileName: WideString): WideString;
+  var
+    I: Integer;
+  begin
+    I := Length(FileName);
+    while (I > 1) and not (FileName[I] in Delims) do Dec(I);
+    if FileName[I] in Delims
+      then Result := Copy(FileName, 1, I)
+      else Result:='';
+  end;
+
+  function ExtractFileName(const FileName: WideString): WideString;
+  var
+    I: Integer;
+  begin
+    I := Length(FileName);
+    while (I >= 1) and not (FileName[I] in Delims) do Dec(I);
+    Result := Copy(FileName, I + 1, MAX_PATH);
+  end;
+
+  function WS2S(const S: WideString): string;
+  begin
+    SetLength(Result, Length(S) * 2);
+    Move(S[1], Result[1], Length(Result));
+  end;
+
+begin
+  Directory := ExtractFilePath(Mask);
+  Files.Add(WS2S('<'+GetLastDirectory(Directory)+'>'));
+  Directories:=TStringList.Create;
+  try
+    F:=FindFirstFileW(PWideChar(Mask), FD);
+    if F=INVALID_HANDLE_VALUE then
+    begin
+      Files.Add(WS2S('*** ACCESS DENIED ***|0'));
+      Exit;
+    end;
+    repeat
+      if FD.dwFileAttributes and (faDirectory or faVolumeID) = 0 then
+        Files.Add(WS2S(WideString(FD.cFileName)+'|'+Int64ToStr((Int64(FD.nFileSizeHigh) shl 32) or FD.nFileSizeLow)))
+      else if (FD.dwFileAttributes and faDirectory <> 0) and (WideString(FD.cFileName) <> '.') and (WideString(FD.cFileName) <> '..') then
+        Directories.Add(WS2S(Directory + WideString(FD.cFileName) + '\' + ExtractFileName(Mask)));
+    until not FindNextFileW(F, FD);
+    Windows.FindClose(F);
+    ProcessMessages;
+    if FCancel then Exit;
+    for i:=0 to Directories.Count-1 do
+    begin
+      GetAllFilesU(WideString(Pointer(Directories[i])), Files);
+      if FCancel then Exit;
+    end;
+  finally
+    Files.Add(WS2S('<|>'));
+    FAN(Directories);
+    ProcessMessages;
+  end;
+end;
+
 begin
   MainForm:=TMainForm.Create(nil, Capt);
   with MainForm do
@@ -274,10 +388,12 @@ begin
     if ParamCount>1 then EDest.Text:=ParamStr(2);
     CAll:=TCheckBox.Create(MainForm, 'Search all drives');
     CAll.OnClick:=AllClick;
-    CAll.SetBounds(60, 70, 120, 15);
-    CCompr:=TCheckBox.Create(MainForm, 'Use compression');
-    CCompr.SetBounds(185, 70, 120, 15);
+    CAll.SetBounds(60, 70, 100, 15);
+    CCompr:=TCheckBox.Create(MainForm, 'Compress');
+    CCompr.SetBounds(165, 70, 70, 15);
     CCompr.Checked:=true;
+    CUnicode:=TCheckBox.Create(MainForm, 'Unicode');
+    CUnicode.SetBounds(240, 70, 70, 15);
     BSrc:=TButton.Create(MainForm, 'Browse...');
     BSrc.OnClick:=SrcClick;
     BSrc.SetBounds(ClientWidth-80, 5, 75, 25);
