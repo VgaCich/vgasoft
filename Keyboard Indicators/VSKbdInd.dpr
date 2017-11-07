@@ -9,8 +9,8 @@ uses
 const
   CRLF = #13#10;
   ClassName = 'VSKeyboardIndicatorsWnd';
-  AboutText = 'VgaSoft Keyboard Indicators 1.3'+CRLF+CRLF+
-              'Copyright '#169' VgaSoft, 2012-2014'+CRLF+
+  AboutText = 'VgaSoft Keyboard Indicators 1.4'+CRLF+CRLF+
+              'Copyright '#169' VgaSoft, 2012-2016'+CRLF+
               'http://vgasoft.googlecode.com';
   AboutIcon = 'MAINICON';
   RegRunKey = 'Software\Microsoft\Windows\CurrentVersion\Run';
@@ -192,7 +192,7 @@ begin
   if KeyState<>OldKeyState then
   begin
     MainIcon.Tip:=Format(TrayIconHint, [KeyStateToStr(VK_NUMLOCK), KeyStateToStr(VK_CAPITAL), KeyStateToStr(VK_SCROLL)]);
-    MainIcon.Icon:=LoadIcon(hInstance, PAnsiChar('TR'+KeyStateToChar(VK_NUMLOCK)+KeyStateToChar(VK_CAPITAL)+KeyStateToChar(VK_SCROLL)));
+    MainIcon.Icon:=LoadImage(hInstance, PAnsiChar('TR'+KeyStateToChar(VK_NUMLOCK)+KeyStateToChar(VK_CAPITAL)+KeyStateToChar(VK_SCROLL)), IMAGE_ICON, 16, 16, LR_SHARED);
     MainIcon.Update;
     OldKeyState:=KeyState;
   end;
