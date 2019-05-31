@@ -150,7 +150,7 @@ function TMainForm.AddNode(Parent: Integer; Data: PJsonValue; const Name: string
     case Data.VType of
       jtNone: Result := '[none]';
       jtObject: Result := '[obj (' + IntToStr(Data.Obj.Length) + ')]';
-      jtArray: Result := '[arr ([' + IntToStr(Data.Arr.Length) + '])';
+      jtArray: Result := '[arr (' + IntToStr(Data.Arr.Length) + ')]';
       jtInteger: Result := '[int] ' + Int64ToStr(Data.Int);
       jtDouble: Result := '[flt] ' + FloatToStr(Data.Dbl);
       jtString: Result := '[str] ' + UTF8Decode(Data.Str.Value);
