@@ -35,7 +35,7 @@ const
     'E&xit');
   AboutIcon = 'MAINICON';
   AboutCaption = 'About ';
-  AboutText = 'VgaSoft JSONView 1.0'+CRLF+CRLF+
+  AboutText = 'VgaSoft JSONView 1.1'+CRLF+CRLF+
               'Copyright '#169' VgaSoft, 2019'+CRLF+
               'vgasoft@gmail.com';
 
@@ -84,9 +84,11 @@ begin
   end;
   J := JsonParse(S);
   try
+    Tree.BeginUpdate;
     Tree.ExpandItem(AddNode(Integer(TVI_ROOT), J), emExpand);
   finally
     JsonFree(J);
+    Tree.EndUpdate;
   end;
 end;
 
@@ -223,6 +225,7 @@ var
   MainForm: TMainForm;
 
 begin
+  UseDelphiMemoryManager;
   InitCommonControls;
   MainForm := TMainForm.Create;
   MainForm.Run;
