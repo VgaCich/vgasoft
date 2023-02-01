@@ -14,7 +14,7 @@ type
       1: (doubleValue: Double);
       2: (largeValue: Int64);
       3: (AnsiStringValue: PChar);
-      4: (WideStringValue:PWideChar);
+      4: (WideStringValue: PWideChar);
   end;
 
 const
@@ -32,7 +32,6 @@ const
   PERF_DETAIL_STANDARD = $0000FFFF;
 
 var
-  PdhLib: hModule;
   PdhOpenQuery: function (szDataSource: PChar; dwUserData: Cardinal; var phQuery: THandle): Integer; stdcall = nil;
   PdhCloseQuery: function (hQuery: THandle): Integer; stdcall = nil;
   PdhAddEnglishCounter: function (hQuery: THandle; szFullCounterPath: PChar; dwUserData: Cardinal; var phCounter: THandle): Integer; stdcall = nil;
@@ -42,36 +41,69 @@ var
 // Memory API
 
 type
-  TMemoryStatusEx=record
-    dwLength:DWORD;
-    dwMemoryLoad:DWORD;
-    ullTotalPhys:Int64;
-    ullAvailPhys:Int64;
-    ullTotalPageFile:Int64;
-    ullAvailPageFile:Int64;
-    ullTotalVirtual:Int64;
-    ullAvailVirtual:Int64;
-    ullAvailExtendedVirtual:Int64;
+  TMemoryStatusEx = record
+    dwLength: DWORD;
+    dwMemoryLoad: DWORD;
+    ullTotalPhys: Int64;
+    ullAvailPhys: Int64;
+    ullTotalPageFile: Int64;
+    ullAvailPageFile: Int64;
+    ullTotalVirtual: Int64;
+    ullAvailVirtual: Int64;
+    ullAvailExtendedVirtual: Int64;
   end;
-  
-procedure GlobalMemoryStatusEx(var lpBuffer:TMemoryStatusEx); stdcall; external kernel32;
+  TGlobalMemoryStatusEx = procedure(var lpBuffer: TMemoryStatusEx); stdcall;// external kernel32;
+
+var
+  GlobalMemoryStatusEx: TGlobalMemoryStatusEx = nil;
 
 implementation
 
+var
+  PdhLib, Kernel32Lib: hModule;
+
+procedure GlobalMemoryStatusWrapper(var lpBuffer: TMemoryStatusEx); stdcall;
+var
+  Status: TMemoryStatus;
+begin
+  GlobalMemoryStatus(Status);
+  with lpBuffer do
+  begin
+    dwLength := Status.dwLength;
+    dwMemoryLoad := Status.dwMemoryLoad;
+    with Status do
+    begin
+      ullTotalPhys := dwTotalPhys;
+      ullAvailPhys := dwAvailPhys;
+      ullTotalPageFile := dwTotalPageFile;
+      ullAvailPageFile := dwAvailPageFile;
+      ullTotalVirtual := dwTotalVirtual;
+      ullAvailVirtual := dwAvailVirtual;
+    end;
+    ullAvailExtendedVirtual := 0;
+  end;
+end;
+
 initialization
 
-  PdhLib:=LoadLibrary('pdh.dll');
-  if PdhLib<>0 then
+  PdhLib := LoadLibrary('pdh.dll');
+  if PdhLib <> 0 then
   begin
-    PdhOpenQuery:=GetProcAddress(PdhLib, 'PdhOpenQueryA');
-    PdhCloseQuery:=GetProcAddress(PdhLib, 'PdhCloseQuery');
-    PdhAddEnglishCounter:=GetProcAddress(PdhLib, 'PdhAdd009CounterA');
-    PdhCollectQueryData:=GetProcAddress(PdhLib, 'PdhCollectQueryData');
-    PdhGetFormattedCounterValue:=GetProcAddress(PdhLib, 'PdhGetFormattedCounterValue');
+    PdhOpenQuery := GetProcAddress(PdhLib, 'PdhOpenQueryA');
+    PdhCloseQuery := GetProcAddress(PdhLib, 'PdhCloseQuery');
+    PdhAddEnglishCounter := GetProcAddress(PdhLib, 'PdhAdd009CounterA');
+    PdhCollectQueryData := GetProcAddress(PdhLib, 'PdhCollectQueryData');
+    PdhGetFormattedCounterValue := GetProcAddress(PdhLib, 'PdhGetFormattedCounterValue');
   end;
+  Kernel32Lib := LoadLibrary('kernel32.dll');
+  if Kernel32Lib <> 0 then
+    GlobalMemoryStatusEx := GetProcAddress(Kernel32Lib, 'GlobalMemoryStatusEx');
+  if not Assigned(GlobalMemoryStatusEx) then
+    GlobalMemoryStatusEx := @GlobalMemoryStatusWrapper;
 
 finalization
 
-  if PdhLib<>0 then FreeLibrary(PdhLib);
+  if PdhLib <> 0 then FreeLibrary(PdhLib);
+  if Kernel32Lib <> 0 then FreeLibrary(Kernel32Lib);
 
 end.

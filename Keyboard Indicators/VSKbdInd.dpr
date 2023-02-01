@@ -9,9 +9,8 @@ uses
 const
   CRLF = #13#10;
   ClassName = 'VSKeyboardIndicatorsWnd';
-  AboutText = 'VgaSoft Keyboard Indicators 1.4'+CRLF+CRLF+
-              'Copyright '#169' VgaSoft, 2012-2016'+CRLF+
-              'http://vgasoft.googlecode.com';
+  AboutText = 'VgaSoft Keyboard Indicators 1.5'+CRLF+CRLF+
+              'Copyright '#169' VgaSoft, 2012-2022';
   AboutIcon = 'MAINICON';
   RegRunKey = 'Software\Microsoft\Windows\CurrentVersion\Run';
   RegRunValueName = 'VSKbdInd';

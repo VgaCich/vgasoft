@@ -106,7 +106,7 @@ end;
 function TCPULoadGraph.InitCPULoad: Boolean;
 begin
   Result:=false;
-  if PdhLib = 0 then Exit;
+  if not Assigned(PdhOpenQuery) then Exit;
   if PdhOpenQuery(nil, 0, FCPULoadQuery)=ERROR_SUCCESS then
   begin
     PdhAddEnglishCounter(FCPULoadQuery, '\Processor(_Total)\% Processor Time', 0, FCPULoadCounter);
