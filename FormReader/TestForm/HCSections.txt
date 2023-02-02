@@ -1,4 +1,0 @@
-Section 1|100
-Sect2|40
-Sect3|50
-Sect4|45

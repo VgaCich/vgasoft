@@ -1,7 +1,7 @@
 program ReadableFormTest;
 
 uses
-  SysSfIni, AvL, Windows, Messages, avlUtils, avlReadableForm;
+  SysSfIni, AvL, Windows, Messages, avlUtils, avlReadableForm, LeakDetect;
 
 type
   TMainForm=class(TReadableForm)
@@ -33,7 +33,7 @@ begin
       1: StatusBar.SetPartText(2, 0, 'Save');
       2: Animate.CommonAVI:=aviFindComputer;
       3: Animate.CommonAVI:=aviFindFile;
-      4: StatusBar.SetPartText(2, 0, 'FormReader + ReadableForm testing application (c) Vga 2004-2011');
+      4: StatusBar.SetPartText(2, 0, 'FormReader + ReadableForm testing application (c) Vga 2004-2023');
       5: Close;
     end;
     Animate.Play(0, 100, 0);
@@ -74,7 +74,7 @@ begin
 end;
 
 var
-  FormFile: string = 'TestForm.fdt';
+  FormFile: string = 'TestForm.txt';
 
 begin
   if ParamCount=1 then FormFile:=ParamStr(1);
@@ -95,7 +95,7 @@ begin
         FAN(MainForm);
       end;
     except
-      //MessageBox(0, PChar(Exception(ExceptObject).Message), 'Error', 0);
+      MessageBox(0, PChar(Exception(ExceptObject).Message), 'Error', 0);
     end;
   finally
     FAN(FD);

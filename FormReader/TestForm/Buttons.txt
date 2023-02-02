@@ -1,6 +1,0 @@
-Open|0|0|0
-Save|1|0|0
-Refresh|3|0|0
-Find|2|0|0
-About|4|0|0
-Exit|5|0|0

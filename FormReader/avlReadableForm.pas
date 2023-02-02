@@ -1,4 +1,3 @@
-//(c)VgaSoft, 2004-2011
 unit avlReadableForm;
 
 interface
@@ -7,7 +6,7 @@ uses
   AvL, avlUtils, avlFormReader;
 
 type
-  TReadableForm=class(TForm)
+  TReadableForm = class(TForm)
   private
     function  GetEventHandler(Sender: TObject; const HandlerName: string): TMethod;
   protected
@@ -16,7 +15,7 @@ type
     constructor Create(AParent: TWinControl; FormData: TStream);
     destructor Destroy; override;
   end;
-  TReadableMDIChildForm=class(TMDIChildForm)
+  TReadableMDIChildForm = class(TMDIChildForm)
   private
     function  GetEventHandler(Sender: TObject; const HandlerName: string): TMethod;
   protected
@@ -38,54 +37,54 @@ type
 implementation
 
 type
-  TRFReader=class(TFormReader)
+  TRFReader = class(TFormReader)
   protected
     FForm: TForm;
-    function AddReadableForm(Properties: TStringList; Parent: TWinControl): TWinControl;
+    function AddReadableForm(Properties: TControlProperties; Parent: TWinControl): TWinControl;
   public
-    constructor Create(Form: TForm; FData: TStream);
-    function ReadForm: Boolean; override;
+    constructor Create(Form: TForm);
+    procedure ReadForm(Data: TStream); override;
   end;
 
 { TRFReader }
 
-constructor TRFReader.Create(Form: TForm; FData: TStream);
+constructor TRFReader.Create(Form: TForm);
 begin
   inherited Create;
-  FormData:=FData;
-  FForm:=Form;
+  FForm := Form;
   AddControlType(FForm.ClassName, AddReadableForm);
 end;
 
-function TRFReader.AddReadableForm(Properties: TStringList; Parent: TWinControl): TWinControl;
+function TRFReader.AddReadableForm(Properties: TControlProperties; Parent: TWinControl): TWinControl;
 begin
-  Result:=FForm;
+  Result := FForm;
+  FForm.Caption := Properties.Str('Caption');
   SetWinControlProperties(Result, Properties);
-  SetFormProperties(Result, Properties);
+  SetFormProperties(Result as TForm, Properties);
 end;
 
-function TRFReader.ReadForm: Boolean;
+procedure TRFReader.ReadForm(Data: TStream);
 var
   Controls: TStringList;
   i: Integer;
   Field: Pointer;
 begin
   try
-    Result:=inherited ReadForm;
-    Controls:=TStringList.Create;
+    inherited ReadForm(Data);
+    Controls := TStringList.Create;
     try
       GetControlsList(Controls);
-      for i:=0 to Controls.Count-1 do
+      for i := 0 to Controls.Count - 1 do
       begin
-        Field:=FForm.FieldAddress(Controls[i]);
-        if Field=nil then Continue;
-        TObject(Field^):=Control[Controls[i]];
+        Field := FForm.FieldAddress(Controls[i]);
+        if not Assigned(Field) then Continue;
+        TObject(Field^) := Control[Controls[i]];
       end;
     finally
       FAN(Controls);
     end;
   finally
-    DeleteControlFromList(FForm);
+    DeleteControl(FForm);
   end;
 end;
 
@@ -94,10 +93,9 @@ end;
 constructor TReadableForm.Create(AParent: TWinControl; FormData: TStream);
 begin
   inherited Create(AParent, '');
-  FFormReader:=TRFReader.Create(Self, FormData);
-  FFormReader.OnEventHandlerRequired:=GetEventHandler;
-  if not FFormReader.ReadForm
-    then raise Exception.Create('Failed to read form '+ClassName);
+  FFormReader := TRFReader.Create(Self);
+  FFormReader.OnEventHandlerRequired := GetEventHandler;
+  FFormReader.ReadForm(FormData);
 end;
 
 destructor TReadableForm.Destroy;
@@ -108,8 +106,8 @@ end;
 
 function TReadableForm.GetEventHandler(Sender: TObject; const HandlerName: string): TMethod;
 begin
-  Result.Data:=Self;
-  Result.Code:=MethodAddress(HandlerName);
+  Result.Code := MethodAddress(HandlerName);
+  Result.Data := Self;
 end;
 
 { TReadableMDIChildForm }
@@ -117,10 +115,9 @@ end;
 constructor TReadableMDIChildForm.Create(AParent: TMDIForm; FormData: TStream);
 begin
   inherited Create(AParent, '');
-  FFormReader:=TRFReader.Create(Self, FormData);
-  FFormReader.OnEventHandlerRequired:=GetEventHandler;
-  if not FFormReader.ReadForm
-    then raise Exception.Create('Failed to read form '+ClassName);
+  FFormReader := TRFReader.Create(Self);
+  FFormReader.OnEventHandlerRequired := GetEventHandler;
+  FFormReader.ReadForm(FormData);
 end;
 
 destructor TReadableMDIChildForm.Destroy;
@@ -131,8 +128,8 @@ end;
 
 function TReadableMDIChildForm.GetEventHandler(Sender: TObject; const HandlerName: string): TMethod;
 begin
-  Result.Data:=Self;
-  Result.Code:=MethodAddress(HandlerName);
+  Result.Data := Self;
+  Result.Code := MethodAddress(HandlerName);
 end;
 
 { TReadableMDIForm }
@@ -140,10 +137,9 @@ end;
 constructor TReadableMDIForm.Create(AParent: TWinControl; FormData: TStream);
 begin
   inherited Create(AParent, '');
-  FFormReader:=TRFReader.Create(Self, FormData);
-  FFormReader.OnEventHandlerRequired:=GetEventHandler;
-  if not FFormReader.ReadForm
-    then raise Exception.Create('Failed to read form '+ClassName);
+  FFormReader := TRFReader.Create(Self);
+  FFormReader.OnEventHandlerRequired := GetEventHandler;
+  FFormReader.ReadForm(FormData);
 end;
 
 destructor TReadableMDIForm.Destroy;
@@ -154,8 +150,8 @@ end;
 
 function TReadableMDIForm.GetEventHandler(Sender: TObject; const HandlerName: string): TMethod;
 begin
-  Result.Data:=Self;
-  Result.Code:=MethodAddress(HandlerName);
+  Result.Data := Self;
+  Result.Code := MethodAddress(HandlerName);
 end;
 
 end.

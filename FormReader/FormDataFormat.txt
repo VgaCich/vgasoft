@@ -1,34 +1,22 @@
-[Controls:vary][Data:DataSize][DataSize:Cardinal]
+Tree of controls.
 
-Controls format (text data):
+Control format:
 
-  Control ControlName: ControlType
-  PropertiesList
+Control ControlName: ControlType
+    Properties List
   PropEnd
-  ChildControls
-  End
+  Child Controls
+End
 
-PropertiesList format:
+Properties List format:
 
   PropertyName=PropertyData
 
-ChildControls format:
+Child Controls format:
 
-  See Controls format
+  Same as Controls format
 
-Data format:
-
-  [DataTable:vary][NamesTableSize:Cardinal][NamesTable:NamesTableSize][DataStream]
-
-DataTable format:
-
-  [DataCount]{DataCount[Offset:Cardinal][Size:Cardinal]}
-
-NamesTable format:
-
-Text list of file names in same order as in DataTable
-
-Marking:
-
-[Name:Size] - block
-{Count[block]} - <Count> blocks ( {3[block]} = [block][block][block])
+Binary properties encoded as Base64 string.
+Multiline properties encoded as Line1|Line2|Line3...
+Fields ancoded as Field1`Field2`Field3...
+Tree encoded as Item1<Subitems>|Item2<Subintems>...
